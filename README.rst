@@ -67,7 +67,7 @@ apply to fields.
 
 * (and more)
 
-*Parts of this summary are taken* [1]_ *without marking them explicitly as
+*Parts of this summary are taken from* [1]_ *without marking them explicitly as
 quotations.*
 
 Installation

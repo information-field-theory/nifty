@@ -36,11 +36,11 @@
     homogeneity and isotropy. Fields which are only statistically homogeneous
     can also be created using the diagonal operator routine.
 
-    In the moment, NIFTy offers one additional routine for power spectrum
+    At the moment, NIFTy offers one additional routine for power spectrum
     manipulation, the smooth_power function to smooth a power spectrum with a
     Gaussian convolution kernel. This can be necessary in cases where power
-    spectra are reconstructed and reused in an interative algorithm, where
-    too much statistical variation might effect severely the results.
+    spectra are reconstructed and reused in an iterative algorithm, where
+    too much statistical variation might severely effect the results.
 
 """
 

@@ -33,7 +33,7 @@
 
     The visualization of fields is useful for obvious reasons, and therefore
     some nice color maps are here to be found. Those are segmented color maps
-    that can be used in many settings, including the native ploting method for
+    that can be used in many settings, including the native plotting method for
     fields. (Some of the color maps offered here are results from IFT
     publications, cf. references below.)
 

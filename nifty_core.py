@@ -42,7 +42,7 @@
     taken care of automatically without concerning the user. This allows for an
     abstract formulation and programming of inference algorithms, including
     those derived within information field theory. Thus, NIFTY permits its user
-    to rapidly prototype algorithms in 1D, and then apply the developed code in
+    to rapidly prototype algorithms in 1D and then apply the developed code in
     higher-dimensional settings of real world problems. The set of spaces on
     which NIFTY operates comprises point sets, n-dimensional regular grids,
     spherical spaces, their harmonic counterparts, and product spaces
@@ -5579,7 +5579,7 @@ class field(object):
             controlled by kwargs.
 
         target : space, *optional*
-            The space wherein the operator output lives (default: domain)
+            The space wherein the operator output lives (default: domain).
 
 
         Other Parameters
@@ -5629,7 +5629,7 @@ class field(object):
             controlled by the keyword arguments.
 
         target : space, *optional*
-            The space wherein the operator output lives (default: domain)
+            The space wherein the operator output lives (default: domain).
 
     """
     def __init__(self,domain,val=None,target=None,**kwargs):
@@ -7482,10 +7482,10 @@ class operator(object):
             Notes
             -----
             The ambiguity of `bare` or non-bare diagonal entries is based
-            on the choise of a matrix representation of the operator in
-            question. The naive choise of absorbing the volume weights
+            on the choice of a matrix representation of the operator in
+            question. The naive choice of absorbing the volume weights
             into the matrix leads to a matrix-vector calculus with the
-            non-bare entries which seems intuitive, though. The choise of
+            non-bare entries which seems intuitive, though. The choice of
             keeping matrix entries and volume weights separate deals with the
             bare entries that allow for correct interpretation of the matrix
             entries; e.g., as variance in case of an covariance operator.
@@ -7559,10 +7559,10 @@ class operator(object):
             Notes
             -----
             The ambiguity of `bare` or non-bare diagonal entries is based
-            on the choise of a matrix representation of the operator in
-            question. The naive choise of absorbing the volume weights
+            on the choice of a matrix representation of the operator in
+            question. The naive choice of absorbing the volume weights
             into the matrix leads to a matrix-vector calculus with the
-            non-bare entries which seems intuitive, though. The choise of
+            non-bare entries which seems intuitive, though. The choice of
             keeping matrix entries and volume weights separate deals with the
             bare entries that allow for correct interpretation of the matrix
             entries; e.g., as variance in case of an covariance operator.
@@ -7657,10 +7657,10 @@ class operator(object):
             Notes
             -----
             The ambiguity of `bare` or non-bare diagonal entries is based
-            on the choise of a matrix representation of the operator in
-            question. The naive choise of absorbing the volume weights
+            on the choice of a matrix representation of the operator in
+            question. The naive choice of absorbing the volume weights
             into the matrix leads to a matrix-vector calculus with the
-            non-bare entries which seems intuitive, though. The choise of
+            non-bare entries which seems intuitive, though. The choice of
             keeping matrix entries and volume weights separate deals with the
             bare entries that allow for correct interpretation of the matrix
             entries; e.g., as variance in case of an covariance operator.
@@ -7721,10 +7721,10 @@ class operator(object):
             Notes
             -----
             The ambiguity of `bare` or non-bare diagonal entries is based
-            on the choise of a matrix representation of the operator in
-            question. The naive choise of absorbing the volume weights
+            on the choice of a matrix representation of the operator in
+            question. The naive choice of absorbing the volume weights
             into the matrix leads to a matrix-vector calculus with the
-            non-bare entries which seems intuitive, though. The choise of
+            non-bare entries which seems intuitive, though. The choice of
             keeping matrix entries and volume weights separate deals with the
             bare entries that allow for correct interpretation of the matrix
             entries; e.g., as variance in case of an covariance operator.
@@ -7784,10 +7784,10 @@ class operator(object):
             Notes
             -----
             The ambiguity of `bare` or non-bare diagonal entries is based
-            on the choise of a matrix representation of the operator in
-            question. The naive choise of absorbing the volume weights
+            on the choice of a matrix representation of the operator in
+            question. The naive choice of absorbing the volume weights
             into the matrix leads to a matrix-vector calculus with the
-            non-bare entries which seems intuitive, though. The choise of
+            non-bare entries which seems intuitive, though. The choice of
             keeping matrix entries and volume weights separate deals with the
             bare entries that allow for correct interpretation of the matrix
             entries; e.g., as variance in case of an covariance operator.
@@ -7848,10 +7848,10 @@ class operator(object):
             Notes
             -----
             The ambiguity of `bare` or non-bare diagonal entries is based
-            on the choise of a matrix representation of the operator in
-            question. The naive choise of absorbing the volume weights
+            on the choice of a matrix representation of the operator in
+            question. The naive choice of absorbing the volume weights
             into the matrix leads to a matrix-vector calculus with the
-            non-bare entries which seems intuitive, though. The choise of
+            non-bare entries which seems intuitive, though. The choice of
             keeping matrix entries and volume weights separate deals with the
             bare entries that allow for correct interpretation of the matrix
             entries; e.g., as variance in case of an covariance operator.
@@ -7902,10 +7902,10 @@ class diagonal_operator(operator):
         Notes
         -----
         The ambiguity of `bare` or non-bare diagonal entries is based
-        on the choise of a matrix representation of the operator in
-        question. The naive choise of absorbing the volume weights
+        on the choice of a matrix representation of the operator in
+        question. The naive choice of absorbing the volume weights
         into the matrix leads to a matrix-vector calculus with the
-        non-bare entries which seems intuitive, though. The choise of
+        non-bare entries which seems intuitive, though. The choice of
         keeping matrix entries and volume weights separate deals with the
         bare entries that allow for correct interpretation of the matrix
         entries; e.g., as variance in case of an covariance operator.
@@ -7953,10 +7953,10 @@ class diagonal_operator(operator):
             Notes
             -----
             The ambiguity of `bare` or non-bare diagonal entries is based
-            on the choise of a matrix representation of the operator in
-            question. The naive choise of absorbing the volume weights
+            on the choice of a matrix representation of the operator in
+            question. The naive choice of absorbing the volume weights
             into the matrix leads to a matrix-vector calculus with the
-            non-bare entries which seems intuitive, though. The choise of
+            non-bare entries which seems intuitive, though. The choice of
             keeping matrix entries and volume weights separate deals with the
             bare entries that allow for correct interpretation of the matrix
             entries; e.g., as variance in case of an covariance operator.
@@ -8240,10 +8240,10 @@ class diagonal_operator(operator):
             Notes
             -----
             The ambiguity of `bare` or non-bare diagonal entries is based
-            on the choise of a matrix representation of the operator in
-            question. The naive choise of absorbing the volume weights
+            on the choice of a matrix representation of the operator in
+            question. The naive choice of absorbing the volume weights
             into the matrix leads to a matrix-vector calculus with the
-            non-bare entries which seems intuitive, though. The choise of
+            non-bare entries which seems intuitive, though. The choice of
             keeping matrix entries and volume weights separate deals with the
             bare entries that allow for correct interpretation of the matrix
             entries; e.g., as variance in case of an covariance operator.
@@ -8327,10 +8327,10 @@ class diagonal_operator(operator):
             Notes
             -----
             The ambiguity of `bare` or non-bare diagonal entries is based
-            on the choise of a matrix representation of the operator in
-            question. The naive choise of absorbing the volume weights
+            on the choice of a matrix representation of the operator in
+            question. The naive choice of absorbing the volume weights
             into the matrix leads to a matrix-vector calculus with the
-            non-bare entries which seems intuitive, though. The choise of
+            non-bare entries which seems intuitive, though. The choice of
             keeping matrix entries and volume weights separate deals with the
             bare entries that allow for correct interpretation of the matrix
             entries; e.g., as variance in case of an covariance operator.
@@ -8408,7 +8408,7 @@ def identity(domain):
         Returns an identity operator.
 
         The identity operator is represented by a `diagonal_operator` instance,
-        which is applicable to a field-like object; i.e., a scalars, list,
+        which is applicable to a field-like object; i.e., a scalar, list,
         array or field. (The identity operator is unrelated to PYTHON's
         built-in function :py:func:`id`.)
 
@@ -8492,10 +8492,10 @@ class power_operator(diagonal_operator):
         Notes
         -----
         The ambiguity of `bare` or non-bare diagonal entries is based
-        on the choise of a matrix representation of the operator in
-        question. The naive choise of absorbing the volume weights
+        on the choice of a matrix representation of the operator in
+        question. The naive choice of absorbing the volume weights
         into the matrix leads to a matrix-vector calculus with the
-        non-bare entries which seems intuitive, though. The choise of
+        non-bare entries which seems intuitive, though. The choice of
         keeping matrix entries and volume weights separate deals with the
         bare entries that allow for correct interpretation of the matrix
         entries; e.g., as variance in case of an covariance operator.
@@ -9229,10 +9229,10 @@ class vecvec_operator(operator):
             Notes
             -----
             The ambiguity of `bare` or non-bare diagonal entries is based
-            on the choise of a matrix representation of the operator in
-            question. The naive choise of absorbing the volume weights
+            on the choice of a matrix representation of the operator in
+            question. The naive choice of absorbing the volume weights
             into the matrix leads to a matrix-vector calculus with the
-            non-bare entries which seems intuitive, though. The choise of
+            non-bare entries which seems intuitive, though. The choice of
             keeping matrix entries and volume weights separate deals with the
             bare entries that allow for correct interpretation of the matrix
             entries; e.g., as variance in case of an covariance operator.
