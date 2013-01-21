@@ -1,5 +1,5 @@
-NIFTY -- Numerical Information Field Theory
-===========================================
+NIFTY - Numerical Information Field Theory
+==========================================
 
 **NIFTY** project homepage: `<http://www.mpa-garching.mpg.de/ift/nifty/>`_
 
@@ -34,36 +34,36 @@ The NIFTY library features three main classes: **spaces** that represent
 certain grids, **fields** that are defined on spaces, and **operators** that
 apply to fields.
 
-- `Spaces <http://www.mpa-garching.mpg.de/ift/nifty/space.html>`_
+*   `Spaces <http://www.mpa-garching.mpg.de/ift/nifty/space.html>`_
 
-    - ``point_space`` -- unstructured list of points 
-    - ``rg_space`` -- *n*-dimensional regular Euclidean grid
-    - ``lm_space`` -- spherical harmonics
-    - ``gl_space`` -- Gauss-Legendre grid on the 2-sphere
-    - ``hp_space`` -- `HEALPix <http://sourceforge.net/projects/healpix/>`_
+    *   ``point_space`` - unstructured list of points
+    *   ``rg_space`` - *n*-dimensional regular Euclidean grid
+    *   ``lm_space`` - spherical harmonics
+    *   ``gl_space`` - Gauss-Legendre grid on the 2-sphere
+    *   ``hp_space`` - `HEALPix <http://sourceforge.net/projects/healpix/>`_
         grid on the 2-sphere
-    - ``nested_space`` -- arbitrary product of grids
+    *   ``nested_space`` - arbitrary product of grids
 
-- `Fields <http://www.mpa-garching.mpg.de/ift/nifty/field.html>`_
+*   `Fields <http://www.mpa-garching.mpg.de/ift/nifty/field.html>`_
 
-    - ``field`` -- generic class for (discretized) fields::
+    *   ``field`` - generic class for (discretized) fields::
 
     field.cast_domain   field.hat           field.power        field.smooth
     field.conjugate     field.inverse_hat   field.pseudo_dot   field.tensor_dot
     field.dim           field.norm          field.set_target   field.transform
     field.dot           field.plot          field.set_val      field.weight
 
-- `Operators <http://www.mpa-garching.mpg.de/ift/nifty/operator.html>`_
+*   `Operators <http://www.mpa-garching.mpg.de/ift/nifty/operator.html>`_
 
-    - ``diagonal_operator`` -- purely diagonal matrices in a specified basis
-    - ``projection_operator`` -- projections onto subsets of a specified basis
-    - ``vecvec_operator`` -- matrices derived from the outer product of a
+    *   ``diagonal_operator`` - purely diagonal matrices in a specified basis
+    *   ``projection_operator`` - projections onto subsets of a specified basis
+    *   ``vecvec_operator`` - matrices derived from the outer product of a
         vector
-    - ``response_operator`` -- exemplary responses that include a convolution,
+    *   ``response_operator`` - exemplary responses that include a convolution,
         masking and projection
-    - (and more)
+    *   (and more)
 
-- (and more)
+* (and more)
 
 *Parts of this summary are taken* [1]_.
 
@@ -73,19 +73,19 @@ Installation
 Requirements
 ............
 
-- `Python <http://www.python.org/>`_ (v2.7.x)
+*   `Python <http://www.python.org/>`_ (v2.7.x)
 
-    - `NumPy <http://www.numpy.org/>`_ and `SciPy <http://www.scipy.org/>`_
-    - `matplotlib <http://matplotlib.org/>`_
-    - `multiprocessing <http://docs.python.org/2/library/multiprocessing.html>`_
+    *   `NumPy <http://www.numpy.org/>`_ and `SciPy <http://www.scipy.org/>`_
+    *   `matplotlib <http://matplotlib.org/>`_
+    *   `multiprocessing <http://docs.python.org/2/library/multiprocessing.html>`_
         (standard library)
 
-- `GFFT <https://github.com/mrbell/gfft>`_ (v0.1.0) -- Generalized Fast Fourier
+*   `GFFT <https://github.com/mrbell/gfft>`_ (v0.1.0) -- Generalized Fast Fourier
     Transformations for Python
 
-- `HEALPy <https://github.com/healpy/healpy>`_ (v1.4 without openmp) -- A
+*   `HEALPy <https://github.com/healpy/healpy>`_ (v1.4 without openmp) -- A
     Python wrapper for `HEALPix <http://sourceforge.net/projects/healpix/>`_
-- `libsharp-wrapper <https://github.com/mselig/libsharp-wrapper>`_ (v0.1.2
+*   `libsharp-wrapper <https://github.com/mselig/libsharp-wrapper>`_ (v0.1.2
     without openmp) -- A Python wrapper for the
     `libsharp <http://sourceforge.net/projects/libsharp/>`_ library
 
@@ -117,8 +117,8 @@ Acknowledgement
 Please, acknowledge the use of NIFTY in your publication(s) by using a phrase
 such as the following:
 
-*"Some of the results in this publication have been derived using the NIFTY
-[M. Selig et al., 2013] package."*
+    *"Some of the results in this publication have been derived using the NIFTY
+    [M. Selig et al., 2013] package."*
 
 References
 ..........

@@ -5,20 +5,13 @@
 *.log
 *.egg
 *.egg-info
-*.png
-*.pdf
-*.tiff
 *~
 
 .git/
 .svn/
 .spyderproject
 
-demos/
+demos/*
 !demos/demo_faraday.py
 !demos/demo_faraday_map.npy
 !demos/demo_excaliwir.py
-
-#demos/demo_imaging*.py
-#demos/demo_wiener.py
-#demos/test.txt
