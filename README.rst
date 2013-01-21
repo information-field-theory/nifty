@@ -3,6 +3,8 @@ NIFTY - Numerical Information Field Theory
 
 **NIFTY** project homepage: `<http://www.mpa-garching.mpg.de/ift/nifty/>`_
 
+**!!! THIS PAGE IS CURRENTLY UNDER CONSTRUCTION !!!**
+
 Summary
 -------
 
@@ -67,7 +69,8 @@ apply to fields.
 
 * (and more)
 
-*Parts of this summary are taken* [1]_.
+*Parts of this summary are taken* [1]_ *without marking them explicitly as
+quotations.*
 
 Installation
 ------------
