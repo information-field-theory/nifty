@@ -46,7 +46,9 @@ apply to fields.
 
 *   `Fields <http://www.mpa-garching.mpg.de/ift/nifty/field.html>`_
 
-    *   ``field`` - generic class for (discretized) fields::
+    *   ``field`` - generic class for (discretized) fields
+
+::
 
     field.cast_domain   field.hat           field.power        field.smooth
     field.conjugate     field.inverse_hat   field.pseudo_dot   field.tensor_dot
@@ -80,8 +82,8 @@ Requirements
     *   `multiprocessing <http://docs.python.org/2/library/multiprocessing.html>`_
         (standard library)
 
-*   `GFFT <https://github.com/mrbell/gfft>`_ (v0.1.0) -- Generalized Fast Fourier
-    Transformations for Python
+*   `GFFT <https://github.com/mrbell/gfft>`_ (v0.1.0) -- Generalized Fast
+    Fourier Transformations for Python
 
 *   `HEALPy <https://github.com/healpy/healpy>`_ (v1.4 without openmp) -- A
     Python wrapper for `HEALPix <http://sourceforge.net/projects/healpix/>`_
