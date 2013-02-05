@@ -480,7 +480,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.2.0"
+        self._version = "0.2.1"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -4860,8 +4860,9 @@ class hp_space(space):
             x = self.enforce_shape(np.array(x,dtype=self.datatype))
             if(norm=="log")and(np.min(x,axis=None,out=None)<=0):
                 raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
-            if(cmap is not None):
-                cmap.set_under(color='k',alpha=0.0) ## transparent box
+            if(cmap is None):
+                cmap = pl.cm.jet ## default
+            cmap.set_under(color='k',alpha=0.0) ## transparent box
             hp.mollview(x,fig=None,rot=None,coord=None,unit=unit,xsize=800,title=title,nest=False,min=vmin,max=vmax,flip="astro",remove_dip=False,remove_mono=False,gal_cut=0,format="%g",format2="%g",cbar=cbar,cmap=cmap,notext=False,norm=norm,hold=False,margins=None,sub=None)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

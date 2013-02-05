@@ -10,6 +10,7 @@
 .git/
 .svn/
 .spyderproject
+build
 
 demos/*
 !demos/demo_faraday.py
