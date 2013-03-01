@@ -8888,33 +8888,46 @@ class projection_operator(operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def _multiply(self,x,band=None,**kwargs):
+    def _multiply(self,x,band=None,bandsup=None,**kwargs):
         """
-            Applies the operator to a given field
+            Applies the operator to a given field.
 
             Parameters
             ----------
             x : valid field
             band : int, *optional*
                 Projection band whereon to project. (default: None)
+            bandsup: list of integers, *optional*
+                List of projection bands whereon to project and which to sum
+                up. The `band` keyword is prefered over `bandsup`.
+                (default: None)
 
             Returns
             -------
             Px : field
                 projected field(!)
         """
-        if(band is None):
-            Px = field(self.target,val=None,target=nested_space([point_space(len(self.ind),datatype=x.target.datatype),x.target]))
-            for bb in range(self.bands()):
-                Px[bb][self.ind[bb].tolist()] += x[self.ind[bb].tolist()]
-            return Px
-
-        else:
+        if(band is not None):
             band = int(band)
-            if(band>self.bands())or(band<0):
+            if(band>self.bands()-1)or(band<0):
                 raise TypeError(about._errors.cstring("ERROR: invalid band."))
             Px = field(self.domain,val=None,target=x.target)
             Px[self.ind[band].tolist()] += x[self.ind[band].tolist()]
+            return Px
+
+        elif(bandsup is not None):
+            bandsup = [int(bb) for bb in bandsup if -1<bb<self.bands()]
+            if(bandsup==[]):
+                raise ValueError(about._errors.cstring("ERROR: invalid input."))
+            Px = field(self.domain,val=None,target=x.target)
+            for bb in bandsup:
+                Px[self.ind[bb].tolist()] += x[self.ind[bb].tolist()]
+            return Px
+
+        else:
+            Px = field(self.target,val=None,target=nested_space([point_space(len(self.ind),datatype=x.target.datatype),x.target]))
+            for bb in range(self.bands()):
+                Px[bb][self.ind[bb].tolist()] += x[self.ind[bb].tolist()]
             return Px
 
     def _inverse_multiply(self,x,**kwargs):
