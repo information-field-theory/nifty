@@ -6192,7 +6192,7 @@ class field(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __len__(self):
-        return int(self.dim(split=False))
+        return int(self.dim(split=True)[0])
 
     def __getitem__(self,key):
         return self.val[key]
