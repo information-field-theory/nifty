@@ -106,8 +106,8 @@
 
     References
     ----------
-    .. [#] M. Selig et al., "NIFTY -- Numerical Information Field Theory --
-        a versatile Python library for signal inference", submitted to IEEE,
+    .. [#] Selig et al., "NIFTY -- Numerical Information Field Theory --
+        a versatile Python library for signal inference", submitted to A&A,
         2013; `arXiv:1301.4499 <http://www.arxiv.org/abs/1301.4499>`_
 
 """
