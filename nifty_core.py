@@ -5897,17 +5897,27 @@ class field(object):
                 x = self.domain.calc_weight(x,power=1)
             return self.domain.calc_dot(self.val,x)
 
-    def norm(self): ## TODO: extend to L^q norm
+    def norm(self,q=None):
         """
-            Computes the L2-norm of the field values.
+            Computes the Lq-norm of the field values.
+
+            Parameters
+            ----------
+            q : scalar
+                Parameter q of the Lq-norm (default: 2).
 
             Returns
             -------
             norm : scalar
-              The L2-norm of the field values.
+                The Lq-norm of the field values.
 
         """
-        return np.sqrt(self.dot(x=self.val))
+        if(q is None):
+            return np.sqrt(self.dot(x=self.val))
+        else:
+            return self.dot(x=self.val**(q-1))**(1/q)
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def pseudo_dot(self,x=1,**kwargs):
         """
