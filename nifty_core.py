@@ -632,6 +632,11 @@ class random(object):
             size : integer, *optional*
                 Number of irreducible bands for ``random == "syn"``
                 (default: None).
+            pindex : numpy.ndarray, *optional*
+                Indexing array giving the power spectrum index of each band
+                (default: None).
+            kindex : numpy.ndarray, *optional*
+                Scale of each irreducible band (default: None).
             vmin : {scalar, list, ndarray, field}, *optional*
                 Lower limit of the uniform distribution if ``random == "uni"``
                 (default: 0).
@@ -676,16 +681,17 @@ class random(object):
 
         elif(key=="syn"):
             if(kwargs.has_key("spec")):
-                if(kwargs.has_key("size")):
-                    spec = domain.enforce_power(kwargs.get("spec"),size=kwargs.get("size"))
-                else:
-                    spec = domain.enforce_power(kwargs.get("spec"))
+                spec = kwargs.get("spec")
             else:
-                if(kwargs.has_key("size")):
-                    spec = domain.enforce_power(1,size=kwargs.get("size"))
-                else:
-                    spec = domain.enforce_power(1)
-            return [key,spec]
+                spec = 1
+            size = None
+            kpack = None
+            if(kwargs.has_key("size")):
+                size = kwargs.get("size")
+            if(kwargs.has_key("pindex"))and(kwargs.has_key("kindex")):
+                kpack = [kwargs.get("pindex"),kwargs.get("kindex")]
+                size = len(kpack[1])
+            return [key,domain.enforce_power(spec,size=size),kpack]
 
         elif(key=="uni"):
             if(kwargs.has_key("vmin")):
@@ -996,6 +1002,9 @@ class space(object):
             ----------------
             size : int, *optional*
                 Number of bands the power spectrum shall have (default: None).
+            kindex : numpy.ndarray, *optional*
+                Scale of each band.
+
         """
         raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'enforce_power'."))
 
@@ -1173,8 +1182,11 @@ class space(object):
                 (default: 1).
             spec : {float, numpy.ndarray}, *optional*
                 Power spectrum (default: 1).
-            size : int, *optional*
-                Number of bands (default: None).
+            pindex : numpy.ndarray, *optional*
+                Indexing array giving the power spectrum index of each band
+                (default: None).
+            kindex : numpy.ndarray, *optional*
+                Scale of each band (default: None).
             vmin : float, *optional*
                 Lower limit for a uniform distribution (default: 0).
             vmax : float, *optional*
@@ -2146,6 +2158,9 @@ class rg_space(space):
             ----------------
             size : int, *optional*
                 Number of bands the power spectrum shall have (default: None).
+            kindex : numpy.ndarray, *optional*
+                Scale of each band.
+
         """
         if(isinstance(spec,field)):
             spec = spec.val.astype(self.datatype)
@@ -2163,7 +2178,10 @@ class rg_space(space):
             raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
 
         if(size is None):
-            size = np.size(gp.get_power_index(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-(np.size(self.para)-1)//2:].astype(np.bool),irred=True,fourier=self.fourier)[0]) ## nontrivial
+            if(kwargs.has_key("kindex")):
+                size = len(kwargs.get("kindex"))
+            else:
+                size = np.size(gp.get_power_index(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-(np.size(self.para)-1)//2:].astype(np.bool),irred=True,fourier=self.fourier)[0]) ## nontrivial
         ## drop imaginary part
         spec = np.real(spec)
 
@@ -2306,8 +2324,11 @@ class rg_space(space):
                 (default: 1).
             spec : {float, numpy.ndarray}, *optional*
                 Power spectrum (default: 1).
-            size : int, *optional*
-                Number of bands (default: None).
+            pindex : numpy.ndarray, *optional*
+                Indexing array giving the power spectrum index of each band
+                (default: None).
+            kindex : numpy.ndarray, *optional*
+                Scale of each band (default: None).
             vmin : float, *optional*
                 Lower limit for a uniform distribution (default: 0).
             vmax : float, *optional*
@@ -2329,7 +2350,7 @@ class rg_space(space):
 
         elif(arg[0]=="syn"):
             naxes = (np.size(self.para)-1)//2
-            x = gp.draw_vector_nd(self.para[:naxes],self.vol,arg[1],symtype=self.para[naxes],fourier=self.fourier,zerocentered=self.para[-naxes:].astype(np.bool))
+            x = gp.draw_vector_nd(self.para[:naxes],self.vol,arg[1],symtype=self.para[naxes],fourier=self.fourier,zerocentered=self.para[-naxes:].astype(np.bool),kpack=arg[2])
             ## correct for 'ifft'
             if(not self.fourier):
                 x = self.calc_weight(x,power=-1)
@@ -3243,8 +3264,6 @@ class lm_space(space):
                 (default: 1).
             spec : {float, numpy.ndarray}, *optional*
                 Power spectrum (default: 1).
-            size : int, *optional*
-                Number of bands (default: None).
             vmin : float, *optional*
                 Lower limit for a uniform distribution (default: 0).
             vmax : float, *optional*
@@ -3943,8 +3962,6 @@ class gl_space(space):
                 (default: 1).
             spec : {float, numpy.ndarray}, *optional*
                 Power spectrum (default: 1).
-            size : int, *optional*
-                Number of bands (default: None).
             vmin : float, *optional*
                 Lower limit for a uniform distribution (default: 0).
             vmax : float, *optional*
@@ -4554,8 +4571,6 @@ class hp_space(space):
                 (default: 1).
             spec : {float, numpy.ndarray}, *optional*
                 Power spectrum (default: 1).
-            size : int, *optional*
-                Number of bands (default: None).
             vmin : float, *optional*
                 Lower limit for a uniform distribution (default: 0).
             vmax : float, *optional*
@@ -5644,10 +5659,6 @@ class field(object):
             Specifies a power spectrum from which the field values should be
             synthesized (default=1). Can be given as a constant, or as an
             array with indvidual entries per mode.
-
-        size : scalar
-            Specifies the number of irreducible bands in the power spectrum
-            (default=None).
 
         vmin : scalar
             Sets the lower limit for the uniform distribution.
@@ -8409,7 +8420,7 @@ class diagonal_operator(operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_random_field(self,domain=None,target=None):
+    def get_random_field(self,domain=None,target=None,**kwargs): ## TODO: remove **kwargs for downward compatibility in future version
         """
             Generates a Gaussian random field with variance equal to the
             diagonal.
@@ -8686,7 +8697,7 @@ class power_operator(diagonal_operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power(self,bare=True,pundex=None,pindex=None,**kwargs): ## **kwargs for downward compatibility
+    def get_power(self,bare=True,pundex=None,pindex=None,**kwargs): ## TODO: remove **kwargs for downward compatibility in future version
         """
             Computes the power spectrum
 
@@ -8720,39 +8731,42 @@ class power_operator(diagonal_operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_random_field(self,domain=None,target=None,**kwargs):
-        """
-            Generates a Gaussian random field with variance equal to the power spectrum
-
-            Parameters
-            ----------
-            domain : space
-                The space wherein the field lives (default: None,
-                 indicates to use self.domain)
-            target : space
-                The space wherein the transform of the field lives
-                (default: None, indicates to use self.domain.target)
-            size : int
-                number of irreducible bands (default: None)
-
-            Returns
-            -------
-            x : field
-                The random field defined on domain
-        """
-        if(np.any(self.val==0)):
-            return super(power_operator,self).get_random_field(domain=domain,target=target,**kwargs)
-
-        if(domain is None)or(domain==self.domain):
-            if(np.any(self.val==0)):
-                return super(power_operator,self).get_random_field(domain=self.domain,target=target,**kwargs)
-            else:
-                return field(self.domain,val=None,target=target,random="syn",spec=self.get_power(),**kwargs)
-        else:
-            if(np.any(self.val==0)):
-                return super(power_operator,self).get_random_field(domain=self.domain,target=domain,**kwargs).transform(target=domain,overwrite=False)
-            else:
-                return field(self.domain,val=None,target=domain,random="syn",spec=self.get_power(),**kwargs).transform(target=domain,overwrite=False)
+#    def get_random_field(self,domain=None,target=None,**kwargs): ## TODO: remove in future version
+#        """
+#            Generates a Gaussian random field with variance equal to the power spectrum
+#
+#            Parameters
+#            ----------
+#            domain : space
+#                The space wherein the field lives (default: None,
+#                 indicates to use self.domain)
+#            target : space
+#                The space wherein the transform of the field lives
+#                (default: None, indicates to use self.domain.target)
+#            pindex : numpy.ndarray, *optional*
+#                Indexing array giving the power spectrum index of each band
+#                (default: None).
+#            kindex : numpy.ndarray, *optional*
+#                Scale of each irreducible band (default: None).
+#
+#            Returns
+#            -------
+#            x : field
+#                The random field defined on domain
+#        """
+#        if(np.any(self.val==0)):
+#            return super(power_operator,self).get_random_field(domain=domain,target=target,**kwargs)
+#
+#        if(domain is None)or(domain==self.domain):
+#            if(np.any(self.val==0)):
+#                return super(power_operator,self).get_random_field(domain=self.domain,target=target,**kwargs)
+#            else:
+#                return field(self.domain,val=None,target=target,random="syn",spec=self.get_power(),**kwargs)
+#        else:
+#            if(np.any(self.val==0)):
+#                return super(power_operator,self).get_random_field(domain=self.domain,target=domain,**kwargs).transform(target=domain,overwrite=False)
+#            else:
+#                return field(self.domain,val=None,target=domain,random="syn",spec=self.get_power(),**kwargs).transform(target=domain,overwrite=False)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

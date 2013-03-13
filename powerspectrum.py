@@ -25,7 +25,7 @@ from __future__ import division
 import numpy as np
 
 
-def draw_vector_nd(axes,dgrid,ps,symtype=0,fourier=False,zerocentered=False):
+def draw_vector_nd(axes,dgrid,ps,symtype=0,fourier=False,zerocentered=False,kpack=None):
 
     """
         Draws a n-dimensional field on a regular grid from a given power
@@ -64,9 +64,12 @@ def draw_vector_nd(axes,dgrid,ps,symtype=0,fourier=False,zerocentered=False):
             The drawn random field.
 
     """
-
-    kdict = np.fft.fftshift(nkdict(axes,dgrid,fourier))
-    klength = nklength(kdict)
+    if(kpack is None):
+        kdict = np.fft.fftshift(nkdict(axes,dgrid,fourier))
+        klength = nklength(kdict)
+    else:
+        kdict = kpack[1][kpack[0]]
+        klength = kpack[1]
 
     #output is in position space
     if(not fourier):
