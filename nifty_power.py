@@ -45,9 +45,58 @@
 """
 
 from __future__ import division
-import numpy as np
+from nifty_core import *
+#import numpy as np
 import smoothing as gs
 
+
+##-----------------------------------------------------------------------------
+
+def weight_power(domain,spec,power=1,pindex=None,pundex=None):
+    """
+        Weights a given power spectrum with the corresponding pixel volumes
+        to a given power.
+
+        Parameters
+        ----------
+        domain : space
+            The space wherein valid arguments live.
+
+        spec : {scalar, ndarray, field}
+            The power spectrum. A scalars is interpreted as a constant
+            spectrum.
+        pindex : ndarray
+            Indexing array giving the power spectrum index for each
+            represented mode.
+        pundex : list
+            Unindexing list undoing power indexing.
+
+        Returns
+        -------
+        spev : ndarray
+            Weighted power spectrum.
+
+        Raises
+        ------
+        TypeError
+            If `domain` is no space.
+        ValueError
+            If `domain` is no harmonic space.
+
+    """
+    ## check domain
+    if(not isinstance(domain,space)):
+        raise TypeError(about._errors.cstring("ERROR: invalid input."))
+
+    if(pindex is None):
+        try:
+            pindex = domain.get_power_index(irreducible=False)
+        except(AttributeError):
+            raise ValueError(about._errors.cstring("ERROR: invalid input."))
+    if(pundex is None):
+        pundex = domain.get_power_undex(pindex=pindex)
+
+    return np.real(domain.calc_weight(domain.enforce_power(spec,size=len(set(pindex.flatten(order='C'))))[pindex],power=power)[pundex])
 
 ##-----------------------------------------------------------------------------
 

@@ -1036,6 +1036,35 @@ class space(object):
         """
         raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'get_power_index'."))
 
+    def get_power_undex(self,pindex=None):
+        """
+            Provides the unindexing list for an indexed power spectrum.
+
+            Parameters
+            ----------
+            pindex : numpy.ndarray, *optional*
+                Indexing array giving the power spectrum index for each
+                represented mode.
+
+            Returns
+            -------
+            pundex : list
+                Unindexing list undoing power indexing.
+
+            Notes
+            -----
+            Indexing with the unindexing list undoes the indexing with the
+            indexing array; i.e., ``x == x[pindex][pundex]``.
+
+            See also
+            --------
+            get_power_index
+
+        """
+        if(pindex is None):
+            pindex = self.get_power_index(irreducible=False)
+        return list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def enforce_shape(self,x):
@@ -1379,6 +1408,9 @@ class space(object):
             pindex : numpy.ndarray, *optional*
                 Indexing array assigning the input array components to
                 components of the power spectrum (default: None).
+            kindex : numpy.ndarray, *optional*
+                Scale corresponding to each band in the power spectrum
+                (default: None).
             rho : numpy.ndarray, *optional*
                 Number of degrees of freedom per band (default: None).
         """
@@ -2607,9 +2639,12 @@ class rg_space(space):
 
             Other parameters
             ----------------
-            ind : numpy.ndarray, *optional*
+            pindex : numpy.ndarray, *optional*
                 Indexing array assigning the input array components to
                 components of the power spectrum (default: None).
+            kindex : numpy.ndarray, *optional*
+                Scale corresponding to each band in the power spectrum
+                (default: None).
             rho : numpy.ndarray, *optional*
                 Number of degrees of freedom per band (default: None).
         """
@@ -2618,10 +2653,11 @@ class rg_space(space):
         if(not self.fourier):
             x = self.calc_weight(x,power=1)
         ## power spectrum
-        if(kwargs.has_key("ind"))and(kwargs.has_key("rho")):
-            return gp.calc_ps_fast(x,self.para[:(np.size(self.para)-1)//2],self.vol,[kwargs.get("ind"),kwargs.get("rho")],self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier)
-        else:
-            return gp.calc_ps(x,self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier)
+        return gp.calc_ps_fast(x,self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier,**kwargs)
+#        if(kwargs.has_key("pindex"))and(kwargs.has_key("rho")):
+#            return gp.calc_ps_fast(x,self.para[:(np.size(self.para)-1)//2],self.vol,[kwargs.get("pindex"),kwargs.get("rho")],self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier)
+#        else:
+#            return gp.calc_ps(x,self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -6075,12 +6111,14 @@ class field(object):
             pindex : ndarray
                 Specifies the indexing array for the distribution of
                 indices in conjugate space (default: None).
+            kindex : numpy.ndarray, *optional*
+                Scale corresponding to each band in the power spectrum
+                (default: None).
             rho : scalar
                 Number of degrees of freedom per irreducible band
                 (default=None).
             iter : scalar
                 Number of iterations (default: 0)
-
 
             Returns
             -------
@@ -8638,7 +8676,7 @@ class power_operator(diagonal_operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power(self,bare=True,**kwargs):
+    def get_power(self,bare=True,pundex=None,pindex=None,**kwargs): ## **kwargs for downward compatibility
         """
             Computes the power spectrum
 
@@ -8648,11 +8686,12 @@ class power_operator(diagonal_operator):
                 whether the entries are `bare` or not
                 (mandatory for the correct incorporation of volume weights)
                 (default: False)
+            pundex : ndarray, *optional*
+                unindexing array, obtainable from domain.get_power_undex
+                (default: None)
             pindex : ndarray, *optional*
                 indexing array, obtainable from domain.get_power_index
                 (default: None)
-            rho : ndarray, *optional*
-                number of degrees of freedom per irreducible band (default: None)
 
             Returns
             -------
@@ -8665,7 +8704,9 @@ class power_operator(diagonal_operator):
         else:
             diag = self.val
 
-        return self.domain.calc_power(np.sqrt(diag),**kwargs) ## TODO: check efficiency
+        if(pundex is None):
+            pundex = self.domain.get_power_undex(pindex=pindex)
+        return diag[pundex]
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

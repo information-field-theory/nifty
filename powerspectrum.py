@@ -123,57 +123,58 @@ def draw_vector_nd(axes,dgrid,ps,symtype=0,fourier=False,zerocentered=False):
                 return vector
 
 
-def calc_ps(field,axes,dgrid,zerocentered=False,fourier=False):
+#def calc_ps(field,axes,dgrid,zerocentered=False,fourier=False):
+#
+#    """
+#        Calculates the power spectrum of a given field assuming that the field
+#        is statistically homogenous and isotropic.
+#
+#        Parameters
+#        ----------
+#        field : ndarray
+#            The input field from which the power spectrum should be determined.
+#
+#        axes : ndarray
+#            An array with the length of each axis.
+#
+#        dgrid : ndarray
+#            An array with the pixel length of each axis.
+#
+#        zerocentered : bool : *optional*
+#            Whether the output array should be zerocentered, i.e. starting with
+#            negative Fourier modes going over the zero mode to positive modes,
+#            or not zerocentered, where zero, positive and negative modes are
+#            simpy ordered consecutively.
+#
+#        fourier : bool : *optional*
+#            Whether the output should be in Fourier space or not
+#            (default=False).
+#
+#    """
+#
+#    ## field absolutes
+#    if(not fourier):
+#        foufield = np.fft.fftshift(np.fft.fftn(field))
+#    elif(np.any(zerocentered==False)):
+#        foufield = np.fft.fftshift(field, axes=shiftaxes(zerocentered,st_to_zero_mode=True))
+#    else:
+#        foufield = field
+#    fieldabs = np.abs(foufield)**2
+#
+#    kdict = nkdict(axes,dgrid,fourier)
+#    klength = nklength(kdict)
+#
+#    ## power spectrum
+#    ps = np.zeros(klength.size)
+#    rho = np.zeros(klength.size)
+#    for ii in np.ndindex(kdict.shape):
+#        position = np.searchsorted(klength,kdict[ii])
+#        rho[position] += 1
+#        ps[position] += fieldabs[ii]
+#    ps = np.divide(ps,rho)
+#    return ps
 
-    """
-        Calculates the power spectrum of a given field assuming that the field
-        is statistically homogenous and isotropic.
-
-        Parameters
-        ----------
-        field : ndarray
-            The input field from which the power spectrum should be determined.
-
-        axes : ndarray
-            An array with the length of each axis.
-
-        dgrid : ndarray
-            An array with the pixel length of each axis.
-
-        zerocentered : bool : *optional*
-            Whether the output array should be zerocentered, i.e. starting with
-            negative Fourier modes going over the zero mode to positive modes,
-            or not zerocentered, where zero, positive and negative modes are
-            simpy ordered consecutively.
-
-        fourier : bool : *optional*
-            Whether the output should be in Fourier space or not
-            (default=False).
-
-    """
-
-    ## field absolutes
-    if(not fourier):
-        foufield = np.fft.fftshift(np.fft.fftn(field))
-    elif(np.any(zerocentered==False)):
-        foufield = np.fft.fftshift(field, axes=shiftaxes(zerocentered,st_to_zero_mode=True))
-    else:
-        foufield = field
-    fieldabs = np.abs(foufield)**2
-
-    kdict = nkdict(axes,dgrid,fourier)
-    klength = nklength(kdict)
-
-    ps = np.zeros(klength.size)
-    rho = np.zeros(klength.size)
-    for ii in np.ndindex(kdict.shape):
-        position = np.searchsorted(klength,kdict[ii])
-        rho[position] += 1
-        ps[position] += fieldabs[ii]
-    ps = np.divide(ps,rho)
-    return ps
-
-def calc_ps_fast(field,axes,dgrid,kpack,zerocentered=False,fourier=False): ## kpack = [powerind,rho]
+def calc_ps_fast(field,axes,dgrid,zerocentered=False,fourier=False,pindex=None,kindex=None,rho=None):
 
     """
         Calculates the power spectrum of a given field faster assuming that the
@@ -190,15 +191,6 @@ def calc_ps_fast(field,axes,dgrid,kpack,zerocentered=False,fourier=False): ## kp
         dgrid : ndarray
             An array with the pixel length of each axis.
 
-        kpack : list {powerind,rho}
-            Specifies pre-calculated properties of the Fourier grid.
-
-            - powerind gives the index of the Fourier grid points in a numpy
-              array ordered following the zerocentered flag.
-
-            - rho is the degeneracy of the Fourier grid, indicating how many
-              k-vectors in Fourier space have the same length.
-
         zerocentered : bool : *optional*
             Whether the output array should be zerocentered, i.e. starting with
             negative Fourier modes going over the zero mode to positive modes,
@@ -209,6 +201,16 @@ def calc_ps_fast(field,axes,dgrid,kpack,zerocentered=False,fourier=False): ## kp
             Whether the output should be in Fourier space or not
             (default=False).
 
+        pindex : ndarray
+            Index of the Fourier grid points in a numpy.ndarray ordered
+            following the zerocentered flag (default=None).
+
+        kindex : ndarray
+            Array of all k-vector lengths (default=None).
+
+        rho : ndarray
+            Degeneracy of the Fourier grid, indicating how many k-vectors in
+            Fourier space have the same length (default=None).
 
     """
 
@@ -220,11 +222,50 @@ def calc_ps_fast(field,axes,dgrid,kpack,zerocentered=False,fourier=False): ## kp
     else:
         foufield = field
     fieldabs = np.abs(foufield)**2
-    ## power spectrum
-    ps = np.zeros(kpack[1].size)
-    for ii in np.ndindex(kpack[0].shape):
-        ps[kpack[0][ii]] += fieldabs[ii]
-    ps = np.divide(ps,kpack[1])
+
+    if(rho is None):
+        if(pindex is None):
+            ## kdict
+            kdict = nkdict(axes,dgrid,fourier)
+            ## klength
+            if(kindex is None):
+                klength = nklength(kdict)
+            else:
+                klength = kindex
+            ## power spectrum
+            ps = np.zeros(klength.size)
+            rho = np.zeros(klength.size)
+            for ii in np.ndindex(kdict.shape):
+                position = np.searchsorted(klength,kdict[ii])
+                ps[position] += fieldabs[ii]
+                rho[position] += 1
+        else:
+            ## power spectrum
+            ps = np.zeros(len(set(pindex.flatten())))
+            rho = np.zeros(ps.size)
+            for ii in np.ndindex(pindex.shape):
+                ps[pindex[ii]] += fieldabs[ii]
+                rho[pindex[ii]] += 1
+    elif(pindex is None):
+        ## kdict
+        kdict = nkdict(axes,dgrid,fourier)
+        ## klength
+        if(kindex is None):
+            klength = nklength(kdict)
+        else:
+            klength = kindex
+        ## power spectrum
+        ps = np.zeros(klength.size)
+        for ii in np.ndindex(kdict.shape):
+            position = np.searchsorted(klength,kdict[ii])
+            ps[position] += fieldabs[ii]
+    else:
+        ## power spectrum
+        ps = np.zeros(rho.size)
+        for ii in np.ndindex(pindex.shape):
+            ps[pindex[ii]] += fieldabs[ii]
+
+    ps = np.divide(ps,rho)
     return ps
 
 
