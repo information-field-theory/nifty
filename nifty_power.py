@@ -97,7 +97,7 @@ def weight_power(domain,spec,power=1,pindex=None,pundex=None):
 
 ##-----------------------------------------------------------------------------
 
-def smooth_power(power,kindex,exclude=1,sigma=-1):
+def smooth_power(power,kindex,mode="2s",exclude=1,sigma=-1):
     """
     Smoothes a power spectrum via convolution with a Gaussian kernel.
 
@@ -109,20 +109,65 @@ def smooth_power(power,kindex,exclude=1,sigma=-1):
     kindex : ndarray
         The array specifying the coordinate indices in conjugate space.
 
+    mode : string
+        Specifices the smoothing mode (default: "2s") :
+
+        - "ff" (smoothing in the harmonic basis using fast Fourier
+            transformations)
+        - "bf" (smoothing in the position basis by brute force)
+        - "2s" (smoothing in the position basis restricted to a 2-`sigma`
+            interval)
+
+
     exclude : scalar
         Excludes the first power spectrum entries from smoothing, indicated by
-        the given integer scalar (default=1, the monopol is not smoothed).
+        the given integer scalar (default = 1, the monopol is not smoothed).
 
-    smooth_length : scalar
-        FWHM of Gaussian convolution kernel.
+    sigma : scalar
+        FWHM of Gaussian convolution kernel (default = -1, `sigma` is set
+        automatically).
 
     Returns
     -------
     smoothpower : ndarray
         The smoothed power spectrum.
 
+    Raises
+    ------
+    KeyError
+        If `mode` is unsupported.
+
     """
-    return gs.smooth_power(power,kindex,exclude=exclude,smooth_length=sigma)
+    if(mode=="2s"):
+        return gs.smooth_power_2s(power,kindex,exclude=exclude,smooth_length=sigma)
+    elif(mode=="ff"):
+        return gs.smooth_power(power,kindex,exclude=exclude,smooth_length=sigma)
+    elif(mode=="bf"):
+        return gs.smooth_power_bf(power,kindex,exclude=exclude,smooth_length=sigma)
+    else:
+        raise KeyError(about._errors.cstring("ERROR: unsupported mode '"+str(mode)+"'."))
 
 ##-----------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
