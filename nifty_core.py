@@ -965,7 +965,7 @@ class space(object):
             dim : {int, numpy.ndarray}
                 Dimension(s) of the space.
         """
-        raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'dim'."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'dim'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -978,7 +978,7 @@ class space(object):
             dof : int
                 Number of degrees of freedom of the space.
         """
-        raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'dof'."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'dof'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1006,7 +1006,7 @@ class space(object):
                 Scale of each band.
 
         """
-        raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'enforce_power'."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'enforce_power'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1043,7 +1043,7 @@ class space(object):
             space and contains the indices of the associated bands.
             kindex and rho are each one-dimensional arrays.
         """
-        raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'get_power_index'."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_power_index'."))
 
     def get_power_undex(self,pindex=None):
         """
@@ -1260,7 +1260,7 @@ class space(object):
             codomain : nifty.space
                 A compatible codomain.
         """
-        raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'get_codomain'."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_codomain'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1284,7 +1284,7 @@ class space(object):
             mol : {numpy.ndarray, float}
                 Meta volume of the field components or the complete space.
         """
-        raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'get_meta_volume'."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_meta_volume'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1396,7 +1396,7 @@ class space(object):
             iter : int, *optional*
                 Number of iterations (default: 0).
         """
-        raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'calc_smooth'."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'calc_smooth'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1426,7 +1426,7 @@ class space(object):
             rho : numpy.ndarray, *optional*
                 Number of degrees of freedom per band (default: None).
         """
-        raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'calc_power'."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'calc_power'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1484,7 +1484,7 @@ class space(object):
             iter : int, *optional*
                 Number of iterations (default: 0).
         """
-        raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'get_plot'."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_plot'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -7193,19 +7193,19 @@ class operator(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _multiply(self,x,**kwargs): ## > applies the operator to a given field
-        raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'multiply'."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'multiply'."))
 
     def _adjoint_multiply(self,x,**kwargs): ## > applies the adjoint operator to a given field
-        raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'adjoint_multiply'."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'adjoint_multiply'."))
 
     def _inverse_multiply(self,x,**kwargs): ## > applies the inverse operator to a given field
-        raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'inverse_multiply'."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'inverse_multiply'."))
 
     def _adjoint_inverse_multiply(self,x,**kwargs): ## > applies the inverse adjoint operator to a given field
-        raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'adjoint_inverse_multiply'."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'adjoint_inverse_multiply'."))
 
     def _inverse_adjoint_multiply(self,x,**kwargs): ## > applies the adjoint inverse operator to a given field
-        raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'inverse_adjoint_multiply'."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'inverse_adjoint_multiply'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -7651,7 +7651,7 @@ class operator(object):
             det : float
                 The determinant
         """
-        raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'det'."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'det'."))
 
     def inverse_det(self):
         """
@@ -7662,7 +7662,7 @@ class operator(object):
             det : float
                 The determinant
         """
-        raise AttributeError(about._errors.cstring("ERROR: no generic instance method 'inverse_det'."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'inverse_det'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -8620,7 +8620,7 @@ class power_operator(diagonal_operator):
                 raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(self.domain.dim(split=True))+" )."))
         ## set diagonal
         try:
-            diag = self.domain.enforce_power(spec,size=len(set(pindex.flatten(order='C'))))[pindex]
+            diag = self.domain.enforce_power(spec,size=np.max(pindex,axis=None,out=None)+1)[pindex]
         except(AttributeError):
             raise ValueError(about._errors.cstring("ERROR: invalid input."))
         ## weight if ...
@@ -8680,7 +8680,7 @@ class power_operator(diagonal_operator):
                 raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(self.domain.dim(split=True))+" )."))
         ## set diagonal
         try:
-            diag = self.domain.enforce_power(newspec,size=len(set(pindex.flatten(order='C'))))[pindex]
+            diag = self.domain.enforce_power(newspec,size=np.max(pindex,axis=None,out=None)+1)[pindex]
         except(AttributeError):
             raise ValueError(about._errors.cstring("ERROR: invalid input."))
         ## weight if ...
@@ -8911,7 +8911,7 @@ class projection_operator(operator):
                 about.warnings.cprint("WARNING: empty projection band removed.")
 
         self.sym = True
-        about.infos.cprint("INFO: pseudo unitary projection operator.")
+        #about.infos.cprint("INFO: pseudo unitary projection operator.")
         self.uni = False
         self.imp = True
 
@@ -9082,6 +9082,9 @@ class projection_operator(operator):
             ## weight
             if(not self.domain.discrete):
                 x = self.domain.calc_weight(x,power=1)
+
+        else:
+            raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
         x = np.real(x)
         if(not self.domain.dim(split=False)==self.domain.dof()):
