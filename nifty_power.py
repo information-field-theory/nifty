@@ -112,14 +112,11 @@ def smooth_power(power,kindex,mode="2s",exclude=1,sigma=-1):
         The array specifying the coordinate indices in conjugate space.
 
     mode : string
-        Specifices the smoothing mode (default: "2s") :
+        Specifies the smoothing mode (default: "2s") :
 
-        - "ff" (smoothing in the harmonic basis using fast Fourier
-            transformations)
+        - "ff" (smoothing in the harmonic basis using fast Fourier transformations)
         - "bf" (smoothing in the position basis by brute force)
-        - "2s" (smoothing in the position basis restricted to a 2-`sigma`
-            interval)
-
+        - "2s" (smoothing in the position basis restricted to a 2-`sigma` interval)
 
     exclude : scalar
         Excludes the first power spectrum entries from smoothing, indicated by
@@ -192,9 +189,9 @@ def _calc_inverse(tk,var,kindex,rho,b1,Amem): ## > computes the inverse Hessian 
 
 def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None,rho=None,q=1E-42,alpha=1,perception=(1,0),smoothness=False,var=100,bare=True,**kwargs):
     """
-        Inferes the power spectrum.
+        Infers the power spectrum.
 
-        Given a map the infered power spectrum is equal to ``m.power()``; given
+        Given a map the inferred power spectrum is equal to ``m.power()``; given
         an uncertainty a power spectrum is inferred according to the "critical"
         filter formula, which can be extended by a smoothness prior. For
         details, see references below.
@@ -202,7 +199,7 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
         Parameters
         ----------
         m : field
-            Map of which the power spectrum is inferred.
+            Map for which the power spectrum is inferred.
         domain : space
             The space wherein the power spectrum is defined, can be retrieved
             from `Sk.domain` (default: None).
@@ -230,7 +227,8 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
             Spectral shape parameter of the assumed inverse-Gamme prior
             (default: 1).
         perception : {tuple, list, array}, *optional*
-            Tuple specifying the filter perception (default: (1,0)).
+            Tuple specifying the filter perception (delta,epsilon)
+            (default: (1,0)).
         smoothness : bool, *optional*
             Indicates whether the smoothness prior is used or not
             (default: False).
@@ -244,13 +242,13 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
         Returns
         -------
         pk : numpy.ndarray
-            The infered power spectrum, weighted according to the `bare` flag.
+            The inferred power spectrum, weighted according to the `bare` flag.
 
         Other Parameters
         ----------------
         random : string, *optional*
-            The distribution from which the probes are drawn, supported
-            distributions are (default: "pm1"):
+            The distribution from which the probes for the diagonal probing are
+            drawn, supported distributions are (default: "pm1"):
 
             - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i})
             - "gau" (normal distribution with zero-mean and unit-variance)
@@ -280,10 +278,12 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
         Notes
         -----
         The general approach to inference of unknown power spectra is detailed
-        in [#]_, where the "critical" filter formula used here is derived. The
-        further incorporation of a smoothness prior is detailed in [#]_, where
-        the underlying formulas of this implementation are derived and
-        discussed in terms of their applicability.
+        in [#]_, where the "critical" filter formula, Eq.(37b), used here is
+        derived, and the implications of a certain choise of the perception
+        tuple (delta,epsilon) are discussed.
+        The further incorporation of a smoothness prior as detailed in [#]_,
+        where the underlying formula(s), Eq.(27), of this implementation are
+        derived and discussed in terms of their applicability.
 
         References
         ----------
