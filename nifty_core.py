@@ -1473,14 +1473,9 @@ class space(object):
             error : {float, numpy.ndarray, nifty.field}, *optional*
                 Object indicating some confidence interval to be plotted
                 (default: None).
-            pindex : numpy.ndarray, *optional*
-                Indexing array assigning the input array components to
-                components of the power spectrum (default: None).
             kindex : numpy.ndarray, *optional*
                 Scale corresponding to each band in the power spectrum
                 (default: None).
-            rho : numpy.ndarray, *optional*
-                Number of degrees of freedom per band (default: None).
             iter : int, *optional*
                 Number of iterations (default: 0).
         """
@@ -2725,14 +2720,10 @@ class rg_space(space):
             error : {float, numpy.ndarray, nifty.field}, *optional*
                 Object indicating some confidence interval to be plotted
                 (default: None).
-            pindex : numpy.ndarray, *optional*
-                Indexing array assigning the input array components to
-                components of the power spectrum (default: None).
             kindex : numpy.ndarray, *optional*
                 Scale corresponding to each band in the power spectrum
                 (default: None).
-            rho : numpy.ndarray, *optional*
-                Number of degrees of freedom per band (default: None).
+
         """
         if(not pl.isinteractive()):
             about.warnings.cprint("WARNING: interactive mode off.")
@@ -6211,12 +6202,6 @@ class field(object):
                 (default=True).
             error : {scalar, ndarray, fiels}
                 object indicating some confidence intervall (default=None).
-            pindex : ndarray
-                Specifies the indexing array for the distribution of
-                indices in conjugate space (default: None).
-            rho : scalar
-                Number of degrees of freedom per irreducible band
-                (default=None).
             iter : scalar
                 Number of iterations (default: 0).
             kindex : scalar

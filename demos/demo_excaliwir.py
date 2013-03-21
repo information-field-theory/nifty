@@ -52,7 +52,7 @@ g = gl_space(48)
 z = s_space = k = k_space = p = d_space = None
 
 ## power spectrum (and more)
-power = powerindex = kindex = rho = None
+power = powerindex = powerundex = kindex = rho = None
 
 ## operators
 S = Sk = R = N = Nj = D = None
@@ -111,7 +111,7 @@ def setup(space,s2n=3,nvar=None):
             the noise variance, `nvar` will be calculated according to
             `s2n` if not specified (default: None)
     """
-    global z,s_space,k,k_space,p,d_space,power,powerindex,kindex,rho,S,Sk,R,N,Nj,D,s,n,d,j,m
+    global z,s_space,k,k_space,p,d_space,power,powerindex,powerundex,kindex,rho,S,Sk,R,N,Nj,D,s,n,d,j,m
 
     ## signal space
     z = s_space = space
@@ -120,6 +120,7 @@ def setup(space,s2n=3,nvar=None):
     k = k_space = s_space.get_codomain()
     ## the power indices are calculated once and saved
     powerindex = k_space.get_power_index()
+    powerundex = k_space.get_power_undex()
     kindex,rho = k_space.get_power_index(irreducible=True)
 
     ## power spectrum
@@ -130,7 +131,7 @@ def setup(space,s2n=3,nvar=None):
     ## projection operator to the spectral bands
     Sk = S.get_projection_operator(pindex=powerindex)
     ## the Gaussian random field generated from its power operator S
-    s = S.get_random_field(domain=s_space,target=k_space,size=Sk.bands())
+    s = S.get_random_field(domain=s_space,target=k_space)
 
     ## response
     R = response_operator(s_space,sigma=0,mask=1)
@@ -168,7 +169,7 @@ def run(space=r1,s2n=3,nvar=None,**kwargs):
             the noise variance, `nvar` will be calculated according to
             `s2n` if not specified (default: None)
     """
-    global z,s_space,k,k_space,p,d_space,power,powerindex,kindex,rho,S,Sk,R,N,Nj,D,s,n,d,j,m
+    global z,s_space,k,k_space,p,d_space,power,powerindex,powerundex,kindex,rho,S,Sk,R,N,Nj,D,s,n,d,j,m
 
     ## setting up signal, noise, data and the operators S, N and R
     setup(space,s2n=s2n,nvar=nvar)
@@ -195,7 +196,7 @@ def run(space=r1,s2n=3,nvar=None,**kwargs):
     m.plot(title="reconstructed map",vmin=np.min(s.val),vmax=np.max(s.val),**kwargs)
 
     ## power spectrum
-#    s.plot(title="power spectra",power=True,other=(m,power),mono=False,pindex=powerindex,kindex=kindex,rho=rho)
+#    s.plot(title="power spectra",power=True,other=(m,power),mono=False,kindex=kindex)
 
     ## uncertainty
 #    uncertainty = D.hat(bare=True,nrun=D.domain.dim()//4,target=k_space)
@@ -227,8 +228,13 @@ def run_critical(space=r2,s2n=3,nvar=None,q=1E-12,alpha=1,perception=[1,0],**kwa
         perception : array of shape (2,1), *optional*
             perception[0] is delta, perception[1] is epsilon. They are tuning
             factors for the filter (default: [1,0])
+
+        See Also
+        --------
+        infer_power
+
     """
-    global z,s_space,k,k_space,p,d_space,power,powerindex,kindex,rho,S,Sk,R,N,Nj,D,s,n,d,j,m
+    global z,s_space,k,k_space,p,d_space,power,powerindex,powerundex,kindex,rho,S,Sk,R,N,Nj,D,s,n,d,j,m
 
     ## setting up signal, noise, data and the operators S, N and R
     setup(space,s2n=s2n,nvar=nvar)
@@ -260,7 +266,7 @@ def run_critical(space=r2,s2n=3,nvar=None,q=1E-12,alpha=1,perception=[1,0],**kwa
         b1 = Sk.pseudo_tr(m) ## == Sk(m).pseudo_dot(m), but faster
         b2 = Sk.pseudo_tr(D,nrun=np.sqrt(Sk.domain.dim())//4) ## probing of the partial traces of D
         pk_new = (2*q+b1+perception[0]*b2)/(rho+2*(alpha-1+perception[1])) ## non-bare(!)
-        pk_new = smooth_power(pk_new,kindex,exclude=min(8,len(power))) ## smoothing
+        pk_new = smooth_power(pk_new,kindex,mode="2s",exclude=min(8,len(power))) ## smoothing
         ## the power operator is given the new spectrum
         S.set_power(pk_new,bare=False,pindex=powerindex) ## auto-updates D
 
@@ -284,27 +290,12 @@ def run_critical(space=r2,s2n=3,nvar=None,q=1E-12,alpha=1,perception=[1,0],**kwa
     m.plot(title="reconstructed map",vmin=np.min(s.val),vmax=np.max(s.val),**kwargs)
 
     ## power spectrum
-    s.plot(title="power spectra",power=True,other=(S.get_power(),power),mono=False,pindex=powerindex,kindex=kindex,rho=rho)
+    s.plot(title="power spectra",power=True,other=(S.get_power(pundex=powerundex),power),mono=False,kindex=kindex)
 
     ## uncertainty
 #    uncertainty = D.hat(bare=True,nrun=D.domain.dim()//4,target=k_space)
 #    if(np.all(uncertainty.val>0)):
 #        sqrt(uncertainty).plot(title="standard deviation")
-
-##-----------------------------------------------------------------------------
-
-##-----------------------------------------------------------------------------
-
-#def run_extended(space=r2,s2n=3,nvar=None,**kwargs):
-#    """
-#        run_extended()
-#        > runs the demo of the extended critical generalised Wiener filter
-#
-#    """
-#    global z,s_space,k,k_space,p,d_space,power,powerindex,kindex,rho,S,Sk,R,N,Nj,D,s,n,d,j,m
-#    setup(space,s2n=s2n,nvar=nvar)
-#
-#    return None
 
 ##-----------------------------------------------------------------------------
 
