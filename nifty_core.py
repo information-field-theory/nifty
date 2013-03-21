@@ -898,8 +898,8 @@ class space(object):
         .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
                High-Resolution Discretization and Fast Analysis of Data
                Distributed on the Sphere", *ApJ* 622..759G.
-        .. [#] M. Reinecke, 2011, "Libsharp - spherical harmonic transforms
-               revisited", 2013;
+        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+               harmonic transforms revisited";
                `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
 
         Attributes
@@ -1074,6 +1074,13 @@ class space(object):
         if(pindex is None):
             pindex = self.get_power_index(irreducible=False)
         return list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
+
+    ## TODO: *new* `space` attribute `power` from *new* `_power` class carrying power functions and if-needed-computed index arrays
+    def get_power_indices(self):
+        """
+
+        """
+        pass
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2945,8 +2952,8 @@ class lm_space(space):
         .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
                High-Resolution Discretization and Fast Analysis of Data
                Distributed on the Sphere", *ApJ* 622..759G.
-        .. [#] M. Reinecke, 2011, "Libsharp - spherical harmonic transforms
-               revisited", 2013;
+        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+               harmonic transforms revisited";
                `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
 
         Attributes
@@ -3366,8 +3373,8 @@ class lm_space(space):
             .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
                    High-Resolution Discretization and Fast Analysis of Data
                    Distributed on the Sphere", *ApJ* 622..759G.
-            .. [#] M. Reinecke, 2011, "Libsharp - spherical harmonic transforms
-                   revisited", 2013;
+            .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+                   harmonic transforms revisited";
                    `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
 
         """
@@ -3743,8 +3750,8 @@ class gl_space(space):
 
         References
         ----------
-        .. [#] M. Reinecke, 2011, "Libsharp - spherical harmonic transforms
-               revisited", 2013;
+        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+               harmonic transforms revisited";
                `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
         .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
                High-Resolution Discretization and Fast Analysis of Data
@@ -4381,8 +4388,8 @@ class hp_space(space):
         .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
                High-Resolution Discretization and Fast Analysis of Data
                Distributed on the Sphere", *ApJ* 622..759G.
-        .. [#] M. Reinecke, 2011, "Libsharp - spherical harmonic transforms
-               revisited", 2013;
+        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+               harmonic transforms revisited";
                `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
 
         Attributes
