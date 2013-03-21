@@ -480,7 +480,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.3.0"
+        self._version = "0.3.1"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -898,8 +898,9 @@ class space(object):
         .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
                High-Resolution Discretization and Fast Analysis of Data
                Distributed on the Sphere", *ApJ* 622..759G.
-        .. [#] M. Reinecke, 2011, "Libpsht - algorithms for efficient spherical
-               harmonic transforms", *A&A* 526A.108R.
+        .. [#] M. Reinecke, 2011, "Libsharp - spherical harmonic transforms
+               revisited", 2013;
+               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
 
         Attributes
         ----------
@@ -2944,8 +2945,9 @@ class lm_space(space):
         .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
                High-Resolution Discretization and Fast Analysis of Data
                Distributed on the Sphere", *ApJ* 622..759G.
-        .. [#] M. Reinecke, 2011, "Libpsht - algorithms for efficient spherical
-               harmonic transforms", *A&A* 526A.108R.
+        .. [#] M. Reinecke, 2011, "Libsharp - spherical harmonic transforms
+               revisited", 2013;
+               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
 
         Attributes
         ----------
@@ -3364,8 +3366,10 @@ class lm_space(space):
             .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
                    High-Resolution Discretization and Fast Analysis of Data
                    Distributed on the Sphere", *ApJ* 622..759G.
-            .. [#] M. Reinecke, 2011, "Libpsht - algorithms for efficient spherical
-                   harmonic transforms", *A&A* 526A.108R.
+            .. [#] M. Reinecke, 2011, "Libsharp - spherical harmonic transforms
+                   revisited", 2013;
+                   `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
+
         """
         if(coname=="gl")or(coname is None)and(about.lm2gl.status): ## order matters
             if(self.datatype==np.complex64):
@@ -3739,8 +3743,9 @@ class gl_space(space):
 
         References
         ----------
-        .. [#] M. Reinecke, 2011, "Libpsht - algorithms for efficient spherical
-               harmonic transforms", *A&A* 526A.108R.
+        .. [#] M. Reinecke, 2011, "Libsharp - spherical harmonic transforms
+               revisited", 2013;
+               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
         .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
                High-Resolution Discretization and Fast Analysis of Data
                Distributed on the Sphere", *ApJ* 622..759G.
@@ -4376,8 +4381,9 @@ class hp_space(space):
         .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
                High-Resolution Discretization and Fast Analysis of Data
                Distributed on the Sphere", *ApJ* 622..759G.
-        .. [#] M. Reinecke, 2011, "Libpsht - algorithms for efficient spherical
-               harmonic transforms", *A&A* 526A.108R.
+        .. [#] M. Reinecke, 2011, "Libsharp - spherical harmonic transforms
+               revisited", 2013;
+               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
 
         Attributes
         ----------
