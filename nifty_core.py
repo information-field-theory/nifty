@@ -1082,6 +1082,75 @@ class space(object):
         """
         pass
 
+#        factor = 1
+#        lnfactor = np.log(factor)
+#
+#        pindex = self.get_power_index(irreducible=False)
+#        kindex, rho = self.get_power_index(irreducible=True)
+#
+#        k = kindex[pindex]
+#        logmax = np.log(kindex.max()/kindex[1] + 1.)
+#    #    lmax = np.ceil((logmax - np.log(2.))/lnfactor) + 1
+#        binedge = 0.
+#        ls_binned = np.zeros(self.dim(split=True),dtype=int)
+#        ls_binned[np.where(pindex==0)[0]] = 0
+#        kindex_binned = [0.]
+#        rho_binned = [(pindex==0).sum()]#*lm.get_meta_volume()/np.prod(lm.vol)
+#        i = 0
+#        while binedge < logmax:
+#            i += 1
+#            binedgeold = binedge
+#            binedge = lnfactor + binedgeold
+#            indices = np.where((np.log(kindex/kindex[1] + 1.) > binedgeold) & (np.log(kindex/kindex[1] + 1.) <= binedge))[0]
+#            if len(indices) == 0:
+#                binedge = np.log(np.exp(binedgeold) + np.min(self.vol))
+#                indices = np.where((np.log(kindex/kindex[1] + 1.) > binedgeold) & (np.log(kindex/kindex[1] + 1.) <= binedge))[0]
+#                if len(indices) == 0:
+#                    raise NameError('empty bin')
+#            kindex_binned.append(np.exp(np.log(kindex[indices]).mean()))
+#            indices = np.array([np.where((np.log(k/kindex[1] + 1.) > binedgeold) & (np.log(k/kindex[1] + 1.) <= binedge))[k] for k in range(2)]).transpose()
+#    #        indices = np.where((np.log(k/kindex[1] + 1.) > binedgeold) & (np.log(k/kindex[1] + 1.) <= binedge))[k] for k in range(2)]).transpose()
+#            print indices
+#            rho_binned.append(len(indices))
+#            ls_binned[indices[:,0],indices[:,1]] = i
+#            print ls_binned
+#            raw_input()
+#
+#        return ls_binned, kindex, kindex_binned, rho_binned, lnfactor
+
+#        factor = 1
+#        lnfactor = np.log(factor)
+#        ls = lm.get_power_index()
+#        ls_irr, rho = lm.get_power_index(irreducible=True)
+#        ls_irr_long = ls_irr[ls]
+#        logmax = np.log(ls_irr.max()/ls_irr[1] + 1.)
+#    #    lmax = np.ceil((logmax - np.log(2.))/lnfactor) + 1
+#        binedge = 0.
+#        ls_binned = np.zeros(lm.dim(split=True),dtype=int)
+#        ls_binned[np.where(ls==0)[0]] = 0
+#        ls_irr_binned = [0.]
+#        rho_binned = [(ls==0).sum()]#*lm.get_meta_volume()/np.prod(lm.vol)
+#        i = 0
+#        while binedge < logmax:
+#            i += 1
+#            binedgeold = binedge
+#            binedge = lnfactor + binedgeold
+#            indices = np.where((np.log(ls_irr/ls_irr[1] + 1.) > binedgeold) & (np.log(ls_irr/ls_irr[1] + 1.) <= binedge))[0]
+#            if len(indices) == 0:
+#                binedge = np.log(np.exp(binedgeold) + np.min(lm.vol))
+#                indices = np.where((np.log(ls_irr/ls_irr[1] + 1.) > binedgeold) & (np.log(ls_irr/ls_irr[1] + 1.) <= binedge))[0]
+#                if len(indices) == 0:
+#                    raise NameError('empty bin')
+#            ls_irr_binned.append(np.exp(np.log(ls_irr[indices]).mean()))
+#            indices = np.array([np.where((np.log(ls_irr_long/ls_irr[1] + 1.) > binedgeold) & (np.log(ls_irr_long/ls_irr[1] + 1.) <= binedge))[k] for k in range(2)]).transpose()
+#    #        indices = np.where((np.log(ls_irr_long/ls_irr[1] + 1.) > binedgeold) & (np.log(ls_irr_long/ls_irr[1] + 1.) <= binedge))[k] for k in range(2)]).transpose()
+#            print indices
+#            rho_binned.append(len(indices))
+#            ls_binned[indices[:,0],indices[:,1]] = i
+#            print ls_binned
+#            raw_input()
+#        return ls_binned, ls_irr, ls_irr_binned, rho_binned, lnfactor
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def enforce_shape(self,x):
@@ -1513,27 +1582,30 @@ class space(object):
 
     def __eq__(self,x): ## __eq__ : self == x
         if(isinstance(x,space)):
-            if(isinstance(x,type(self)))and(np.all(self.para==x.para))and(self.discrete==x.discrete)and(np.all(self._meta_vars()==x._meta_vars())): ## data types are ignored
+            if(isinstance(x,type(self)))and(np.all(self.para==x.para))and(self.discrete==x.discrete)and(np.all(self.vol==x.vol))and(np.all(self._meta_vars()==x._meta_vars())): ## data types are ignored
                 return True
         return False
 
     def __ne__(self,x): ## __ne__ : self <> x
         if(isinstance(x,space)):
-            if(not isinstance(x,type(self)))or(np.any(self.para!=x.para))or(self.discrete!=x.discrete)or(np.any(self._meta_vars()!=x._meta_vars())): ## data types are ignored
+            if(not isinstance(x,type(self)))or(np.any(self.para!=x.para))or(self.discrete!=x.discrete)or(np.any(self.vol!=x.vol))or(np.any(self._meta_vars()!=x._meta_vars())): ## data types are ignored
                 return True
         return False
 
     def __lt__(self,x): ## __lt__ : self < x
         if(isinstance(x,space)):
-            if(not isinstance(x,type(self))):
+            if(not isinstance(x,type(self)))or(np.size(self.para)!=np.size(x.para))or(np.size(self.vol)!=np.size(x.vol)):
                 raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
-            elif(np.size(self.para)!=np.size(x.para)):
-                raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
-            elif(self.discrete==x.discrete): ## data types are ignored:
+            elif(self.discrete==x.discrete): ## data types are ignored
                 for ii in range(np.size(self.para)):
                     if(self.para[ii]<x.para[ii]):
                         return True
                     elif(self.para[ii]>x.para[ii]):
+                        return False
+                for ii in range(np.size(self.vol)):
+                    if(self.vol[ii]<x.vol[ii]):
+                        return True
+                    elif(self.vol[ii]>x.vol[ii]):
                         return False
                 s_mars = self._meta_vars()
                 x_mars = x._meta_vars()
@@ -1546,15 +1618,18 @@ class space(object):
 
     def __le__(self,x): ## __le__ : self <= x
         if(isinstance(x,space)):
-            if(not isinstance(x,type(self))):
-                raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
-            elif(np.size(self.para)!=np.size(x.para)):
+            if(not isinstance(x,type(self)))or(np.size(self.para)!=np.size(x.para))or(np.size(self.vol)!=np.size(x.vol)):
                 raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
             elif(self.discrete==x.discrete): ## data types are ignored
                 for ii in range(np.size(self.para)):
                     if(self.para[ii]<x.para[ii]):
                         return True
                     if(self.para[ii]>x.para[ii]):
+                        return False
+                for ii in range(np.size(self.vol)):
+                    if(self.vol[ii]<x.vol[ii]):
+                        return True
+                    if(self.vol[ii]>x.vol[ii]):
                         return False
                 s_mars = self._meta_vars()
                 x_mars = x._meta_vars()
@@ -1568,15 +1643,18 @@ class space(object):
 
     def __gt__(self,x): ## __gt__ : self > x
         if(isinstance(x,space)):
-            if(not isinstance(x,type(self))):
-                raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
-            elif(np.size(self.para)!=np.size(x.para)):
+            if(not isinstance(x,type(self)))or(np.size(self.para)!=np.size(x.para))or(np.size(self.vol)!=np.size(x.vol)):
                 raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
             elif(self.discrete==x.discrete): ## data types are ignored
                 for ii in range(np.size(self.para)):
                     if(self.para[ii]>x.para[ii]):
                         return True
                     elif(self.para[ii]<x.para[ii]):
+                        break
+                for ii in range(np.size(self.vol)):
+                    if(self.vol[ii]>x.vol[ii]):
+                        return True
+                    elif(self.vol[ii]<x.vol[ii]):
                         break
                 s_mars = self._meta_vars()
                 x_mars = x._meta_vars()
@@ -1589,15 +1667,18 @@ class space(object):
 
     def __ge__(self,x): ## __ge__ : self >= x
         if(isinstance(x,space)):
-            if(not isinstance(x,type(self))):
-                raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
-            elif(np.size(self.para)!=np.size(x.para)):
+            if(not isinstance(x,type(self)))or(np.size(self.para)!=np.size(x.para))or(np.size(self.vol)!=np.size(x.vol)):
                 raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
             elif(self.discrete==x.discrete): ## data types are ignored
                 for ii in range(np.size(self.para)):
                     if(self.para[ii]>x.para[ii]):
                         return True
                     if(self.para[ii]<x.para[ii]):
+                        return False
+                for ii in range(np.size(self.vol)):
+                    if(self.vol[ii]>x.vol[ii]):
+                        return True
+                    if(self.vol[ii]<x.vol[ii]):
                         return False
                 s_mars = self._meta_vars()
                 x_mars = x._meta_vars()
@@ -8909,7 +8990,7 @@ class projection_operator(operator):
                 about.warnings.cprint("WARNING: empty projection band removed.")
 
         self.sym = True
-        #about.infos.cprint("INFO: pseudo unitary projection operator.")
+#        about.infos.cprint("INFO: pseudo unitary projection operator.")
         self.uni = False
         self.imp = True
 
@@ -9587,6 +9668,8 @@ class response_operator(operator):
         return "<nifty.response_operator>"
 
 ##-----------------------------------------------------------------------------
+
+## IDEA: explicit_operator
 
 
 
@@ -10615,4 +10698,6 @@ class diagonal_probing(probing):
         return "<nifty.diagonal_probing>"
 
 ##-----------------------------------------------------------------------------
+
+## IDEA: diagonal_inference
 
