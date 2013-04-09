@@ -20,9 +20,10 @@
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 ## TODO: optimize
+## TODO: doc strings
 
 from __future__ import division
-import gfft as gf
+#import gfft as gf
 import numpy as np
 
 
@@ -207,11 +208,16 @@ def smooth_field(val, fourier, zero_center, enforce_hermitian_symmetry, vol, \
             tfield = val
             vol = 1/np.array(val.shape)/vol
         else:
-#
-            tfield = gf.gfft(val, ftmachine='fft', \
-                in_zero_center=zero_center, out_zero_center=True, \
-                enforce_hermitian_symmetry=enforce_hermitian_symmetry, W=-1, \
-                alpha=-1, verbose=False)
+
+            if(zero_center):
+                tfield = np.fft.fftshift(np.fft.fftn(np.fft.fftshift(val)))
+            else:
+                tfield = np.fft.fftshift(np.fft.fftn(val))
+#            # Transform back to the signal space using GFFT.
+#            tfield = gf.gfft(val, ftmachine='fft', \
+#                in_zero_center=zero_center, out_zero_center=True, \
+#                enforce_hermitian_symmetry=enforce_hermitian_symmetry, W=-1, \
+#                alpha=-1, verbose=False)
 
         # Construct the Fourier transformed smoothing kernel
         tkernel = gaussian_kernel(val.shape, vol, smooth_length)
@@ -221,12 +227,16 @@ def smooth_field(val, fourier, zero_center, enforce_hermitian_symmetry, vol, \
         if(fourier):
             sfield = tfield
         else:
-#
-            # Transform back to the signal space using GFFT.
-            sfield = gf.gfft(tfield, ftmachine='ifft', \
-                in_zero_center=True, out_zero_center=zero_center, \
-                enforce_hermitian_symmetry=enforce_hermitian_symmetry, W=-1, \
-                alpha=-1, verbose=False)
+
+            if(zero_center):
+                sfield = np.fft.ifftshift(np.fft.ifftn(np.fft.ifftshift(tfield)))
+            else:
+                sfield = np.fft.ifftn(np.fft.ifftshift(tfield))
+#            # Transform back to the signal space using GFFT.
+#            sfield = gf.gfft(tfield, ftmachine='ifft', \
+#                in_zero_center=True, out_zero_center=zero_center, \
+#                enforce_hermitian_symmetry=enforce_hermitian_symmetry, W=-1, \
+#                alpha=-1, verbose=False)
 
         return sfield
 

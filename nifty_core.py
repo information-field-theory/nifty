@@ -1080,76 +1080,13 @@ class space(object):
         """
 
         """
-        pass
+        pindex = self.get_power_index(irreducible=False)
+        kindex,rho = self.get_power_index(irreducible=True)
 
-#        factor = 1
-#        lnfactor = np.log(factor)
-#
-#        pindex = self.get_power_index(irreducible=False)
-#        kindex, rho = self.get_power_index(irreducible=True)
-#
-#        k = kindex[pindex]
-#        logmax = np.log(kindex.max()/kindex[1] + 1.)
-#    #    lmax = np.ceil((logmax - np.log(2.))/lnfactor) + 1
-#        binedge = 0.
-#        ls_binned = np.zeros(self.dim(split=True),dtype=int)
-#        ls_binned[np.where(pindex==0)[0]] = 0
-#        kindex_binned = [0.]
-#        rho_binned = [(pindex==0).sum()]#*lm.get_meta_volume()/np.prod(lm.vol)
-#        i = 0
-#        while binedge < logmax:
-#            i += 1
-#            binedgeold = binedge
-#            binedge = lnfactor + binedgeold
-#            indices = np.where((np.log(kindex/kindex[1] + 1.) > binedgeold) & (np.log(kindex/kindex[1] + 1.) <= binedge))[0]
-#            if len(indices) == 0:
-#                binedge = np.log(np.exp(binedgeold) + np.min(self.vol))
-#                indices = np.where((np.log(kindex/kindex[1] + 1.) > binedgeold) & (np.log(kindex/kindex[1] + 1.) <= binedge))[0]
-#                if len(indices) == 0:
-#                    raise NameError('empty bin')
-#            kindex_binned.append(np.exp(np.log(kindex[indices]).mean()))
-#            indices = np.array([np.where((np.log(k/kindex[1] + 1.) > binedgeold) & (np.log(k/kindex[1] + 1.) <= binedge))[k] for k in range(2)]).transpose()
-#    #        indices = np.where((np.log(k/kindex[1] + 1.) > binedgeold) & (np.log(k/kindex[1] + 1.) <= binedge))[k] for k in range(2)]).transpose()
-#            print indices
-#            rho_binned.append(len(indices))
-#            ls_binned[indices[:,0],indices[:,1]] = i
-#            print ls_binned
-#            raw_input()
-#
-#        return ls_binned, kindex, kindex_binned, rho_binned, lnfactor
+#        pindex,kindex,rho = gp.reset_power_indices(pindex,kindex,rho)
 
-#        factor = 1
-#        lnfactor = np.log(factor)
-#        ls = lm.get_power_index()
-#        ls_irr, rho = lm.get_power_index(irreducible=True)
-#        ls_irr_long = ls_irr[ls]
-#        logmax = np.log(ls_irr.max()/ls_irr[1] + 1.)
-#    #    lmax = np.ceil((logmax - np.log(2.))/lnfactor) + 1
-#        binedge = 0.
-#        ls_binned = np.zeros(lm.dim(split=True),dtype=int)
-#        ls_binned[np.where(ls==0)[0]] = 0
-#        ls_irr_binned = [0.]
-#        rho_binned = [(ls==0).sum()]#*lm.get_meta_volume()/np.prod(lm.vol)
-#        i = 0
-#        while binedge < logmax:
-#            i += 1
-#            binedgeold = binedge
-#            binedge = lnfactor + binedgeold
-#            indices = np.where((np.log(ls_irr/ls_irr[1] + 1.) > binedgeold) & (np.log(ls_irr/ls_irr[1] + 1.) <= binedge))[0]
-#            if len(indices) == 0:
-#                binedge = np.log(np.exp(binedgeold) + np.min(lm.vol))
-#                indices = np.where((np.log(ls_irr/ls_irr[1] + 1.) > binedgeold) & (np.log(ls_irr/ls_irr[1] + 1.) <= binedge))[0]
-#                if len(indices) == 0:
-#                    raise NameError('empty bin')
-#            ls_irr_binned.append(np.exp(np.log(ls_irr[indices]).mean()))
-#            indices = np.array([np.where((np.log(ls_irr_long/ls_irr[1] + 1.) > binedgeold) & (np.log(ls_irr_long/ls_irr[1] + 1.) <= binedge))[k] for k in range(2)]).transpose()
-#    #        indices = np.where((np.log(ls_irr_long/ls_irr[1] + 1.) > binedgeold) & (np.log(ls_irr_long/ls_irr[1] + 1.) <= binedge))[k] for k in range(2)]).transpose()
-#            print indices
-#            rho_binned.append(len(indices))
-#            ls_binned[indices[:,0],indices[:,1]] = i
-#            print ls_binned
-#            raw_input()
-#        return ls_binned, ls_irr, ls_irr_binned, rho_binned, lnfactor
+        pundex = list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
+        return pindex,pundex,kindex,rho ## FIXME: order
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -8499,7 +8436,7 @@ class diagonal_operator(operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_random_field(self,domain=None,target=None,**kwargs): ## TODO: remove **kwargs for downward compatibility in future version
+    def get_random_field(self,domain=None,target=None,**kwargs):
         """
             Generates a Gaussian random field with variance equal to the
             diagonal.
@@ -8519,6 +8456,8 @@ class diagonal_operator(operator):
                 Random field.
 
         """
+        if(len(kwargs)):  ## TODO: remove **kwargs in future version
+            about.warnings.cprint("WARNING: deprecated keyword(s).")
         ## weight if ...
         if(not self.domain.discrete):
             diag = self.domain.calc_weight(self.val,power=-1)
@@ -8776,7 +8715,7 @@ class power_operator(diagonal_operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power(self,bare=True,pundex=None,pindex=None,**kwargs): ## TODO: remove **kwargs for downward compatibility in future version
+    def get_power(self,bare=True,pundex=None,pindex=None,**kwargs):
         """
             Computes the power spectrum
 
@@ -8798,6 +8737,8 @@ class power_operator(diagonal_operator):
             spec : ndarray
                 The power spectrum
         """
+        if(len(kwargs)):  ## TODO: remove **kwargs in future version
+            about.warnings.cprint("WARNING: deprecated keyword(s).")
         ## weight if ...
         if(not self.domain.discrete)and(bare):
             diag = np.real(self.domain.calc_weight(self.val,power=-1))
@@ -8807,45 +8748,6 @@ class power_operator(diagonal_operator):
         if(pundex is None):
             pundex = self.domain.get_power_undex(pindex=pindex)
         return diag[pundex]
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#    def get_random_field(self,domain=None,target=None,**kwargs): ## TODO: remove in future version
-#        """
-#            Generates a Gaussian random field with variance equal to the power spectrum
-#
-#            Parameters
-#            ----------
-#            domain : space
-#                The space wherein the field lives (default: None,
-#                 indicates to use self.domain)
-#            target : space
-#                The space wherein the transform of the field lives
-#                (default: None, indicates to use self.domain.target)
-#            pindex : numpy.ndarray, *optional*
-#                Indexing array giving the power spectrum index of each band
-#                (default: None).
-#            kindex : numpy.ndarray, *optional*
-#                Scale of each irreducible band (default: None).
-#
-#            Returns
-#            -------
-#            x : field
-#                The random field defined on domain
-#        """
-#        if(np.any(self.val==0)):
-#            return super(power_operator,self).get_random_field(domain=domain,target=target,**kwargs)
-#
-#        if(domain is None)or(domain==self.domain):
-#            if(np.any(self.val==0)):
-#                return super(power_operator,self).get_random_field(domain=self.domain,target=target,**kwargs)
-#            else:
-#                return field(self.domain,val=None,target=target,random="syn",spec=self.get_power(),**kwargs)
-#        else:
-#            if(np.any(self.val==0)):
-#                return super(power_operator,self).get_random_field(domain=self.domain,target=domain,**kwargs).transform(target=domain,overwrite=False)
-#            else:
-#                return field(self.domain,val=None,target=domain,random="syn",spec=self.get_power(),**kwargs).transform(target=domain,overwrite=False)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
