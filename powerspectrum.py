@@ -329,6 +329,115 @@ def get_power_index(axes,dgrid,zerocentered,irred=False,fourier=True):
         return ind
 
 
+def get_power_indices(axes,dgrid,zerocentered,fourier=True):
+    """
+        Returns the index of the Fourier grid points in a numpy
+        array, ordered following the zerocentered flag.
+
+        Parameters
+        ----------
+        axes : ndarray
+            An array with the length of each axis.
+
+        dgrid : ndarray
+            An array with the pixel length of each axis.
+
+        zerocentered : bool
+            Whether the output array should be zerocentered, i.e. starting with
+            negative Fourier modes going over the zero mode to positive modes,
+            or not zerocentered, where zero, positive and negative modes are
+            simpy ordered consecutively.
+
+        irred : bool : *optional*
+            If True, the function returns an array of all k-vector lengths and
+            their degeneracy factors. If False, just the power index array is
+            returned.
+
+        fourier : bool : *optional*
+            Whether the output should be in Fourier space or not
+            (default=False).
+
+        Returns
+        -------
+        index, klength, rho : ndarrays
+            Returns the power index array, an array of all k-vector lengths and
+            their degeneracy factors.
+
+    """
+
+    ## kdict, klength
+    if(np.any(zerocentered==False)):
+        kdict = np.fft.fftshift(nkdict(axes,dgrid,fourier),axes=shiftaxes(zerocentered,st_to_zero_mode=True))
+    else:
+        kdict = nkdict(axes,dgrid,fourier)
+    klength = nklength(kdict)
+    ## output
+    ind = np.empty(axes,dtype=np.int)
+    rho = np.zeros(klength.shape,dtype=np.int)
+    for ii in np.ndindex(kdict.shape):
+        ind[ii] = np.searchsorted(klength,kdict[ii])
+        rho[ind[ii]] += 1
+    return ind,klength,rho
+
+
+def bin_power_indices(pindex,kindex,rho,log=True,nbin=None,binbounds=None):
+    """
+        Returns the (re)binned power indices associated with the Fourier grid.
+
+        Parameters
+        ----------
+        pindex : ndarray
+            Index of the Fourier grid points in a numpy.ndarray ordered
+            following the zerocentered flag (default=None).
+        kindex : ndarray
+            Array of all k-vector lengths (default=None).
+        rho : ndarray
+            Degeneracy of the Fourier grid, indicating how many k-vectors in
+            Fourier space have the same length (default=None).
+        log : bool
+            Flag specifying if the binning is performed on logarithmic scale
+            (default: True).
+        nbin : integer
+            Number of used bins (default: None).
+        binbounds : {list, array}
+            Array-like inner boundaries of the used bins (default: None).
+
+        Returns
+        -------
+        pindex, kindex, rho : ndarrays
+            The (re)binned power indices.
+
+    """
+    ## boundaries
+    if(binbounds is not None):
+        binbounds = np.sort(binbounds)
+    else:
+        if(log):
+            k = np.r_[0,np.log(kindex[1:])]
+        else:
+            k = kindex
+        if(nbin is None)or(nbin<3):
+            nbin = np.sqrt(np.sum(np.asarray(pindex.shape)**2))
+        nbin = min(int(nbin),len(kindex))
+        dk = (k[-1]-0.5*(k[2]+k[1]))/(nbin-2.5)
+        binbounds = np.r_[0.5*(3*k[1]-k[2]),0.5*(k[1]+k[2])+dk*np.arange(nbin-2)]
+        if(log):
+            binbounds = np.exp(binbounds)
+    ## reordering
+    reorder = np.searchsorted(binbounds,kindex)
+    rho_ = np.zeros(len(binbounds)+1,dtype=rho.dtype)
+    kindex_ = np.empty(len(binbounds)+1,dtype=kindex.dtype)
+    for ii in range(len(reorder)):
+        if(rho_[reorder[ii]]==0):
+            kindex_[reorder[ii]] = kindex[ii]
+            rho_[reorder[ii]] += rho[ii]
+        else:
+            kindex_[reorder[ii]] = (kindex_[reorder[ii]]*rho_[reorder[ii]]+kindex[ii]*rho[ii])/(rho_[reorder[ii]]+rho[ii])
+            rho_[reorder[ii]] += rho[ii]
+
+    return reorder[pindex],kindex_,rho_
+
+
 def nhermitianize(field,zerocentered):
 
     """

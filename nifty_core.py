@@ -1076,17 +1076,22 @@ class space(object):
         return list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
 
     ## TODO: *new* `space` attribute `power` from *new* `_power` class carrying power functions and if-needed-computed index arrays
-    def get_power_indices(self):
+    def get_power_indices(self,log=None,nbin=None,binbounds=None):
         """
 
         """
         pindex = self.get_power_index(irreducible=False)
         kindex,rho = self.get_power_index(irreducible=True)
 
-#        pindex,kindex,rho = gp.reset_power_indices(pindex,kindex,rho)
+        #pindex,kindex,rho = gp.get_power_indices(pindex,kindex,rho)
+        if(log is not None)or(nbin is not None)or(binbounds is not None):
+            pindex,kindex,rho = gp.bin_power_indices(pindex,kindex,rho,log=log,nbin=nbin,binbounds=binbounds)
+            ## check bins
+            if(np.any(rho)==0):
+                raise ValueError(about._errors.cstring("ERROR: empty bin(s)."))
 
         pundex = list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
-        return pindex,pundex,kindex,rho ## FIXME: order
+        return pindex,pundex,kindex,rho ## FIXME: order?
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
