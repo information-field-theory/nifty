@@ -1008,7 +1008,7 @@ class space(object):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False):
+    def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
             Provides the indexing array of the power spectrum.
 
@@ -1041,6 +1041,7 @@ class space(object):
             space and contains the indices of the associated bands.
             kindex and rho are each one-dimensional arrays.
         """
+        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_power_index'."))
 
     def get_power_undex(self,pindex=None):
@@ -1068,27 +1069,86 @@ class space(object):
             get_power_index
 
         """
+        about.warnings.cprint("WARNING: 'get_power_undex' is deprecated.")
         if(pindex is None):
             pindex = self.get_power_index(irreducible=False)
         return list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
 
-    ## TODO: *new* `space` attribute `power` from *new* `_power` class carrying power functions and if-needed-computed index arrays
-    def get_power_indices(self,log=None,nbin=None,binbounds=None):
+    def set_power_indices(self,log=None,nbin=None,binbounds=None,**kwargs):
         """
+            Sets the (un)indexing objects for spectral indexing internally.
+
+            Parameters
+            ----------
+            log : bool
+                Flag specifying if the binning is performed on logarithmic
+                scale or not; by default no binning is done (default: None).
+            nbin : integer
+                Number of used bins; if given `log` is set to ``True``;
+                by default no binning is done (default: None).
+            binbounds : {list, array}
+                User specific inner boundaries of the bins; by default
+                no binning is done (default: None).
+
+            Returns
+            -------
+            None
+
+            See also
+            --------
+            get_power_indices
 
         """
-        pindex = self.get_power_index(irreducible=False)
-        kindex,rho = self.get_power_index(irreducible=True)
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'set_power_indices'."))
 
-        #pindex,kindex,rho = gp.get_power_indices(pindex,kindex,rho)
-        if(log is not None)or(nbin is not None)or(binbounds is not None):
-            pindex,kindex,rho = gp.bin_power_indices(pindex,kindex,rho,log=log,nbin=nbin,binbounds=binbounds)
-            ## check bins
-            if(np.any(rho)==0):
-                raise ValueError(about._errors.cstring("ERROR: empty bin(s)."))
+    def get_power_indices(self,**kwargs):
+        """
+            Provides the (un)indexing objects for spectral indexing.
 
-        pundex = list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
-        return pindex,pundex,kindex,rho ## FIXME: order?
+            Provides one-dimensional arrays containing the scales of the
+            spectral bands and the numbers of modes per scale, and an array
+            giving for each component of a field the corresponding index of a
+            power spectrum as well as an unindexing list.
+
+            Parameters
+            ----------
+            log : bool
+                Flag specifying if the binning is performed on logarithmic
+                scale or not; by default no binning is done (default: None).
+            nbin : integer
+                Number of used bins; if given `log` is set to ``True``;
+                by default no binning is done (default: None).
+            binbounds : {list, array}
+                User specific inner boundaries of the bins; by default
+                no binning is done (default: None).
+
+            Returns
+            -------
+            kindex : numpy.ndarray
+                Scale of each spectral band.
+            rho : numpy.ndarray
+                Number of modes per scale represented in the discretization.
+            pindex : numpy.ndarray
+                Indexing array giving the power spectrum index for each
+                represented mode.
+            pundex : list
+                Unindexing list undoing power spectrum indexing.
+
+            Notes
+            -----
+            The ``kindex`` and ``rho`` are each one-dimensional arrays.
+            The indexing array is of the same shape as a field living in this
+            space and contains the indices of the associated bands.
+            Indexing with the unindexing list undoes the indexing with the
+            indexing array; i.e., ``power == power[pindex][pundex]``.
+
+            See also
+            --------
+            set_power_indices
+
+        """
+        self.set_power_indices(**kwargs)
+        return self.power_indices.get("kindex"),self.power_indices.get("rho"),self.power_indices.get("pindex"),self.power_indices.get("pundex")
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1513,7 +1573,7 @@ class space(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _meta_vars(self): ## > captures all nonstandard properties
-        mars = np.array([ii[1] for ii in vars(self).iteritems() if ii[0] not in ["para","datatype","discrete","vol"]],dtype=np.object)
+        mars = np.array([ii[1] for ii in vars(self).iteritems() if ii[0] not in ["para","datatype","discrete","vol","power_indices"]],dtype=np.object)
         if(np.size(mars)==0):
             return None
         else:
@@ -1764,12 +1824,23 @@ class point_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False):
+    def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
             Raises an error since the power spectrum is ill-defined for point
             spaces.
         """
+        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
         raise AttributeError(about._errors.cstring("ERROR: power spectra ill-defined for (unstructured) point spaces."))
+
+    def set_power_indices(self,**kwargs):
+        """
+            Raises
+            ------
+            AttributeError
+                Always. -- The power spectrum is ill-defined for point spaces.
+
+        """
+        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2222,7 +2293,7 @@ class rg_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False):
+    def get_power_index(self,irreducible=False):  ## TODO: remove in future version
         """
             Provides the indexing array of the power spectrum.
 
@@ -2255,10 +2326,58 @@ class rg_space(space):
             space and contains the indices of the associated bands.
             kindex and rho are each one-dimensional arrays.
         """
+        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
         if(self.fourier):
             return gp.get_power_index(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),irred=irreducible,fourier=self.fourier) ## nontrivial
         else:
             raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
+
+    def set_power_indices(self,log=None,nbin=None,binbounds=None,**kwargs):
+        """
+            Sets the (un)indexing objects for spectral indexing internally.
+
+            Parameters
+            ----------
+            log : bool
+                Flag specifying if the binning is performed on logarithmic
+                scale or not; by default no binning is done (default: None).
+            nbin : integer
+                Number of used bins; if given `log` is set to ``True``;
+                by default no binning is done (default: None).
+            binbounds : {list, array}
+                User specific inner boundaries of the bins; by default
+                no binning is done (default: None).
+
+            Returns
+            -------
+            None
+
+            See also
+            --------
+            get_power_indices
+
+        """
+        if(not self.fourier):
+            raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
+        ## check storage
+        if(hasattr(self,"power_indices")):
+            config = self.power_indices.get("config")
+            if(config.get("log")==log)and(config.get("nbin")==nbin)and(np.all(config.get("binbounds")==binbounds)):
+                return None
+        ## power indices
+        about.infos.cflush("INFO: setting power indices ...")
+        pindex,kindex,rho = gp.get_power_indices(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=True)
+        ## bin if ...
+        if(log is not None)or(nbin is not None)or(binbounds is not None):
+            pindex,kindex,rho = gp.bin_power_indices(pindex,kindex,rho,log=log,nbin=nbin,binbounds=binbounds)
+            ## check binning
+            if(np.any(rho)==0):
+                raise ValueError(about._errors.cstring("ERROR: empty bin(s).")) ## binning too fine
+        pundex = list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
+        ## storage
+        self.power_indices = {"config":{"binbounds":binbounds,"log":log,"nbin":nbin},"kindex":kindex,"pindex":pindex,"pundex":pundex,"rho":rho} ## alphabetical
+        about.infos.cprint(" done.")
+        return None
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3154,7 +3273,7 @@ class lm_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False):
+    def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
             Provides the indexing array of the power spectrum.
 
@@ -3187,11 +3306,41 @@ class lm_space(space):
             space and contains the indices of the associated bands.
             kindex and rho are each one-dimensional arrays.
         """
+        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
         if(irreducible):
-            ind = np.sort(list(set(hp.Alm.getlm(self.para[0],i=None)[0])),axis=0,kind="quicksort",order=None)
+            ind = np.arange(self.para[0]+1)
             return ind,2*ind+1
         else:
             return hp.Alm.getlm(self.para[0],i=None)[0] ## l of (l,m)
+
+    def set_power_indices(self,**kwargs):
+        """
+            Sets the (un)indexing objects for spectral indexing internally.
+
+            Parameters
+            ----------
+            None
+
+            Returns
+            -------
+            None
+
+            See also
+            --------
+            get_power_indices
+
+        """
+        ## check storage
+        if(not hasattr(self,"power_indices")):
+            ## power indices
+#            about.infos.cflush("INFO: setting power indices ...")
+            kindex = np.arange(self.para[0]+1)
+            rho = 2*kindex+1
+            pindex = hp.Alm.getlm(self.para[0],i=None)[0] ## l of (l,m)
+            pundex = list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
+            ## storage
+            self.power_indices = {"kindex":kindex,"pindex":pindex,"pundex":pundex,"rho":rho} ## alphabetical
+#            about.infos.cprint(" done.")
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3941,11 +4090,24 @@ class gl_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False):
+    def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
             Raises an error since the power spectrum for a field on the sphere
             is defined via the spherical harmonics components and not its
             position-space representation.
+        """
+        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
+        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
+
+    def set_power_indices(self,**kwargs):
+        """
+            Raises
+            ------
+            AttributeError
+                Always. -- The power spectrum for a field on the sphere
+            is defined by its spherical harmonics components and not its
+            position space representation.
+
         """
         raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
@@ -4551,11 +4713,24 @@ class hp_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False):
+    def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
             Raises an error since the power spectrum for a field on the sphere
             is defined via the spherical harmonics components and not its
             position-space representation.
+        """
+        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
+        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
+
+    def set_power_indices(self,**kwargs):
+        """
+            Raises
+            ------
+            AttributeError
+                Always. -- The power spectrum for a field on the sphere
+            is defined by its spherical harmonics components and not its
+            position space representation.
+
         """
         raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
@@ -5066,10 +5241,21 @@ class nested_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False):
+    def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
             Raises an error since there is no canonical definition for the
             power spectrum on a generic product space.
+        """
+        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
+        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
+
+    def set_power_indices(self,**kwargs):
+        """
+            Raises
+            ------
+            AttributeError
+                Always. -- There is no canonical definition for the power
+                spectrum on a generic product space.
         """
         raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
