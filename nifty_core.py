@@ -656,7 +656,7 @@ class random(object):
                 If the `random` key is not supporrted.
 
         """
-        if(kwargs.has_key("random")):
+        if("random" in kwargs):
             key = kwargs.get("random")
         else:
             return None
@@ -665,40 +665,37 @@ class random(object):
             return [key]
 
         elif(key=="gau"):
-            if(kwargs.has_key("mean")):
+            if("mean" in kwargs):
                 mean = domain.enforce_values(kwargs.get("mean"),extend=False)
             else:
                 mean = None
-            if(kwargs.has_key("dev")):
+            if("dev" in kwargs):
                 dev = domain.enforce_values(kwargs.get("dev"),extend=False)
             else:
                 dev = None
-            if(kwargs.has_key("var")):
+            if("var" in kwargs):
                 var = domain.enforce_values(kwargs.get("var"),extend=False)
             else:
                 var = None
             return [key,mean,dev,var]
 
         elif(key=="syn"):
-            if(kwargs.has_key("spec")):
-                spec = kwargs.get("spec")
-            else:
-                spec = 1
+            spec = kwargs.get("spec",1)
             size = None
             kpack = None
-            if(kwargs.has_key("size")):
+            if("size" in kwargs):
                 size = kwargs.get("size")
-            if(kwargs.has_key("pindex"))and(kwargs.has_key("kindex")):
+            if("pindex" in kwargs)and("kindex" in kwargs):
                 kpack = [kwargs.get("pindex"),kwargs.get("kindex")]
                 size = len(kpack[1])
             return [key,domain.enforce_power(spec,size=size),kpack]
 
         elif(key=="uni"):
-            if(kwargs.has_key("vmin")):
+            if("vmin" in kwargs):
                 vmin = domain.enforce_values(kwargs.get("vmin"),extend=False)
             else:
                 vmin = 0
-            if(kwargs.has_key("vmax")):
+            if("vmax" in kwargs):
                 vmax = domain.enforce_values(kwargs.get("vmax"),extend=False)
             else:
                 vmax = 1
@@ -2204,7 +2201,7 @@ class rg_space(space):
             raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
 
         if(size is None):
-            if(kwargs.has_key("kindex")):
+            if("kindex" in kwargs):
                 size = len(kwargs.get("kindex"))
             else:
                 size = np.size(gp.get_power_index(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-(np.size(self.para)-1)//2:].astype(np.bool),irred=True,fourier=self.fourier)[0]) ## nontrivial
@@ -2701,7 +2698,7 @@ class rg_space(space):
             x = self.calc_weight(x,power=1)
         ## power spectrum
         return gp.calc_ps_fast(x,self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier,**kwargs)
-#        if(kwargs.has_key("pindex"))and(kwargs.has_key("rho")):
+#        if("pindex" in kwargs)and("rho" in kwargs):
 #            return gp.calc_ps_fast(x,self.para[:(np.size(self.para)-1)//2],self.vol,[kwargs.get("pindex"),kwargs.get("rho")],self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier)
 #        else:
 #            return gp.calc_ps(x,self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier)
@@ -2769,10 +2766,7 @@ class rg_space(space):
             fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
-            if(kwargs.has_key("kindex")):
-                xaxes = kwargs.get("kindex")
-            else:
-                xaxes = gp.get_power_index(self.para[:naxes],self.vol,self.para[-naxes:].astype(np.bool),irred=True,fourier=self.fourier)[0] ## nontrivial
+            xaxes = kwargs.get("kindex",gp.get_power_index(self.para[:naxes],self.vol,self.para[-naxes:].astype(np.bool),irred=True,fourier=self.fourier)[0]) ## nontrivial
             if(norm is None)or(not isinstance(norm,int)):
                 norm = naxes
             if(vmin is None):
@@ -2849,14 +2843,14 @@ class rg_space(space):
                     imax = max(1,len(other)-1)
                     for ii in range(len(other)):
                         ax0graph(xaxes,other[ii],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
-                    if(kwargs.has_key("error")):
+                    if("error" in kwargs):
                         error = self.enforce_values(np.absolute(kwargs.get("error")),extend=True)
                         ax0.fill_between(xaxes,x-error,x+error,color=[0.8,0.8,0.8],label="error 0",zorder=-len(other))
                     if(legend):
                         ax0.legend()
                 else:
                     ax0graph(xaxes,x,color=[0.0,0.5,0.0],label="graph 0",linestyle='-',linewidth=2.0,zorder=1)
-                    if(kwargs.has_key("error")):
+                    if("error" in kwargs):
                         error = self.enforce_values(np.absolute(kwargs.get("error")),extend=True)
                         ax0.fill_between(xaxes,x-error,x+error,color=[0.8,0.8,0.8],label="error 0",zorder=0)
 
@@ -4757,10 +4751,7 @@ class hp_space(space):
             if(self.discrete):
                 x = self.calc_weight(x,power=-0.5)
             ## check keyword arguments
-            if(kwargs.has_key("iter")):
-                iterations = kwargs.get("iter")
-            else:
-                iterations = self.niter
+            iterations = kwargs.get("iter",self.niter)
             ## transform
             Tx = hp.map2alm(x.astype(np.float64),lmax=codomain.para[0],mmax=codomain.para[1],iter=iterations,pol=True,use_weights=False,regression=True,datapath=None)
 
@@ -4803,10 +4794,7 @@ class hp_space(space):
             return x
         else:
             ## check keyword arguments
-            if(kwargs.has_key("iter")):
-                iterations = kwargs.get("iter")
-            else:
-                iterations = self.niter
+            iterations = kwargs.get("iter",self.niter)
             ## smooth
             return hp.smoothing(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,iter=iterations,lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,use_weights=False,regression=True,datapath=None)
 
@@ -4838,10 +4826,7 @@ class hp_space(space):
         if(self.discrete):
             x = self.calc_weight(x,power=-0.5)
         ## power spectrum
-        if(kwargs.has_key("iter")):
-            iterations = kwargs.get("iter")
-        else:
-            iterations = self.niter
+        iterations = kwargs.get("iter",self.niter)
         return hp.anafast(x,map2=None,nspec=None,lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,iter=iterations,alm=False,pol=True,use_weights=False,regression=True,datapath=None)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -9802,22 +9787,22 @@ class probing(object):
                 whether the variance will be additionally returned (default: False)
 
         """
-        if(kwargs.has_key("random")):
+        if("random" in kwargs):
             if(kwargs.get("random") not in ["pm1","gau"]):
                 raise ValueError(about._errors.cstring("ERROR: unsupported random key '"+str(kwargs.get("random"))+"'."))
-            self.random = random
+            self.random = kwargs.get("random")
 
-        if(kwargs.has_key("ncpu")):
+        if("ncpu" in kwargs):
             self.ncpu = int(max(1,kwargs.get("ncpu")))
-        if(kwargs.has_key("nrun")):
+        if("nrun" in kwargs):
             self.nrun = int(max(self.ncpu**2,kwargs.get("nrun")))
-        if(kwargs.has_key("nper")):
+        if("nper" in kwargs):
             if(kwargs.get("nper") is None):
                 self.nper = None
             else:
                 self.nper = int(max(1,min(self.nrun//self.ncpu,kwargs.get("nper"))))
 
-        if(kwargs.has_key("var")):
+        if("var" in kwargs):
             self.var = bool(kwargs.get("var"))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -10487,33 +10472,33 @@ class diagonal_probing(probing):
                 a prefix for the saved probing results (default: "")
 
         """
-        if(kwargs.has_key("random")):
+        if("random" in kwargs):
             if(kwargs.get("random") not in ["pm1","gau"]):
                 raise ValueError(about._errors.cstring("ERROR: unsupported random key '"+str(kwargs.get("random"))+"'."))
-            self.random = random
+            self.random = kwargs.get("random")
 
-        if(kwargs.has_key("ncpu")):
+        if("ncpu" in kwargs):
             self.ncpu = int(max(1,kwargs.get("ncpu")))
-        if(kwargs.has_key("nrun")):
+        if("nrun" in kwargs):
             self.nrun = int(max(self.ncpu**2,kwargs.get("nrun")))
-        if(kwargs.has_key("nper")):
+        if("nper" in kwargs):
             if(kwargs.get("nper") is None):
                 self.nper = None
             else:
                 self.nper = int(max(1,min(self.nrun//self.ncpu,kwargs.get("nper"))))
 
-        if(kwargs.has_key("var")):
+        if("var" in kwargs):
             self.var = bool(kwargs.get("var"))
 
-        if(kwargs.has_key("save")):
+        if("save" in kwargs):
             if(kwargs.get("save")):
-                if(kwargs.has_key("path")):
+                if("path" in kwargs):
                     path = kwargs.get("path")
                 else:
                     if(self.save is not None):
                         about.warnings.cprint("WARNING: save path set to default.")
                     path = "tmp"
-                if(kwargs.has_key("prefix")):
+                if("prefix" in kwargs):
                     prefix = kwargs.get("prefix")
                 else:
                     if(self.save is not None):
