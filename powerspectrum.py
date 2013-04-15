@@ -380,7 +380,7 @@ def get_power_indices(axes,dgrid,zerocentered,fourier=True):
     return ind,klength,rho
 
 
-def bin_power_indices(pindex,kindex,rho,log=True,nbin=None,binbounds=None):
+def bin_power_indices(pindex,kindex,rho,log=False,nbin=None,binbounds=None):
     """
         Returns the (re)binned power indices associated with the Fourier grid.
 
@@ -396,7 +396,7 @@ def bin_power_indices(pindex,kindex,rho,log=True,nbin=None,binbounds=None):
             Fourier space have the same length (default=None).
         log : bool
             Flag specifying if the binning is performed on logarithmic scale
-            (default: True).
+            (default: False).
         nbin : integer
             Number of used bins (default: None).
         binbounds : {list, array}
@@ -411,15 +411,20 @@ def bin_power_indices(pindex,kindex,rho,log=True,nbin=None,binbounds=None):
     ## boundaries
     if(binbounds is not None):
         binbounds = np.sort(binbounds)
+    ## equal binning
     else:
+        if(log is None):
+            log = False
         if(log):
             k = np.r_[0,np.log(kindex[1:])]
         else:
             k = kindex
-        if(nbin is None)or(nbin<3):
-            nbin = np.sqrt(np.sum(np.asarray(pindex.shape)**2))
-        nbin = min(int(nbin),len(kindex))
-        dk = (k[-1]-0.5*(k[2]+k[1]))/(nbin-2.5)
+        dk = np.max(k[2:]-k[1:-1]) ## minimal dk
+        if(nbin is None):
+            nbin = int((k[-1]-0.5*(k[2]+k[1]))/dk-0.5) ## maximal nbin
+        else:
+            nbin = min(int(nbin),int((k[-1]-0.5*(k[2]+k[1]))/dk+2.5))
+            dk = (k[-1]-0.5*(k[2]+k[1]))/(nbin-2.5)
         binbounds = np.r_[0.5*(3*k[1]-k[2]),0.5*(k[1]+k[2])+dk*np.arange(nbin-2)]
         if(log):
             binbounds = np.exp(binbounds)

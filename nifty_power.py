@@ -49,7 +49,7 @@ import smoothing as gs
 
 ##-----------------------------------------------------------------------------
 
-def weight_power(domain,spec,power=1,pindex=None,pundex=None):
+def weight_power(domain,spec,power=1,pindex=None,pundex=None,**kwargs):
     """
         Weights a given power spectrum with the corresponding pixel volumes
         to a given power.
@@ -58,20 +58,37 @@ def weight_power(domain,spec,power=1,pindex=None,pundex=None):
         ----------
         domain : space
             The space wherein valid arguments live.
-
         spec : {scalar, ndarray, field}
             The power spectrum. A scalars is interpreted as a constant
             spectrum.
-        pindex : ndarray
+        pindex : ndarray, *optional*
             Indexing array giving the power spectrum index for each
             represented mode.
-        pundex : list
+        pundex : list, *optional*
             Unindexing list undoing power indexing.
 
         Returns
         -------
         spev : ndarray
             Weighted power spectrum.
+
+        Other Parameters
+        ----------------
+        log : bool, *optional*
+            Flag specifying if the spectral binning is performed on logarithmic
+            scale or not; if set, the number of used bins is set
+            automatically (if not given otherwise); by default no binning
+            is done (default: None).
+        nbin : integer, *optional*
+            Number of used spectral bins; if given `log` is set to ``False``;
+            integers below the minimum of 3 induce an automatic setting;
+            by default no binning is done (default: None).
+        binbounds : {list, array}, *optional*
+            User specific inner boundaries of the bins, which are preferred
+            over the above parameters; by default no binning is done
+            (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+            Lower limit of the uniform distribution if ``random == "uni"``
+            (default: 0).
 
         Raises
         ------
@@ -84,14 +101,32 @@ def weight_power(domain,spec,power=1,pindex=None,pundex=None):
     ## check domain
     if(not isinstance(domain,space)):
         raise TypeError(about._errors.cstring("ERROR: invalid input."))
-
+    ## check implicit power indices
     if(pindex is None):
         try:
-            pindex = domain.get_power_index(irreducible=False)
-        except(AttributeError):
+            domain.set_power_indices(**kwargs)
+        except:
             raise ValueError(about._errors.cstring("ERROR: invalid input."))
-    if(pundex is None):
-        pundex = domain.get_power_undex(pindex=pindex)
+        else:
+            pindex = domain.power_indices.get("pindex")
+            if(pundex is None):
+                pundex = domain.power_indices.get("pundex")
+            elif(not isinstance(pundex,list)):
+                raise TypeError(about._errors.cstring("ERROR: invalid input."))
+            elif(len(pundex)!=np.size(domain.dim(split=True))):
+                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(len(pundex))+" <> "+str(np.size(domain.dim(split=True)))+" )."))
+    ## check explicit power indices
+    else:
+        pindex = np.array(pindex,dtype=np.int)
+        if(not np.all(np.array(np.shape(pindex))==domain.dim(split=True))):
+            raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(domain.dim(split=True))+" )."))
+        if(pundex is None):
+            ## quick pundex
+            pundex = list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
+        elif(not isinstance(pundex,list)):
+            raise TypeError(about._errors.cstring("ERROR: invalid input."))
+        elif(len(pundex)!=np.size(domain.dim(split=True))):
+            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(len(pundex))+" <> "+str(np.size(domain.dim(split=True)))+" )."))
 
     return np.real(domain.calc_weight(domain.enforce_power(spec,size=len(set(pindex.flatten(order='C'))))[pindex],power=power)[pundex])
 
@@ -274,6 +309,21 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
         prefix : string, *optional*
             A prefix for the saved probing results; the saved results will be
             named using that prefix and an 8-digit number (default: "").
+        log : bool, *optional*
+            Flag specifying if the spectral binning is performed on logarithmic
+            scale or not; if set, the number of used bins is set
+            automatically (if not given otherwise); by default no binning
+            is done (default: None).
+        nbin : integer, *optional*
+            Number of used spectral bins; if given `log` is set to ``False``;
+            integers below the minimum of 3 induce an automatic setting;
+            by default no binning is done (default: None).
+        binbounds : {list, array}, *optional*
+            User specific inner boundaries of the bins, which are preferred
+            over the above parameters; by default no binning is done
+            (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+            Lower limit of the uniform distribution if ``random == "uni"``
+            (default: 0).
 
         Notes
         -----
@@ -314,23 +364,36 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
             domain = Sk.domain
     elif(not isinstance(domain,space)):
         raise TypeError(about._errors.cstring("ERROR: invalid input."))
-    ## check power indices
-    if(pindex is None):
+    ## check implicit power indices
+    if(pindex is None)or(kindex is None)or(rho is None):
         try:
-            pindex = domain.get_power_index(irreducible=False)
-        except(AttributeError):
+            self.domain.set_power_indices(**kwargs)
+        except:
             raise ValueError(about._errors.cstring("ERROR: invalid input."))
+        else:
+            pindex = self.domain.power_indices.get("pindex")
+            kindex = self.domain.power_indices.get("kindex")
+            rho = self.domain.power_indices.get("rho")
+            if(pundex is None):
+                pundex = self.domain.power_indices.get("pundex")
+            elif(not isinstance(pundex,list)):
+                raise TypeError(about._errors.cstring("ERROR: invalid input."))
+            elif(len(pundex)!=np.size(self.domain.dim(split=True))):
+                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(len(pundex))+" <> "+str(np.size(self.domain.dim(split=True)))+" )."))
+    ## check explicit power indices
     else:
         pindex = np.array(pindex,dtype=np.int)
-        if(not np.all(np.array(np.shape(pindex))==domain.dim(split=True))):
-            raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(domain.dim(split=True))+" )."))
-    if(pundex is None):
-        pundex = domain.get_power_undex(pindex=pindex)
-    if(kindex is None)or(rho is None):
-        try:
-            kindex,rho = domain.get_power_index(irreducible=True)
-        except(AttributeError):
-            raise ValueError(about._errors.cstring("ERROR: invalid input."))
+        if(not np.all(np.array(np.shape(pindex))==self.domain.dim(split=True))):
+            raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(self.domain.dim(split=True))+" )."))
+        kindex = np.array(kindex,dtype=domain.vol.dtype)
+        rho = np.array(rho,dtype=np.int)
+        if(pundex is None):
+            ## quick pundex
+            pundex = list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
+        elif(not isinstance(pundex,list)):
+            raise TypeError(about._errors.cstring("ERROR: invalid input."))
+        elif(len(pundex)!=np.size(self.domain.dim(split=True))):
+            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(len(pundex))+" <> "+str(np.size(self.domain.dim(split=True)))+" )."))
     ## check projection operator
     if(Sk is None):
         Sk = projection_operator(domain,assign=pindex)

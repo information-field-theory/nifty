@@ -637,9 +637,6 @@ class random(object):
                 (default: None).
             kindex : numpy.ndarray, *optional*
                 Scale of each irreducible band (default: None).
-            vmin : {scalar, list, ndarray, field}, *optional*
-                Lower limit of the uniform distribution if ``random == "uni"``
-                (default: 0).
             vmax : {scalar, list, ndarray, field}, *optional*
                 Upper limit of the uniform distribution if ``random == "uni"``
                 (default: 1).
@@ -649,6 +646,26 @@ class random(object):
             arg : list
                 Ordered list of arguments (to be processed in
                 ``get_random_values`` of the domain).
+
+            Other Parameters
+            ----------------
+            codomain : nifty.space, *optional*
+                A compatible codomain for power indexing (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
 
             Raises
             ------
@@ -680,15 +697,27 @@ class random(object):
             return [key,mean,dev,var]
 
         elif(key=="syn"):
-            spec = kwargs.get("spec",1)
-            size = None
+            size = kwargs.get("size",None)
             kpack = None
-            if("size" in kwargs):
-                size = kwargs.get("size")
+            ## explicit power indices
             if("pindex" in kwargs)and("kindex" in kwargs):
                 kpack = [kwargs.get("pindex"),kwargs.get("kindex")]
                 size = len(kpack[1])
-            return [key,domain.enforce_power(spec,size=size),kpack]
+            else:
+            ## implicit power indices
+                try:
+                    domain.set_power_indices(**kwargs)
+                except:
+                    if("codomain" in kwargs):
+                        codomain = kwargs.get("codomain")
+                        domain.check_codomain(codomain)
+                        codomain.set_power_indices(**kwargs)
+                        kpack = [codomain.power_indices.get("pindex"),codomain.power_indices.get("kindex")]
+                        size = len(kpack[1])
+                else:
+                    kpack = [domain.power_indixes.get("pindex"),domain.power_indixes.get("kindex")]
+                    size = len(kpack[1])
+            return [key,domain.enforce_power(kwargs.get("spec",1),size=size),kpack]
 
         elif(key=="uni"):
             if("vmin" in kwargs):
@@ -1002,6 +1031,23 @@ class space(object):
                 Number of bands the power spectrum shall have (default: None).
             kindex : numpy.ndarray, *optional*
                 Scale of each band.
+            codomain : nifty.space, *optional*
+                A compatible codomain for power indexing (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
 
         """
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'enforce_power'."))
@@ -1074,7 +1120,7 @@ class space(object):
             pindex = self.get_power_index(irreducible=False)
         return list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
 
-    def set_power_indices(self,log=None,nbin=None,binbounds=None,**kwargs):
+    def set_power_indices(self,**kwargs):
         """
             Sets the (un)indexing objects for spectral indexing internally.
 
@@ -1082,13 +1128,17 @@ class space(object):
             ----------
             log : bool
                 Flag specifying if the binning is performed on logarithmic
-                scale or not; by default no binning is done (default: None).
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
             nbin : integer
-                Number of used bins; if given `log` is set to ``True``;
+                Number of used bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
                 by default no binning is done (default: None).
             binbounds : {list, array}
-                User specific inner boundaries of the bins; by default
-                no binning is done (default: None).
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).
 
             Returns
             -------
@@ -1114,13 +1164,17 @@ class space(object):
             ----------
             log : bool
                 Flag specifying if the binning is performed on logarithmic
-                scale or not; by default no binning is done (default: None).
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
             nbin : integer
-                Number of used bins; if given `log` is set to ``True``;
+                Number of used bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
                 by default no binning is done (default: None).
             binbounds : {list, array}
-                User specific inner boundaries of the bins; by default
-                no binning is done (default: None).
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).
 
             Returns
             -------
@@ -1263,6 +1317,23 @@ class space(object):
                 (default: None).
             kindex : numpy.ndarray, *optional*
                 Scale of each band (default: None).
+            codomain : nifty.space, *optional*
+                A compatible codomain with power indices (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
             vmin : float, *optional*
                 Lower limit for a uniform distribution (default: 0).
             vmax : float, *optional*
@@ -1501,6 +1572,24 @@ class space(object):
                 (default: None).
             rho : numpy.ndarray, *optional*
                 Number of degrees of freedom per band (default: None).
+            codomain : nifty.space, *optional*
+                A compatible codomain for power indexing (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+
         """
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'calc_power'."))
 
@@ -1552,8 +1641,26 @@ class space(object):
             kindex : numpy.ndarray, *optional*
                 Scale corresponding to each band in the power spectrum
                 (default: None).
+            codomain : nifty.space, *optional*
+                A compatible codomain for power indexing (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
             iter : int, *optional*
                 Number of iterations (default: 0).
+
         """
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_plot'."))
 
@@ -2254,6 +2361,23 @@ class rg_space(space):
                 Number of bands the power spectrum shall have (default: None).
             kindex : numpy.ndarray, *optional*
                 Scale of each band.
+            codomain : nifty.space, *optional*
+                A compatible codomain for power indexing (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
 
         """
         if(isinstance(spec,field)):
@@ -2272,10 +2396,22 @@ class rg_space(space):
             raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
 
         if(size is None):
+            ## explicit kindex
             if("kindex" in kwargs):
                 size = len(kwargs.get("kindex"))
+            ## quick kindex
+            elif(self.fourier)and(not hasattr(self,"power_indices"))and(len(kwargs)==0):
+                size = gp.nklength(gp.nkdict(self.para[:(np.size(self.para)-1)//2],self.vol,fourier=True))
+            ## implicit kindex
             else:
-                size = np.size(gp.get_power_index(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-(np.size(self.para)-1)//2:].astype(np.bool),irred=True,fourier=self.fourier)[0]) ## nontrivial
+                try:
+                    self.set_power_indices(**kwargs)
+                except:
+                    codomain = kwargs.get("codomain",self.get_codomain())
+                    codomain.set_power_indices(**kwargs)
+                    size = len(codomain.power_indices.get("kindex"))
+                else:
+                    size = len(self.power_indices.get("kindex"))
         ## drop imaginary part
         spec = np.real(spec)
 
@@ -2332,7 +2468,8 @@ class rg_space(space):
         else:
             raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
-    def set_power_indices(self,log=None,nbin=None,binbounds=None,**kwargs):
+#    def set_power_indices(self,log=None,nbin=None,binbounds=None,**kwargs):
+    def set_power_indices(self,**kwargs):
         """
             Sets the (un)indexing objects for spectral indexing internally.
 
@@ -2340,13 +2477,17 @@ class rg_space(space):
             ----------
             log : bool
                 Flag specifying if the binning is performed on logarithmic
-                scale or not; by default no binning is done (default: None).
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
             nbin : integer
-                Number of used bins; if given `log` is set to ``True``;
+                Number of used bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
                 by default no binning is done (default: None).
             binbounds : {list, array}
-                User specific inner boundaries of the bins; by default
-                no binning is done (default: None).
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).
 
             Returns
             -------
@@ -2356,26 +2497,47 @@ class rg_space(space):
             --------
             get_power_indices
 
+            Raises
+            ------
+            AttributeError
+                If ``self.fourier == False``.
+            ValueError
+                If the binning leaves one or more bins empty.
+
         """
         if(not self.fourier):
             raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
         ## check storage
         if(hasattr(self,"power_indices")):
             config = self.power_indices.get("config")
-            if(config.get("log")==log)and(config.get("nbin")==nbin)and(np.all(config.get("binbounds")==binbounds)):
+            ## check configuration
+            redo = False
+            if(config.get("log")!=kwargs.get("log",config.get("log"))):
+                config["log"] = kwargs.get("log")
+                redo = True
+            if(config.get("nbin")!=kwargs.get("nbin",config.get("nbin"))):
+                config["nbin"] = kwargs.get("nbin")
+                redo = True
+            if(np.any(config.get("binbounds")!=kwargs.get("binbounds",config.get("binbounds")))):
+                config["binbounds"] = kwargs.get("binbounds")
+                redo = True
+            if(not redo):
                 return None
+        else:
+            config = {"binbounds":kwargs.get("binbounds",None),"log":kwargs.get("log",None),"nbin":kwargs.get("nbin",None)}
         ## power indices
         about.infos.cflush("INFO: setting power indices ...")
         pindex,kindex,rho = gp.get_power_indices(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=True)
         ## bin if ...
-        if(log is not None)or(nbin is not None)or(binbounds is not None):
-            pindex,kindex,rho = gp.bin_power_indices(pindex,kindex,rho,log=log,nbin=nbin,binbounds=binbounds)
+        if(config.get("log") is not None)or(config.get("nbin") is not None)or(config.get("binbounds") is not None):
+            pindex,kindex,rho = gp.bin_power_indices(pindex,kindex,rho,**config)
             ## check binning
-            if(np.any(rho)==0):
+            if(np.any(rho==0)):
                 raise ValueError(about._errors.cstring("ERROR: empty bin(s).")) ## binning too fine
+        ## power undex
         pundex = list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
         ## storage
-        self.power_indices = {"config":{"binbounds":binbounds,"log":log,"nbin":nbin},"kindex":kindex,"pindex":pindex,"pundex":pundex,"rho":rho} ## alphabetical
+        self.power_indices = {"config":config,"kindex":kindex,"pindex":pindex,"pundex":pundex,"rho":rho} ## alphabetical
         about.infos.cprint(" done.")
         return None
 
@@ -2471,7 +2633,23 @@ class rg_space(space):
                 (default: None).
             kindex : numpy.ndarray, *optional*
                 Scale of each band (default: None).
-            vmin : float, *optional*
+            codomain : nifty.rg_space, *optional*
+                A compatible codomain with power indices (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).            vmin : float, *optional*
                 Lower limit for a uniform distribution (default: 0).
             vmax : float, *optional*
                 Upper limit for a uniform distribution (default: 1).
@@ -2810,17 +2988,44 @@ class rg_space(space):
                 (default: None).
             rho : numpy.ndarray, *optional*
                 Number of degrees of freedom per band (default: None).
+            codomain : nifty.space, *optional*
+                A compatible codomain for power indexing (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         ## correct for 'fft'
         if(not self.fourier):
             x = self.calc_weight(x,power=1)
+        ## explicit power indices
+        if("pindex" in kwargs)and("kindex" in kwargs)and("rho" in kwargs):
+            pindex,kindex,rho = kwargs.get("pindex"),kwargs.get("kindex"),kwargs.get("rho")
+        else:
+        ## implicit power indices
+            try:
+                self.set_power_indices(**kwargs)
+            except:
+                codomain = kwargs.get("codomain",self.get_codomain())
+                codomain.set_power_indices(**kwargs)
+                pindex,kindex,rho = codomain.power_indices.get("pindex"),codomain.power_indices.get("kindex"),codomain.power_indices.get("rho")
+            else:
+                pindex,kindex,rho = self.power_indices.get("pindex"),self.power_indices.get("kindex"),self.power_indices.get("rho")
         ## power spectrum
-        return gp.calc_ps_fast(x,self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier,**kwargs)
-#        if("pindex" in kwargs)and("rho" in kwargs):
-#            return gp.calc_ps_fast(x,self.para[:(np.size(self.para)-1)//2],self.vol,[kwargs.get("pindex"),kwargs.get("rho")],self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier)
-#        else:
-#            return gp.calc_ps(x,self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier)
+        return gp.calc_ps_fast(x,self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier,pindex=pindex,kindex=kindex,rho=rho)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2870,6 +3075,23 @@ class rg_space(space):
             kindex : numpy.ndarray, *optional*
                 Scale corresponding to each band in the power spectrum
                 (default: None).
+            codomain : nifty.space, *optional*
+                A compatible codomain for power indexing (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
 
         """
         if(not pl.isinteractive()):
@@ -2885,7 +3107,20 @@ class rg_space(space):
             fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
-            xaxes = kwargs.get("kindex",gp.get_power_index(self.para[:naxes],self.vol,self.para[-naxes:].astype(np.bool),irred=True,fourier=self.fourier)[0]) ## nontrivial
+            ## explicit kindex
+            if("kindex" in kwargs):
+                xaxes = kwargs.get("kindex")
+            ## implicit kindex
+            else:
+                try:
+                    self.set_power_indices(**kwargs)
+                except:
+                    codomain = kwargs.get("codomain",self.get_codomain())
+                    codomain.set_power_indices(**kwargs)
+                    xaxes = codomain.power_indices.get("kindex")
+                else:
+                    xaxes = self.power_indices.get("kindex")
+
             if(norm is None)or(not isinstance(norm,int)):
                 norm = naxes
             if(vmin is None):
@@ -3334,7 +3569,7 @@ class lm_space(space):
         if(not hasattr(self,"power_indices")):
             ## power indices
 #            about.infos.cflush("INFO: setting power indices ...")
-            kindex = np.arange(self.para[0]+1)
+            kindex = np.arange(self.para[0]+1,dtype=np.int)
             rho = 2*kindex+1
             pindex = hp.Alm.getlm(self.para[0],i=None)[0] ## l of (l,m)
             pundex = list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
@@ -3774,7 +4009,7 @@ class lm_space(space):
             about.warnings.cprint("WARNING: interactive mode off.")
 
         if(power):
-            x = self.calc_power(x,**kwargs)
+            x = self.calc_power(x)
 
             fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
@@ -3795,11 +4030,11 @@ class lm_space(space):
                         if(isinstance(other[ii],field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
-                            other[ii] = self.enforce_power(other[ii],**kwargs)
+                            other[ii] = self.enforce_power(other[ii])
                 elif(isinstance(other,field)):
                     other = [other.power(**kwargs)]
                 else:
-                    other = [self.enforce_power(other,**kwargs)]
+                    other = [self.enforce_power(other)]
                 imax = max(1,len(other)-1)
                 for ii in range(len(other)):
                     ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
@@ -4144,6 +4379,8 @@ class gl_space(space):
                 (default: 1).
             spec : {float, numpy.ndarray}, *optional*
                 Power spectrum (default: 1).
+            codomain : nifty.lm_space, *optional*
+                A compatible codomain for power indexing (default: None).
             vmin : float, *optional*
                 Lower limit for a uniform distribution (default: 0).
             vmax : float, *optional*
@@ -4443,7 +4680,7 @@ class gl_space(space):
             about.warnings.cprint("WARNING: interactive mode off.")
 
         if(power):
-            x = self.calc_power(x,**kwargs)
+            x = self.calc_power(x)
 
             fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
@@ -4464,11 +4701,11 @@ class gl_space(space):
                         if(isinstance(other[ii],field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
-                            other[ii] = self.enforce_power(other[ii],**kwargs)
+                            other[ii] = self.enforce_power(other[ii])
                 elif(isinstance(other,field)):
                     other = [other.power(**kwargs)]
                 else:
-                    other = [self.enforce_power(other,**kwargs)]
+                    other = [self.enforce_power(other)]
                 imax = max(1,len(other)-1)
                 for ii in range(len(other)):
                     ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
@@ -4767,6 +5004,8 @@ class hp_space(space):
                 (default: 1).
             spec : {float, numpy.ndarray}, *optional*
                 Power spectrum (default: 1).
+            codomain : nifty.lm_space, *optional*
+                A compatible codomain for power indexing (default: None).
             vmin : float, *optional*
                 Lower limit for a uniform distribution (default: 0).
             vmax : float, *optional*
@@ -5075,11 +5314,11 @@ class hp_space(space):
                         if(isinstance(other[ii],field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
-                            other[ii] = self.enforce_power(other[ii],**kwargs)
+                            other[ii] = self.enforce_power(other[ii])
                 elif(isinstance(other,field)):
                     other = [other.power(**kwargs)]
                 else:
-                    other = [self.enforce_power(other,**kwargs)]
+                    other = [self.enforce_power(other)]
                 imax = max(1,len(other)-1)
                 for ii in range(len(other)):
                     ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
@@ -5857,6 +6096,19 @@ class field(object):
             Specifies a power spectrum from which the field values should be
             synthesized (default=1). Can be given as a constant, or as an
             array with indvidual entries per mode.
+        log : bool
+            Flag specifying if the spectral binning is performed on logarithmic
+            scale or not; if set, the number of used bins is set
+            automatically (if not given otherwise); by default no binning
+            is done (default: None).
+        nbin : integer
+            Number of used spectral bins; if given `log` is set to ``False``;
+            integers below the minimum of 3 induce an automatic setting;
+            by default no binning is done (default: None).
+        binbounds : {list, array}
+            User specific inner boundaries of the bins, which are preferred
+            over the above parameters; by default no binning is done
+            (default: None).
 
         vmin : scalar
             Sets the lower limit for the uniform distribution.
@@ -5901,20 +6153,21 @@ class field(object):
         Nothing
 
         """
+        ## check domain
         if(not isinstance(domain,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.domain = domain
-
-        if(val is None):
-            self.val = self.domain.get_random_values(**kwargs)
-        else:
-            self.val = self.domain.enforce_values(val,extend=True)
-
+        ## check codomain
         if(target is None):
             target = domain.get_codomain()
-        ## check codomain
-        self.domain.check_codomain(target) ## a bit pointless
+        else:
+            self.domain.check_codomain(target)
         self.target = target
+        ## check values
+        if(val is None):
+            self.val = self.domain.get_random_values(codomain=self.target,**kwargs)
+        else:
+            self.val = self.domain.enforce_values(val,extend=True)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -6019,10 +6272,11 @@ class field(object):
                  (default=None).
 
         """
+        ## check codomain
         if(newtarget is None):
             newtarget = self.domain.get_codomain()
-        ## check codomain
-        self.domain.check_codomain(newtarget) ## a bit pointless
+        else:
+            self.domain.check_codomain(newtarget)
         self.target = newtarget
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -6297,7 +6551,7 @@ class field(object):
             ----------
             sigma : scalar, *optional*
                 standard deviation of the Gaussian kernel specified in units of
-                length in position space (default=1)
+                length in position space (default: 0)
 
             overwrite : bool, *optional*
                 Whether to overwrite the field or not (default: False).
@@ -6327,7 +6581,7 @@ class field(object):
 
             Other Parameters
             ----------------
-            pindex : ndarray
+            pindex : ndarray, *optional*
                 Specifies the indexing array for the distribution of
                 indices in conjugate space (default: None).
             kindex : numpy.ndarray, *optional*
@@ -6336,6 +6590,23 @@ class field(object):
             rho : scalar
                 Number of degrees of freedom per irreducible band
                 (default=None).
+            codomain : nifty.space, *optional*
+                A compatible codomain for power indexing (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
             iter : scalar
                 Number of iterations (default: 0)
 
@@ -6345,7 +6616,7 @@ class field(object):
                 Returns the power spectrum.
 
         """
-        return self.domain.calc_power(self.val,**kwargs)
+        return self.domain.calc_power(self.val,codomain=self.target,**kwargs)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -6413,6 +6684,21 @@ class field(object):
                 Number of iterations (default: 0).
             kindex : scalar
                 The spectral index per irreducible band (default=None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
 
             Notes
             -----
@@ -6425,7 +6711,7 @@ class field(object):
         if(not interactive):
             pl.ion()
 
-        self.domain.get_plot(self.val,**kwargs)
+        self.domain.get_plot(self.val,codomain=self.target,**kwargs)
 
         if(not interactive):
             pl.ioff()
@@ -8740,8 +9026,26 @@ class power_operator(diagonal_operator):
             (mandatory for the correct incorporation of volume weights)
             (default: False)
         pindex : ndarray, *optional*
-            indexing array, obtainable from domain.get_power_index
+            indexing array, obtainable from domain.get_power_indices
             (default: None)
+
+        Other Parameters
+        ----------------
+        log : bool, *optional*
+            Flag specifying if the spectral binning is performed on logarithmic
+            scale or not; if set, the number of used bins is set
+            automatically (if not given otherwise); by default no binning
+            is done (default: None).
+        nbin : integer, *optional*
+            Number of used spectral bins; if given `log` is set to ``False``;
+            integers below the minimum of 3 induce an automatic setting;
+            by default no binning is done (default: None).
+        binbounds : {list, array}, *optional*
+            User specific inner boundaries of the bins, which are preferred
+            over the above parameters; by default no binning is done
+            (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+            Lower limit of the uniform distribution if ``random == "uni"``
+            (default: 0).
 
         Notes
         -----
@@ -8772,7 +9076,7 @@ class power_operator(diagonal_operator):
             The space wherein the operator output lives
 
     """
-    def __init__(self,domain,spec=1,bare=True,pindex=None):
+    def __init__(self,domain,spec=1,bare=True,pindex=None,**kwargs):
         """
             Sets the diagonal operator's standard properties
 
@@ -8791,23 +9095,44 @@ class power_operator(diagonal_operator):
                 (mandatory for the correct incorporation of volume weights)
                 (default: False)
             pindex : ndarray, *optional*
-                indexing array, obtainable from domain.get_power_index
+                indexing array, obtainable from domain.get_power_indices
                 (default: None)
 
             Returns
             -------
             None
+
+            Other Parameters
+            ----------------
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+
         """
         if(not isinstance(domain,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.domain = domain
-
-        ## check power_index
+        ## check implicit pindex
         if(pindex is None):
             try:
-                pindex = self.domain.get_power_index(irreducible=False)
-            except(AttributeError):
+                self.domain.set_power_indices(**kwargs)
+            except:
                 raise ValueError(about._errors.cstring("ERROR: invalid input."))
+            else:
+                pindex = self.domain.power_indices.get("pindex")
+        ## check explicit pindex
         else:
             pindex = np.array(pindex,dtype=np.int)
             if(not np.all(np.array(np.shape(pindex))==self.domain.dim(split=True))):
@@ -8836,7 +9161,7 @@ class power_operator(diagonal_operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def set_power(self,newspec,bare=None,pindex=None):
+    def set_power(self,newspec,bare=None,pindex=None,**kwargs):
         """
             Sets the power spectrum of the diagonal operator
 
@@ -8851,23 +9176,44 @@ class power_operator(diagonal_operator):
                 (mandatory for the correct incorporation of volume weights)
                 (default: False)
             pindex : ndarray, *optional*
-                indexing array, obtainable from domain.get_power_index
+                indexing array, obtainable from domain.get_power_indices
                 (default: None)
 
             Returns
             -------
             None
+
+            Other Parameters
+            ----------------
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+
         """
         if(bare is None):
             about.warnings.cprint("WARNING: bare keyword set to default.")
             bare = True
-
-        ## check power_index
+        ## check implicit pindex
         if(pindex is None):
             try:
-                pindex = self.domain.get_power_index(irreducible=False)
-            except(AttributeError):
-                raise ValueError(about._errors.cstring("ERROR: invalid input."))
+                self.domain.set_power_indices(**kwargs)
+            except:
+                raise ValueError(about._errors.cstring("ERROR: invalid domain."))
+            else:
+                pindex = self.domain.power_indices.get("pindex")
+        ## check explicit pindex
         else:
             pindex = np.array(pindex,dtype=np.int)
             if(not np.all(np.array(np.shape(pindex))==self.domain.dim(split=True))):
@@ -8902,48 +9248,109 @@ class power_operator(diagonal_operator):
                 (mandatory for the correct incorporation of volume weights)
                 (default: False)
             pundex : ndarray, *optional*
-                unindexing array, obtainable from domain.get_power_undex
+                unindexing array, obtainable from domain.get_power_indices
                 (default: None)
             pindex : ndarray, *optional*
-                indexing array, obtainable from domain.get_power_index
+                indexing array, obtainable from domain.get_power_indices
                 (default: None)
 
             Returns
             -------
             spec : ndarray
                 The power spectrum
+
+            Other Parameters
+            ----------------
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+
         """
-        if(len(kwargs)):  ## TODO: remove **kwargs in future version
-            about.warnings.cprint("WARNING: deprecated keyword(s).")
         ## weight if ...
         if(not self.domain.discrete)and(bare):
             diag = np.real(self.domain.calc_weight(self.val,power=-1))
         else:
             diag = self.val
-
+        ## check implicit pundex
         if(pundex is None):
-            pundex = self.domain.get_power_undex(pindex=pindex)
+            if(pindex is None):
+                try:
+                    self.domain.set_power_indices(**kwargs)
+                except:
+                    raise ValueError(about._errors.cstring("ERROR: invalid domain."))
+                else:
+                    pundex = self.domain.power_indices.get("pundex")
+            else:
+                pindex = np.array(pindex,dtype=np.int)
+                if(not np.all(np.array(np.shape(pindex))==self.domain.dim(split=True))):
+                    raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(self.domain.dim(split=True))+" )."))
+                ## quick pundex
+                pundex = list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
+        ## check explicit pundex
+        else:
+            if(not isinstance(pundex,list)):
+                raise TypeError(about._errors.cstring("ERROR: invalid input."))
+            elif(len(pundex)!=np.size(self.domain.dim(split=True))):
+                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(len(pundex))+" <> "+str(np.size(self.domain.dim(split=True)))+" )."))
+
         return diag[pundex]
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_projection_operator(self,pindex=None):
+    def get_projection_operator(self,pindex=None,**kwargs):
         """
             Generates a spectral projection operator
 
             Parameters
             ----------
             pindex : ndarray
-                indexing array obtainable from domain.get_power_index
+                indexing array obtainable from domain.get_power_indices
                 (default: None)
 
             Returns
             -------
             P : projection_operator
+
+            Other Parameters
+            ----------------
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+
         """
-        ## check power_index
+        ## check implicit pindex
         if(pindex is None):
-            pindex = self.domain.get_power_index(irreducible=False)
+            try:
+                self.domain.set_power_indices(**kwargs)
+            except:
+                raise ValueError(about._errors.cstring("ERROR: invalid domain."))
+            else:
+                pindex = self.domain.power_indices.get("pindex")
+        ## check explicit pindex
         else:
             pindex = np.array(pindex,dtype=np.int)
             if(not np.all(np.array(np.shape(pindex))==self.domain.dim(split=True))):
@@ -8982,6 +9389,24 @@ class projection_operator(operator):
             Assignments of domain items to projection bands. An array
             of integers, negative integers are associated with the
             nullspace of the projection. (default: None)
+
+        Other Parameters
+        ----------------
+        log : bool, *optional*
+            Flag specifying if the spectral binning is performed on logarithmic
+            scale or not; if set, the number of used bins is set
+            automatically (if not given otherwise); by default no binning
+            is done (default: None).
+        nbin : integer, *optional*
+            Number of used spectral bins; if given `log` is set to ``False``;
+            integers below the minimum of 3 induce an automatic setting;
+            by default no binning is done (default: None).
+        binbounds : {list, array}, *optional*
+            User specific inner boundaries of the bins, which are preferred
+            over the above parameters; by default no binning is done
+            (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+            Lower limit of the uniform distribution if ``random == "uni"``
+            (default: 0).
 
         Examples
         --------
@@ -9023,7 +9448,7 @@ class projection_operator(operator):
             The space wherein the operator output lives
 
     """
-    def __init__(self,domain,assign=None):
+    def __init__(self,domain,assign=None,**kwargs):
         """
             Sets the standard operator properties and `indexing`.
 
@@ -9039,6 +9464,25 @@ class projection_operator(operator):
             Returns
             -------
             None
+
+            Other Parameters
+            ----------------
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+
         """
         if(not isinstance(domain,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
@@ -9046,7 +9490,12 @@ class projection_operator(operator):
 
         ## check assignment(s)
         if(assign is None):
-            assign = np.arange(self.domain.dim(split=False),dtype=np.int).reshape(self.domain.dim(split=True),order='C')
+            try:
+                self.domain.set_power_indices(**kwargs)
+            except:
+                assign = np.arange(self.domain.dim(split=False),dtype=np.int).reshape(self.domain.dim(split=True),order='C')
+            else:
+                assign = self.domain.power_indices.get("pindex")
         else:
             assign = self.domain.enforce_shape(assign).astype(np.int)
         assign = np.maximum(-1,assign) ## condensing all negative integers
