@@ -134,50 +134,83 @@ def weight_power(domain,spec,power=1,pindex=None,pundex=None,**kwargs):
 
 ##-----------------------------------------------------------------------------
 
-def smooth_power(power,kindex,mode="2s",exclude=1,sigma=-1):
+def smooth_power(spec,domain=None,kindex=None,mode="2s",exclude=1,sigma=-1,**kwargs):
     """
-    Smoothes a power spectrum via convolution with a Gaussian kernel.
+        Smoothes a power spectrum via convolution with a Gaussian kernel.
 
-    Parameters
-    ----------
-    power : ndarray
-        The power spectrum to be smoothed.
+        Parameters
+        ----------
+        spec : ndarray
+            The power spectrum to be smoothed.
+        domain : space, *optional*
+            The space wherein the power spectrum is defined (default: None).
+        kindex : ndarray, *optional*
+            The array specifying the coordinate indices in conjugate space
+            (default: None).
+        mode : string, *optional*
+            Specifies the smoothing mode (default: "2s") :
 
-    kindex : ndarray
-        The array specifying the coordinate indices in conjugate space.
+            - "ff" (smoothing in the harmonic basis using fast Fourier transformations)
+            - "bf" (smoothing in the position basis by brute force)
+            - "2s" (smoothing in the position basis restricted to a 2-`sigma` interval)
 
-    mode : string
-        Specifies the smoothing mode (default: "2s") :
+        exclude : scalar, *optional*
+            Excludes the first power spectrum entries from smoothing, indicated by
+            the given integer scalar (default = 1, the monopol is not smoothed).
+        sigma : scalar, *optional*
+            FWHM of Gaussian convolution kernel (default = -1, `sigma` is set
+            automatically).
 
-        - "ff" (smoothing in the harmonic basis using fast Fourier transformations)
-        - "bf" (smoothing in the position basis by brute force)
-        - "2s" (smoothing in the position basis restricted to a 2-`sigma` interval)
+        Returns
+        -------
+        smoothspec : ndarray
+            The smoothed power spectrum.
 
-    exclude : scalar
-        Excludes the first power spectrum entries from smoothing, indicated by
-        the given integer scalar (default = 1, the monopol is not smoothed).
+        Other Parameters
+        ----------------
+        log : bool, *optional*
+            Flag specifying if the spectral binning is performed on logarithmic
+            scale or not; if set, the number of used bins is set
+            automatically (if not given otherwise); by default no binning
+            is done (default: None).
+        nbin : integer, *optional*
+            Number of used spectral bins; if given `log` is set to ``False``;
+            integers below the minimum of 3 induce an automatic setting;
+            by default no binning is done (default: None).
+        binbounds : {list, array}, *optional*
+            User specific inner boundaries of the bins, which are preferred
+            over the above parameters; by default no binning is done
+            (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+            Lower limit of the uniform distribution if ``random == "uni"``
+            (default: 0).
 
-    sigma : scalar
-        FWHM of Gaussian convolution kernel (default = -1, `sigma` is set
-        automatically).
-
-    Returns
-    -------
-    smoothpower : ndarray
-        The smoothed power spectrum.
-
-    Raises
-    ------
-    KeyError
-        If `mode` is unsupported.
+        Raises
+        ------
+        KeyError
+            If `mode` is unsupported.
 
     """
+    ## check implicit kindex
+    if(kindex is None):
+        if(isinstance(domain,space)):
+            try:
+                domain.set_power_indices(**kwargs)
+            except:
+                raise ValueError(about._errors.cstring("ERROR: invalid input."))
+            else:
+                kindex = domain.power_indices.get("kindex")
+        else:
+            raise TypeError(about._errors.cstring("ERROR: insufficient input."))
+    ## check explicit power indices
+    else:
+        kindex = np.array(kindex,dtype=domain.vol.dtype)
+    ## smoothing
     if(mode=="2s"):
-        return gs.smooth_power_2s(power,kindex,exclude=exclude,smooth_length=sigma)
+        return gs.smooth_power_2s(spec,kindex,exclude=exclude,smooth_length=sigma)
     elif(mode=="ff"):
-        return gs.smooth_power(power,kindex,exclude=exclude,smooth_length=sigma)
+        return gs.smooth_power(spec,kindex,exclude=exclude,smooth_length=sigma)
     elif(mode=="bf"):
-        return gs.smooth_power_bf(power,kindex,exclude=exclude,smooth_length=sigma)
+        return gs.smooth_power_bf(spec,kindex,exclude=exclude,smooth_length=sigma)
     else:
         raise KeyError(about._errors.cstring("ERROR: unsupported mode '"+str(mode)+"'."))
 
@@ -359,7 +392,7 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
     ## check domain
     if(domain is None):
         if(Sk is None):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
+            raise TypeError(about._errors.cstring("ERROR: insufficient input."))
         else:
             domain = Sk.domain
     elif(not isinstance(domain,space)):
@@ -367,24 +400,24 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
     ## check implicit power indices
     if(pindex is None)or(kindex is None)or(rho is None):
         try:
-            self.domain.set_power_indices(**kwargs)
+            domain.set_power_indices(**kwargs)
         except:
             raise ValueError(about._errors.cstring("ERROR: invalid input."))
         else:
-            pindex = self.domain.power_indices.get("pindex")
-            kindex = self.domain.power_indices.get("kindex")
-            rho = self.domain.power_indices.get("rho")
+            pindex = domain.power_indices.get("pindex")
+            kindex = domain.power_indices.get("kindex")
+            rho = domain.power_indices.get("rho")
             if(pundex is None):
-                pundex = self.domain.power_indices.get("pundex")
+                pundex = domain.power_indices.get("pundex")
             elif(not isinstance(pundex,list)):
                 raise TypeError(about._errors.cstring("ERROR: invalid input."))
-            elif(len(pundex)!=np.size(self.domain.dim(split=True))):
-                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(len(pundex))+" <> "+str(np.size(self.domain.dim(split=True)))+" )."))
+            elif(len(pundex)!=np.size(domain.dim(split=True))):
+                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(len(pundex))+" <> "+str(np.size(domain.dim(split=True)))+" )."))
     ## check explicit power indices
     else:
         pindex = np.array(pindex,dtype=np.int)
-        if(not np.all(np.array(np.shape(pindex))==self.domain.dim(split=True))):
-            raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(self.domain.dim(split=True))+" )."))
+        if(not np.all(np.array(np.shape(pindex))==domain.dim(split=True))):
+            raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(domain.dim(split=True))+" )."))
         kindex = np.array(kindex,dtype=domain.vol.dtype)
         rho = np.array(rho,dtype=np.int)
         if(pundex is None):
@@ -392,8 +425,8 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
             pundex = list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
         elif(not isinstance(pundex,list)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
-        elif(len(pundex)!=np.size(self.domain.dim(split=True))):
-            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(len(pundex))+" <> "+str(np.size(self.domain.dim(split=True)))+" )."))
+        elif(len(pundex)!=np.size(domain.dim(split=True))):
+            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(len(pundex))+" <> "+str(np.size(domain.dim(split=True)))+" )."))
     ## check projection operator
     if(Sk is None):
         Sk = projection_operator(domain,assign=pindex)
