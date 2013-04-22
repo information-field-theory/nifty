@@ -111,20 +111,23 @@
         2013; `arXiv:1301.4499 <http://www.arxiv.org/abs/1301.4499>`_
 
 """
+## standard libraries
 from __future__ import division
 import os
 #import sys
 from sys import stdout as so
 import numpy as np
-import gfft as gf
-import healpy as hp
-import libsharp_wrapper_gl as gl
-import smoothing as gs
-import powerspectrum as gp
 import pylab as pl
 from matplotlib.colors import LogNorm as ln
 from matplotlib.ticker import LogFormatter as lf
 from multiprocessing import Pool as mp
+## third party libraries
+import gfft as gf
+import healpy as hp
+import libsharp_wrapper_gl as gl
+## internal libraries
+import smoothing as gs
+import powerspectrum as gp
 
 
 pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679

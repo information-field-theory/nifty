@@ -40,10 +40,9 @@
     manipulation.
 
 """
-
 from __future__ import division
-from nifty_core import *
 #import numpy as np
+from nifty_core import *
 import smoothing as gs
 
 
