@@ -41,6 +41,7 @@
 
 """
 from __future__ import division
+from scipy.interpolate import interp1d as ip
 #import numpy as np
 from nifty_core import *
 import smoothing as gs
@@ -127,7 +128,7 @@ def weight_power(domain,spec,power=1,pindex=None,pundex=None,**kwargs):
         elif(len(pundex)!=np.size(domain.dim(split=True))):
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(len(pundex))+" <> "+str(np.size(domain.dim(split=True)))+" )."))
 
-    return np.real(domain.calc_weight(domain.enforce_power(spec,size=len(set(pindex.flatten(order='C'))))[pindex],power=power)[pundex])
+    return np.real(domain.calc_weight(domain.enforce_power(spec,size=np.max(pindex,axis=None,out=None)+1)[pindex],power=power)[pundex])
 
 ##-----------------------------------------------------------------------------
 
@@ -198,11 +199,47 @@ def smooth_power(spec,domain=None,kindex=None,mode="2s",exclude=1,sigma=-1,**kwa
                 raise ValueError(about._errors.cstring("ERROR: invalid input."))
             else:
                 kindex = domain.power_indices.get("kindex")
+
         else:
             raise TypeError(about._errors.cstring("ERROR: insufficient input."))
-    ## check explicit power indices
+        ## check power spectrum
+        spec = domain.enforce_power(spec,size=np.size(kindex))
+    ## check explicit kindex
     else:
-        kindex = np.array(kindex,dtype=domain.vol.dtype)
+        kindex = np.sort(np.real(np.array(kindex,dtype=None).flatten(order='C')),axis=0,kind="quicksort",order=None)
+
+        ## check power spectrum
+        if(isinstance(spec,field)):
+            spec = spec.val.astype(kindex.dtype)
+        elif(callable(spec)):
+            try:
+                spec = spec(kindex)
+            except:
+                TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
+        elif(np.isscalar(spec)):
+            spec = np.array([spec],dtype=kindex.dtype)
+        else:
+            spec = np.array(spec,dtype=kindex.dtype)
+        ## drop imaginary part
+        spec = np.real(spec)
+        ## check finiteness and positivity (excluding null)
+        if(not np.all(np.isfinite(spec))):
+            raise ValueError(about._errors.cstring("ERROR: infinite value(s)."))
+        elif(np.any(spec<0)):
+            raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+        elif(np.any(spec==0)):
+            about.warnings.cprint("WARNING: nonpositive value(s).")
+        size = np.size(kindex)
+        ## extend
+        if(np.size(spec)==1):
+            spec = spec*np.ones(size,dtype=spec.dtype,order='C')
+        ## size check
+        elif(np.size(spec)<size):
+            raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(spec))+" < "+str(size)+" )."))
+        elif(np.size(spec)>size):
+            about.warnings.cprint("WARNING: power spectrum cut to size ( == "+str(size)+" ).")
+            spec = spec[:size]
+
     ## smoothing
     if(mode=="2s"):
         return gs.smooth_power_2s(spec,kindex,exclude=exclude,smooth_length=sigma)
@@ -381,7 +418,7 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
 
         Raises
         ------
-        IndexError, TypeError, ValueError
+        Exception, IndexError, TypeError, ValueError
             If some input is invalid.
 
     """
@@ -391,7 +428,7 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
     ## check domain
     if(domain is None):
         if(Sk is None):
-            raise TypeError(about._errors.cstring("ERROR: insufficient input."))
+            raise Exception(about._errors.cstring("ERROR: insufficient input."))
         else:
             domain = Sk.domain
     elif(not isinstance(domain,space)):
@@ -417,7 +454,7 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
         pindex = np.array(pindex,dtype=np.int)
         if(not np.all(np.array(np.shape(pindex))==domain.dim(split=True))):
             raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(domain.dim(split=True))+" )."))
-        kindex = np.array(kindex,dtype=domain.vol.dtype)
+        kindex = np.sort(np.real(np.array(kindex,dtype=domain.vol.dtype).flatten(order='C')),axis=0,kind="quicksort",order=None)
         rho = np.array(rho,dtype=np.int)
         if(pundex is None):
             ## quick pundex
@@ -508,4 +545,163 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
     return pk
 
 ##=============================================================================
+
+##-----------------------------------------------------------------------------
+
+def interpolate_power(spec,mode="linear",domain=None,kindex=None,newkindex=None,**kwargs):
+    """
+        Interpolates a given power spectrum at new k(-indices).
+
+        Parameters
+        ----------
+        spec : {scalar, array}
+            The power spectrum. A scalars is interpreted as a constant
+            spectrum.
+        mode : string
+            String specifying the interpolation scheme, supported
+            schemes are (default: "linear"):
+
+            - "linear"
+            - "nearest"
+            - "zero"
+            - "slinear"
+            - "quadratic"
+            - "cubic"
+
+        domain : space, *optional*
+            The space wherein the power spectrum is defined (default: None).
+        kindex : numpy.ndarray, *optional*
+            Scales corresponding to each band in the old power spectrum;
+            can be retrieved from `domain` (default: None).
+        newkindex : numpy.ndarray, *optional*
+            Scales corresponding to each band in the new power spectrum;
+            can be retrieved from `domain` if `kindex` is given
+            (default: None).
+
+        Returns
+        -------
+        newspec : numpy.ndarray
+            The interpolated power spectrum.
+
+        Other Parameters
+        ----------------
+        log : bool, *optional*
+            Flag specifying if the spectral binning is performed on logarithmic
+            scale or not; if set, the number of used bins is set
+            automatically (if not given otherwise); by default no binning
+            is done (default: None).
+        nbin : integer, *optional*
+            Number of used spectral bins; if given `log` is set to ``False``;
+            integers below the minimum of 3 induce an automatic setting;
+            by default no binning is done (default: None).
+        binbounds : {list, array}, *optional*
+            User specific inner boundaries of the bins, which are preferred
+            over the above parameters; by default no binning is done
+            (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+            Lower limit of the uniform distribution if ``random == "uni"``
+            (default: 0).
+
+        See Also
+        --------
+        scipy.interpolate.interp1d
+
+        Raises
+        ------
+        Exception, IndexError, TypeError, ValueError
+            If some input is invalid.
+        ValueError
+            If an interpolation is flawed.
+
+    """
+    ## check implicit kindex
+    if(kindex is None):
+        if(isinstance(domain,space)):
+            try:
+                domain.set_power_indices(**kwargs)
+            except:
+                raise ValueError(about._errors.cstring("ERROR: invalid input."))
+            else:
+                kindex = domain.power_indices.get("kindex")
+        else:
+            raise TypeError(about._errors.cstring("ERROR: insufficient input."))
+        ## check power spectrum
+        spec = domain.enforce_power(spec,size=np.size(kindex))
+        ## check explicit newkindex
+        if(newkindex is None):
+            raise Exception(about._errors.cstring("ERROR: insufficient input."))
+        else:
+            newkindex = np.sort(np.real(np.array(newkindex,dtype=domain.vol.dtype).flatten(order='C')),axis=0,kind="quicksort",order=None)
+    ## check explicit kindex
+    else:
+        kindex = np.sort(np.real(np.array(kindex,dtype=None).flatten(order='C')),axis=0,kind="quicksort",order=None)
+
+        ## check power spectrum
+        if(isinstance(spec,field)):
+            spec = spec.val.astype(kindex.dtype)
+        elif(callable(spec)):
+            try:
+                spec = spec(kindex)
+            except:
+                TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
+        elif(np.isscalar(spec)):
+            spec = np.array([spec],dtype=kindex.dtype)
+        else:
+            spec = np.array(spec,dtype=kindex.dtype)
+        ## drop imaginary part
+        spec = np.real(spec)
+        ## check finiteness and positivity (excluding null)
+        if(not np.all(np.isfinite(spec))):
+            raise ValueError(about._errors.cstring("ERROR: infinite value(s)."))
+        elif(np.any(spec<0)):
+            raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+        elif(np.any(spec==0)):
+            about.warnings.cprint("WARNING: nonpositive value(s).")
+        size = np.size(kindex)
+        ## extend
+        if(np.size(spec)==1):
+            spec = spec*np.ones(size,dtype=spec.dtype,order='C')
+        ## size check
+        elif(np.size(spec)<size):
+            raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(spec))+" < "+str(size)+" )."))
+        elif(np.size(spec)>size):
+            about.warnings.cprint("WARNING: power spectrum cut to size ( == "+str(size)+" ).")
+            spec = spec[:size]
+
+        ## check implicit newkindex
+        if(newkindex is None):
+            if(isinstance(domain,space)):
+                try:
+                    domain.set_power_indices(**kwargs)
+                except:
+                    raise ValueError(about._errors.cstring("ERROR: invalid input."))
+                else:
+                    newkindex = domain.power_indices.get("kindex")
+            else:
+                raise TypeError(about._errors.cstring("ERROR: insufficient input."))
+        ## check explicit newkindex
+        else:
+            newkindex = np.sort(np.real(np.array(newkindex,dtype=None).flatten(order='C')),axis=0,kind="quicksort",order=None)
+
+    ## check bounds
+    if(kindex[0]<0)or(newkindex[0]<0):
+        raise ValueError(about._errors.cstring("ERROR: invalid input."))
+    if(np.any(newkindex>kindex[-1])):
+        about.warnings.cprint("WARNING: interpolation beyond upper bound.")
+        ## continuation extension by point mirror
+        nmirror = np.size(kindex)-np.searchsorted(kindex,2*kindex[-1]-newkindex[-1],side='left')+1
+        spec = np.r_[spec,np.exp(2*np.log(spec[-1])-np.log(spec[-nmirror:-1][::-1]))]
+        kindex = np.r_[kindex,(2*kindex[-1]-kindex[-nmirror:-1][::-1])]
+    ## interpolation
+    newspec = ip(kindex,spec,kind=mode,axis=0,copy=True,bounds_error=True,fill_value=np.NAN)(newkindex)
+    ## check new power spectrum
+    if(not np.all(np.isfinite(newspec))):
+        raise ValueError(about._errors.cstring("ERROR: infinite value(s)."))
+    elif(np.any(newspec<0)):
+        raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+    elif(np.any(newspec==0)):
+        about.warnings.cprint("WARNING: nonpositive value(s).")
+
+    return newspec
+
+##-----------------------------------------------------------------------------
 

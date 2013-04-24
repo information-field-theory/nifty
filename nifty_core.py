@@ -2393,10 +2393,10 @@ class rg_space(space):
         if(not np.all(np.isfinite(spec))):
             about.warnings.cprint("WARNING: infinite value(s).")
         ## check positivity (excluding null)
-        if(np.any(spec==0)):
-            about.warnings.cprint("WARNING: nonpositive value(s).")
         if(np.any(spec<0)):
             raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+        elif(np.any(spec==0)):
+            about.warnings.cprint("WARNING: nonpositive value(s).")
 
         if(size is None):
             ## explicit kindex
@@ -3488,10 +3488,10 @@ class lm_space(space):
         if(not np.all(np.isfinite(spec))):
             about.warnings.cprint("WARNING: infinite value(s).")
         ## check positivity (excluding null)
-        if(np.any(spec==0)):
-            about.warnings.cprint("WARNING: nonpositive value(s).")
         if(np.any(spec<0)):
             raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+        elif(np.any(spec==0)):
+            about.warnings.cprint("WARNING: nonpositive value(s).")
 
         size = self.para[0]+1 ## lmax+1
         ## drop imaginary part
@@ -3689,7 +3689,7 @@ class lm_space(space):
             if(self.datatype==np.complex64):
                 x = gl.synalm_f(arg[1],lmax=lmax,mmax=lmax)
             else:
-                #x = gl.synalm(spec,lmax=lmax,mmax=lmax)
+                #x = gl.synalm(arg[1],lmax=lmax,mmax=lmax)
                 x = hp.synalm(arg[1],lmax=lmax,mmax=lmax)
             return x
 
@@ -4307,10 +4307,10 @@ class gl_space(space):
         if(not np.all(np.isfinite(spec))):
             about.warnings.cprint("WARNING: infinite value(s).")
         ## check positivity (excluding null)
-        if(np.any(spec==0)):
-            about.warnings.cprint("WARNING: nonpositive value(s).")
         if(np.any(spec<0)):
             raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+        elif(np.any(spec==0)):
+            about.warnings.cprint("WARNING: nonpositive value(s).")
 
         size = self.para[0] ## nlat
 
@@ -4932,10 +4932,10 @@ class hp_space(space):
         if(not np.all(np.isfinite(spec))):
             about.warnings.cprint("WARNING: infinite value(s).")
         ## check positivity (excluding null)
-        if(np.any(spec==0)):
-            about.warnings.cprint("WARNING: nonpositive value(s).")
         if(np.any(spec<0)):
             raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+        elif(np.any(spec==0)):
+            about.warnings.cprint("WARNING: nonpositive value(s).")
 
         size = 3*self.para[0] ## 3*nside
 

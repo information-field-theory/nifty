@@ -64,8 +64,8 @@ def smooth_power(power, k, exclude=1, smooth_length=None):
     pbinned = pbinned / counter
 
     nmirror = int(5 * smooth_length / dk) + 2
-    zpbinned = np.r_[(2 * pbinned[0] - pbinned[1:nmirror][::-1]), pbinned,
-                     (2 * pbinned[-1] - pbinned[-nmirror:-1][::-1])]
+    zpbinned = np.r_[np.exp(2 * np.log(pbinned[0]) - np.log(pbinned[1:nmirror][::-1])), pbinned,
+                     np.exp(2 * np.log(pbinned[-1])- np.log(pbinned[-nmirror:-1][::-1]))]
     zpbinned = np.maximum(0, zpbinned)
 
     tpbinned = np.fft.fftshift(np.fft.fft(zpbinned))
@@ -101,7 +101,7 @@ def smooth_power_bf(power, k, exclude=1, smooth_length=None):
         smooth_length = k[1]-k[0]
 
     nmirror = int(5*smooth_length/(k[1]-k[0]))+2
-    mpower = np.r_[(2*power[0]-power[1:nmirror][::-1]),power,(2*power[-1]-power[-nmirror:-1][::-1])]
+    mpower = np.r_[np.exp(2*np.log(power[0])-np.log(power[1:nmirror][::-1])),power,np.exp(2*np.log(power[-1])-np.log(power[-nmirror:-1][::-1]))]
     mk = np.r_[(2*k[0]-k[1:nmirror][::-1]),k,(2*k[-1]-k[-nmirror:-1][::-1])]
     mdk = np.r_[0.5*(mk[1]-mk[0]),0.5*(mk[2:]-mk[:-2]),0.5*(mk[-1]-mk[-2])]
 
@@ -143,7 +143,7 @@ def smooth_power_2s(power, k, exclude=1, smooth_length=None):
         smooth_length = k[1]-k[0]
 
     nmirror = int(5*smooth_length/(k[1]-k[0]))+2
-    mpower = np.r_[(2*power[0]-power[1:nmirror][::-1]),power,(2*power[-1]-power[-nmirror:-1][::-1])]
+    mpower = np.r_[np.exp(2*np.log(power[0])-np.log(power[1:nmirror][::-1])),power,np.exp(2*np.log(power[-1])-np.log(power[-nmirror:-1][::-1]))]
     mk = np.r_[(2*k[0]-k[1:nmirror][::-1]),k,(2*k[-1]-k[-nmirror:-1][::-1])]
     mdk = np.r_[0.5*(mk[1]-mk[0]),0.5*(mk[2:]-mk[:-2]),0.5*(mk[-1]-mk[-2])]
 
