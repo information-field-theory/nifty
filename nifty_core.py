@@ -2383,12 +2383,40 @@ class rg_space(space):
                 (default: 0).
 
         """
+
+        if(size is None)or(callable(spec)):
+            ## explicit kindex
+            if("kindex" in kwargs):
+                kindex = kwargs.get("kindex")
+            ## quick kindex
+            elif(self.fourier)and(not hasattr(self,"power_indices"))and(len(kwargs)==0):
+                kindex = gp.nklength(gp.nkdict(self.para[:(np.size(self.para)-1)//2],self.vol,fourier=True))
+            ## implicit kindex
+            else:
+                try:
+                    self.set_power_indices(**kwargs)
+                except:
+                    codomain = kwargs.get("codomain",self.get_codomain())
+                    codomain.set_power_indices(**kwargs)
+                    kindex = codomain.power_indices.get("kindex")
+                else:
+                    kindex = self.power_indices.get("kindex")
+            size = len(kindex)
+
         if(isinstance(spec,field)):
             spec = spec.val.astype(self.datatype)
+        elif(callable(spec)):
+            try:
+                spec = np.array(spec(kindex),dtype=self.datatype)
+            except:
+                TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
             spec = np.array([spec],dtype=self.datatype)
         else:
             spec = np.array(spec,dtype=self.datatype)
+
+        ## drop imaginary part
+        spec = np.real(spec)
         ## check finiteness
         if(not np.all(np.isfinite(spec))):
             about.warnings.cprint("WARNING: infinite value(s).")
@@ -2397,26 +2425,6 @@ class rg_space(space):
             raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
         elif(np.any(spec==0)):
             about.warnings.cprint("WARNING: nonpositive value(s).")
-
-        if(size is None):
-            ## explicit kindex
-            if("kindex" in kwargs):
-                size = len(kwargs.get("kindex"))
-            ## quick kindex
-            elif(self.fourier)and(not hasattr(self,"power_indices"))and(len(kwargs)==0):
-                size = gp.nklength(gp.nkdict(self.para[:(np.size(self.para)-1)//2],self.vol,fourier=True))
-            ## implicit kindex
-            else:
-                try:
-                    self.set_power_indices(**kwargs)
-                except:
-                    codomain = kwargs.get("codomain",self.get_codomain())
-                    codomain.set_power_indices(**kwargs)
-                    size = len(codomain.power_indices.get("kindex"))
-                else:
-                    size = len(self.power_indices.get("kindex"))
-        ## drop imaginary part
-        spec = np.real(spec)
 
         ## extend
         if(np.size(spec)==1):
@@ -3482,10 +3490,18 @@ class lm_space(space):
         """
         if(isinstance(spec,field)):
             spec = spec.val.astype(self.datatype)
+        elif(callable(spec)):
+            try:
+                spec = np.array(spec(np.arange(self.para[0]+1,dtype=np.int)),dtype=self.datatype)
+            except:
+                TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
             spec = np.array([spec],dtype=self.datatype)
         else:
             spec = np.array(spec,dtype=self.datatype)
+
+        ## drop imaginary part
+        spec = np.real(spec)
         ## check finiteness
         if(not np.all(np.isfinite(spec))):
             about.warnings.cprint("WARNING: infinite value(s).")
@@ -3496,9 +3512,6 @@ class lm_space(space):
             about.warnings.cprint("WARNING: nonpositive value(s).")
 
         size = self.para[0]+1 ## lmax+1
-        ## drop imaginary part
-        spec = np.real(spec)
-
         ## extend
         if(np.size(spec)==1):
             spec = spec*np.ones(size,dtype=spec.dtype,order='C')
@@ -4303,10 +4316,16 @@ class gl_space(space):
         """
         if(isinstance(spec,field)):
             spec = spec.val.astype(self.datatype)
+        elif(callable(spec)):
+            try:
+                spec = np.array(spec(np.arange(self.para[0],dtype=np.int)),dtype=self.datatype)
+            except:
+                TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
             spec = np.array([spec],dtype=self.datatype)
         else:
             spec = np.array(spec,dtype=self.datatype)
+
         ## check finiteness
         if(not np.all(np.isfinite(spec))):
             about.warnings.cprint("WARNING: infinite value(s).")
@@ -4317,7 +4336,6 @@ class gl_space(space):
             about.warnings.cprint("WARNING: nonpositive value(s).")
 
         size = self.para[0] ## nlat
-
         ## extend
         if(np.size(spec)==1):
             spec = spec*np.ones(size,dtype=spec.dtype,order='C')
@@ -4930,10 +4948,16 @@ class hp_space(space):
         """
         if(isinstance(spec,field)):
             spec = spec.val.astype(self.datatype)
+        elif(callable(spec)):
+            try:
+                spec = np.array(spec(np.arange(3*self.para[0],dtype=np.int)),dtype=self.datatype)
+            except:
+                TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
             spec = np.array([spec],dtype=self.datatype)
         else:
             spec = np.array(spec,dtype=self.datatype)
+
         ## check finiteness
         if(not np.all(np.isfinite(spec))):
             about.warnings.cprint("WARNING: infinite value(s).")
@@ -4944,7 +4968,6 @@ class hp_space(space):
             about.warnings.cprint("WARNING: nonpositive value(s).")
 
         size = 3*self.para[0] ## 3*nside
-
         ## extend
         if(np.size(spec)==1):
             spec = spec*np.ones(size,dtype=spec.dtype,order='C')

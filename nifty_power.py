@@ -213,7 +213,7 @@ def smooth_power(spec,domain=None,kindex=None,mode="2s",exclude=1,sigma=-1,**kwa
             spec = spec.val.astype(kindex.dtype)
         elif(callable(spec)):
             try:
-                spec = spec(kindex)
+                spec = np.array(spec(kindex),dtype=kindex.dtype)
             except:
                 TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
@@ -640,7 +640,7 @@ def interpolate_power(spec,mode="linear",domain=None,kindex=None,newkindex=None,
             spec = spec.val.astype(kindex.dtype)
         elif(callable(spec)):
             try:
-                spec = spec(kindex)
+                spec = np.array(spec(kindex),dtype=kindex.dtype)
             except:
                 TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):

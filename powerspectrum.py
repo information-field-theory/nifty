@@ -68,7 +68,7 @@ def draw_vector_nd(axes,dgrid,ps,symtype=0,fourier=False,zerocentered=False,kpac
         kdict = np.fft.fftshift(nkdict(axes,dgrid,fourier))
         klength = nklength(kdict)
     else:
-        kdict = kpack[1][kpack[0]]
+        kdict = kpack[1][np.fft.ifftshift(kpack[0],axes=shiftaxes(zerocentered,st_to_zero_mode=False))]
         klength = kpack[1]
 
     #output is in position space
