@@ -2948,21 +2948,23 @@ class rg_space(space):
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
 
         ## check sigma
-        if(sigma<0):
-            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        elif(sigma==0):
+        if(sigma==0):
             return x
-        else:
-            ## smooth
-            naxes = (np.size(self.para)-1)//2
-            Gx = gs.smooth_field(x,self.fourier,self.para[-naxes:].astype(np.bool).tolist(),bool(self.para[naxes]==1),self.vol,smooth_length=sigma)
-            ## check complexity
-            if(not self.para[naxes]): ## purely real
-                ## check imaginary part
-                if(np.any(Gx.imag!=0))and(np.dot(Gx.imag.flatten(order='C'),Gx.imag.flatten(order='C'),out=None)>self.epsilon**2*np.dot(Gx.real.flatten(order='C'),Gx.real.flatten(order='C'),out=None)):
-                    about.warnings.cprint("WARNING: discarding considerable imaginary part.")
-                Gx = np.real(Gx)
-            return Gx
+        elif(sigma==-1):
+            about.infos.cprint("INFO: invalid sigma reset.")
+            sigma = 1.5*np.max(self.vol) ## sqrt(2)*max(dist)
+        elif(sigma<0):
+            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
+        ## smooth
+        naxes = (np.size(self.para)-1)//2
+        Gx = gs.smooth_field(x,self.fourier,self.para[-naxes:].astype(np.bool).tolist(),bool(self.para[naxes]==1),self.vol,smooth_length=sigma)
+        ## check complexity
+        if(not self.para[naxes]): ## purely real
+            ## check imaginary part
+            if(np.any(Gx.imag!=0))and(np.dot(Gx.imag.flatten(order='C'),Gx.imag.flatten(order='C'),out=None)>self.epsilon**2*np.dot(Gx.real.flatten(order='C'),Gx.real.flatten(order='C'),out=None)):
+                about.warnings.cprint("WARNING: discarding considerable imaginary part.")
+            Gx = np.real(Gx)
+        return Gx
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3931,14 +3933,16 @@ class lm_space(space):
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         ## check sigma
-        if(sigma<0):
-            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        elif(sigma==0):
+        if(sigma==0):
             return x
-        else:
-            ## smooth
-            #return gl.smoothalm(x,lmax=self.para[0],mmax=self.para[1],fwhm=0.0,sigma=sigma,overwrite=False) ## no overwrite
-            return hp.smoothalm(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,mmax=self.para[1],verbose=False,inplace=False) ## no overwrite
+        elif(sigma==-1):
+            about.infos.cprint("INFO: invalid sigma reset.")
+            sigma = 4.5/(self.para[0]+1) ## sqrt(2)*pi/(lmax+1)
+        elif(sigma<0):
+            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
+        ## smooth
+        #return gl.smoothalm(x,lmax=self.para[0],mmax=self.para[1],fwhm=0.0,sigma=sigma,overwrite=False) ## no overwrite
+        return hp.smoothalm(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,mmax=self.para[1],verbose=False,inplace=False) ## no overwrite
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -4601,13 +4605,15 @@ class gl_space(space):
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         ## check sigma
-        if(sigma<0):
-            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        elif(sigma==0):
+        if(sigma==0):
             return x
-        else:
-            ## smooth
-            return gl.smoothmap(x,nlat=self.para[0],nlon=self.para[1],lmax=self.para[0]-1,mmax=self.para[0]-1,fwhm=0.0,sigma=sigma)
+        elif(sigma==-1):
+            about.infos.cprint("INFO: invalid sigma reset.")
+            sigma = 4.5/self.para[0] ## sqrt(2)*pi/(lmax+1)
+        elif(sigma<0):
+            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
+        ## smooth
+        return gl.smoothmap(x,nlat=self.para[0],nlon=self.para[1],lmax=self.para[0]-1,mmax=self.para[0]-1,fwhm=0.0,sigma=sigma)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -5167,10 +5173,8 @@ class hp_space(space):
             ## weight if discrete
             if(self.discrete):
                 x = self.calc_weight(x,power=-0.5)
-            ## check keyword arguments
-            iterations = kwargs.get("iter",self.niter)
             ## transform
-            Tx = hp.map2alm(x.astype(np.float64),lmax=codomain.para[0],mmax=codomain.para[1],iter=iterations,pol=True,use_weights=False,regression=True,datapath=None)
+            Tx = hp.map2alm(x.astype(np.float64),lmax=codomain.para[0],mmax=codomain.para[1],iter=kwargs.get("iter",self.niter),pol=True,use_weights=False,regression=True,datapath=None)
 
         else:
             raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
@@ -5205,15 +5209,15 @@ class hp_space(space):
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         ## check sigma
-        if(sigma<0):
-            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        elif(sigma==0):
+        if(sigma==0):
             return x
-        else:
-            ## check keyword arguments
-            iterations = kwargs.get("iter",self.niter)
-            ## smooth
-            return hp.smoothing(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,iter=iterations,lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,use_weights=False,regression=True,datapath=None)
+        elif(sigma==-1):
+            about.infos.cprint("INFO: invalid sigma reset.")
+            sigma = 1.5/self.para[0] ## sqrt(2)*pi/(lmax+1)
+        elif(sigma<0):
+            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
+        ## smooth
+        return hp.smoothing(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,iter=kwargs.get("iter",self.niter),lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,use_weights=False,regression=True,datapath=None)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -5243,8 +5247,7 @@ class hp_space(space):
         if(self.discrete):
             x = self.calc_weight(x,power=-0.5)
         ## power spectrum
-        iterations = kwargs.get("iter",self.niter)
-        return hp.anafast(x,map2=None,nspec=None,lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,iter=iterations,alm=False,pol=True,use_weights=False,regression=True,datapath=None)
+        return hp.anafast(x,map2=None,nspec=None,lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,iter=kwargs.get("iter",self.niter),alm=False,pol=True,use_weights=False,regression=True,datapath=None)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -6012,9 +6015,7 @@ class nested_space(space):
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         ## check sigma
-        if(sigma<0):
-            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        elif(sigma==0):
+        if(sigma==0):
             return x
         else:
             ## reshape
