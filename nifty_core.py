@@ -630,7 +630,7 @@ class random(object):
             var : {scalar, list, ndarray, field}, *optional*
                 Variance of the normal distribution (outranks the standard
                 deviation) if ``random == "gau"`` (default: None).
-            spec : {scalar, list, ndarray, field}, *optional*
+            spec : {scalar, list, array, field, function}, *optional*
                 Power spectrum for ``random == "syn"`` (default: 1).
             size : integer, *optional*
                 Number of irreducible bands for ``random == "syn"``
@@ -1030,7 +1030,7 @@ class space(object):
 
             Parameters
             ----------
-            spec : {float, numpy.ndarray, nifty.field}
+            spec : {scalar, list, numpy.ndarray, nifty.field, function}
                 Fiducial power spectrum from which a valid power spectrum is to
                 be calculated. Scalars are interpreted as constant power
                 spectra.
@@ -1325,7 +1325,7 @@ class space(object):
             var : float, *optional*
                 Variance, overriding `dev` if both are specified
                 (default: 1).
-            spec : {float, numpy.ndarray}, *optional*
+            spec : {scalar, list, numpy.ndarray, nifty.field, function}, *optional*
                 Power spectrum (default: 1).
             pindex : numpy.ndarray, *optional*
                 Indexing array giving the power spectrum index of each band
@@ -2360,7 +2360,7 @@ class rg_space(space):
 
             Parameters
             ----------
-            spec : {float, numpy.ndarray, nifty.field}
+            spec : {float, list, numpy.ndarray, nifty.field, function}
                 Fiducial power spectrum from which a valid power spectrum is to
                 be calculated. Scalars are interpreted as constant power
                 spectra.
@@ -2649,7 +2649,7 @@ class rg_space(space):
             var : float, *optional*
                 Variance, overriding `dev` if both are specified
                 (default: 1).
-            spec : {float, numpy.ndarray}, *optional*
+            spec : {scalar, list, numpy.ndarray, nifty.field, function}, *optional*
                 Power spectrum (default: 1).
             pindex : numpy.ndarray, *optional*
                 Indexing array giving the power spectrum index of each band
@@ -2958,7 +2958,8 @@ class rg_space(space):
                 Array of field values to be smoothed.
             sigma : float, *optional*
                 Standard deviation of the Gaussian kernel, specified in units
-                of length in position space (default: 0).
+                of length in position space; for testing: a sigma of -1 will be
+                reset to a reasonable value (default: 0).
 
             Returns
             -------
@@ -3491,7 +3492,7 @@ class lm_space(space):
 
             Parameters
             ----------
-            spec : {float, numpy.ndarray, nifty.field}
+            spec : {float, list, numpy.ndarray, nifty.field, function}
                 Fiducial power spectrum from which a valid power spectrum is to
                 be calculated. Scalars are interpreted as constant power
                 spectra.
@@ -3694,7 +3695,7 @@ class lm_space(space):
             var : float, *optional*
                 Variance, overriding `dev` if both are specified
                 (default: 1).
-            spec : {float, numpy.ndarray}, *optional*
+            spec : {scalar, list, numpy.array, nifty.field, function}, *optional*
                 Power spectrum (default: 1).
             vmin : float, *optional*
                 Lower limit for a uniform distribution (default: 0).
@@ -3950,7 +3951,8 @@ class lm_space(space):
                 Array of field values to be smoothed.
             sigma : float, *optional*
                 Standard deviation of the Gaussian kernel, specified in units
-                of length in position space (default: 0).
+                of length in position space; for testing: a sigma of -1 will be
+                reset to a reasonable value (default: 0).
 
             Returns
             -------
@@ -4317,7 +4319,7 @@ class gl_space(space):
 
             Parameters
             ----------
-            spec : {float, numpy.ndarray, nifty.field}
+            spec : {float, list, numpy.ndarray, nifty.field, function}
                 Fiducial power spectrum from which a valid power spectrum is to
                 be calculated. Scalars are interpreted as constant power
                 spectra.
@@ -4415,7 +4417,7 @@ class gl_space(space):
             var : float, *optional*
                 Variance, overriding `dev` if both are specified
                 (default: 1).
-            spec : {float, numpy.ndarray}, *optional*
+            spec : {scalar, list, numpy.array, nifty.field, function}, *optional*
                 Power spectrum (default: 1).
             codomain : nifty.lm_space, *optional*
                 A compatible codomain for power indexing (default: None).
@@ -4627,7 +4629,8 @@ class gl_space(space):
                 Array of field values to be smoothed.
             sigma : float, *optional*
                 Standard deviation of the Gaussian kernel, specified in units
-                of length in position space (default: 0).
+                of length in position space; for testing: a sigma of -1 will be
+                reset to a reasonable value (default: 0).
 
             Returns
             -------
@@ -4949,7 +4952,7 @@ class hp_space(space):
 
             Parameters
             ----------
-            spec : {float, numpy.ndarray, nifty.field}
+            spec : {float, list, numpy.ndarray, nifty.field, function}
                 Fiducial power spectrum from which a valid power spectrum is to
                 be calculated. Scalars are interpreted as constant power
                 spectra.
@@ -5047,7 +5050,7 @@ class hp_space(space):
             var : float, *optional*
                 Variance, overriding `dev` if both are specified
                 (default: 1).
-            spec : {float, numpy.ndarray}, *optional*
+            spec : {scalar, list, numpy.array, nifty.field, function}, *optional*
                 Power spectrum (default: 1).
             codomain : nifty.lm_space, *optional*
                 A compatible codomain for power indexing (default: None).
@@ -5230,7 +5233,8 @@ class hp_space(space):
                 Array of field values to be smoothed.
             sigma : float, *optional*
                 Standard deviation of the Gaussian kernel, specified in units
-                of length in position space (default: 0).
+                of length in position space; for testing: a sigma of -1 will be
+                reset to a reasonable value (default: 0).
 
             Returns
             -------
@@ -6036,7 +6040,8 @@ class nested_space(space):
                 Array of field values to be smoothed.
             sigma : float, *optional*
                 Standard deviation of the Gaussian kernel, specified in units
-                of length in position space of the innermost subspace
+                of length in position space of the innermost subspace; for
+                testing: a sigma of -1 will be reset to a reasonable value
                 (default: 0).
 
             Returns
@@ -6132,7 +6137,7 @@ class field(object):
             Sets the variance of the Gaussian distribution, outranking the dev
             parameter (default=1).
 
-        spec : {scalar, ndarray}
+        spec : {scalar, list, array, field, function}
             Specifies a power spectrum from which the field values should be
             synthesized (default=1). Can be given as a constant, or as an
             array with indvidual entries per mode.
@@ -9057,14 +9062,14 @@ class power_operator(diagonal_operator):
             The space wherein valid arguments live. If no domain is given
             then the diag parameter *must* be a field and the domain
             of that field is assumed. (default: None)
-        spec : {scalar, ndarray, field}
+        spec : {scalar, list, array, field, function}
             The power spectrum. For a scalar, a constant power
             spectrum is defined having the value provided. If no domain
             is given, diag must be a field. (default: 1)
         bare : bool, *optional*
             whether the entries are `bare` or not
             (mandatory for the correct incorporation of volume weights)
-            (default: False)
+            (default: True)
         pindex : ndarray, *optional*
             indexing array, obtainable from domain.get_power_indices
             (default: None)
@@ -9126,14 +9131,14 @@ class power_operator(diagonal_operator):
                 The space wherein valid arguments live. If no domain is given
                 then the diag parameter *must* be a field and the domain
                 of that field is assumed. (default: None)
-            spec : {scalar, ndarray, field}
+            spec : {scalar, list, array, field, function}
                 The power spectrum. For a scalar, a constant power
                 spectrum is defined having the value provided. If no domain
                 is given, diag must be a field. (default: 1)
             bare : bool, *optional*
                 whether the entries are `bare` or not
                 (mandatory for the correct incorporation of volume weights)
-                (default: False)
+                (default: True)
             pindex : ndarray, *optional*
                 indexing array, obtainable from domain.get_power_indices
                 (default: None)
@@ -9207,14 +9212,13 @@ class power_operator(diagonal_operator):
 
             Parameters
             ----------
-            newspec : {scalar, ndarray, field}
+            newspec : {scalar, list, array, field, function}
                 The entries of the operator. For a scalar, a constant
                 diagonal is defined having the value provided. If no domain
                 is given, diag must be a field. (default: 1)
-            bare : bool, *optional*
+            bare : bool
                 whether the entries are `bare` or not
                 (mandatory for the correct incorporation of volume weights)
-                (default: False)
             pindex : ndarray, *optional*
                 indexing array, obtainable from domain.get_power_indices
                 (default: None)
@@ -9286,7 +9290,7 @@ class power_operator(diagonal_operator):
             bare : bool, *optional*
                 whether the entries are `bare` or not
                 (mandatory for the correct incorporation of volume weights)
-                (default: False)
+                (default: True)
             pundex : ndarray, *optional*
                 unindexing array, obtainable from domain.get_power_indices
                 (default: None)

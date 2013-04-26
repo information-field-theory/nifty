@@ -58,7 +58,7 @@ def weight_power(domain,spec,power=1,pindex=None,pundex=None,**kwargs):
         ----------
         domain : space
             The space wherein valid arguments live.
-        spec : {scalar, ndarray, field}
+        spec : {scalar, list, array, field, function}
             The power spectrum. A scalars is interpreted as a constant
             spectrum.
         pindex : ndarray, *optional*
@@ -140,7 +140,7 @@ def smooth_power(spec,domain=None,kindex=None,mode="2s",exclude=1,sigma=-1,**kwa
 
         Parameters
         ----------
-        spec : ndarray
+        spec : {scalar, list, array, field, function}
             The power spectrum to be smoothed.
         domain : space, *optional*
             The space wherein the power spectrum is defined (default: None).
@@ -554,7 +554,7 @@ def interpolate_power(spec,mode="linear",domain=None,kindex=None,newkindex=None,
 
         Parameters
         ----------
-        spec : {scalar, array}
+        spec : {scalar, list, array, field, function}
             The power spectrum. A scalars is interpreted as a constant
             spectrum.
         mode : string
