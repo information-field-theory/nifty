@@ -700,27 +700,39 @@ class random(object):
             return [key,mean,dev,var]
 
         elif(key=="syn"):
-            size = kwargs.get("size",None)
-            kpack = None
             ## explicit power indices
             if("pindex" in kwargs)and("kindex" in kwargs):
-                kpack = [kwargs.get("pindex"),kwargs.get("kindex")]
-                size = len(kpack[1])
-            else:
+                kindex = kwargs.get("kindex")
+                if(kindex is None):
+                    spec = domain.enforce_power(kwargs.get("spec",1),size=kwargs.get("size",None))
+                    kpack = None
+                else:
+                    spec = domain.enforce_power(kwargs.get("spec",1),size=len(kindex),kindex=kindex)
+                    pindex = kwargs.get("pindex",None)
+                    if(pindex is None):
+                        kpack = None
+                    else:
+                        kpack = [pindex,kindex]
             ## implicit power indices
+            else:
                 try:
                     domain.set_power_indices(**kwargs)
                 except:
-                    if("codomain" in kwargs):
-                        codomain = kwargs.get("codomain")
+                    codomain = kwargs.get("codomain",None)
+                    if(codomain is None):
+                        spec = domain.enforce_power(kwargs.get("spec",1),size=kwargs.get("size",None))
+                        kpack = None
+                    else:
                         domain.check_codomain(codomain)
                         codomain.set_power_indices(**kwargs)
-                        kpack = [codomain.power_indices.get("pindex"),codomain.power_indices.get("kindex")]
-                        size = len(kpack[1])
+                        kindex = codomain.power_indices.get("kindex")
+                        spec = domain.enforce_power(kwargs.get("spec",1),size=len(kindex),kindex=kindex,codomain=codomain)
+                        kpack = [codomain.power_indices.get("pindex"),kindex]
                 else:
-                    kpack = [domain.power_indixes.get("pindex"),domain.power_indixes.get("kindex")]
-                    size = len(kpack[1])
-            return [key,domain.enforce_power(kwargs.get("spec",1),size=size),kpack]
+                    kindex = domain.power_indixes.get("kindex")
+                    spec = domain.enforce_power(kwargs.get("spec",1),size=len(kindex),kindex=kindex)
+                    kpack = [domain.power_indixes.get("pindex"),kindex]
+            return [key,spec,kpack]
 
         elif(key=="uni"):
             if("vmin" in kwargs):
@@ -2386,21 +2398,21 @@ class rg_space(space):
 
         if(size is None)or(callable(spec)):
             ## explicit kindex
-            if("kindex" in kwargs):
-                kindex = kwargs.get("kindex")
-            ## quick kindex
-            elif(self.fourier)and(not hasattr(self,"power_indices"))and(len(kwargs)==0):
-                kindex = gp.nklength(gp.nkdict(self.para[:(np.size(self.para)-1)//2],self.vol,fourier=True))
-            ## implicit kindex
-            else:
-                try:
-                    self.set_power_indices(**kwargs)
-                except:
-                    codomain = kwargs.get("codomain",self.get_codomain())
-                    codomain.set_power_indices(**kwargs)
-                    kindex = codomain.power_indices.get("kindex")
+            kindex = kwargs.get("kindex",None)
+            if(kindex is None):
+                ## quick kindex
+                if(self.fourier)and(not hasattr(self,"power_indices"))and(len(kwargs)==0):
+                    kindex = gp.nklength(gp.nkdict(self.para[:(np.size(self.para)-1)//2],self.vol,fourier=True))
+                ## implicit kindex
                 else:
-                    kindex = self.power_indices.get("kindex")
+                    try:
+                        self.set_power_indices(**kwargs)
+                    except:
+                        codomain = kwargs.get("codomain",self.get_codomain())
+                        codomain.set_power_indices(**kwargs)
+                        kindex = codomain.power_indices.get("kindex")
+                    else:
+                        kindex = self.power_indices.get("kindex")
             size = len(kindex)
 
         if(isinstance(spec,field)):
@@ -2954,17 +2966,20 @@ class rg_space(space):
                 Smoothed array.
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
+        naxes = (np.size(self.para)-1)//2
 
         ## check sigma
         if(sigma==0):
             return x
         elif(sigma==-1):
             about.infos.cprint("INFO: invalid sigma reset.")
-            sigma = 1.5*np.max(self.vol) ## sqrt(2)*max(dist)
+            if(self.fourier):
+                sigma = 1.5/np.min(self.para[:naxes]*self.vol) ## sqrt(2)*max(dist)
+            else:
+                sigma = 1.5*np.max(self.vol) ## sqrt(2)*max(dist)
         elif(sigma<0):
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         ## smooth
-        naxes = (np.size(self.para)-1)//2
         Gx = gs.smooth_field(x,self.fourier,self.para[-naxes:].astype(np.bool).tolist(),bool(self.para[naxes]==1),self.vol,smooth_length=sigma)
         ## check complexity
         if(not self.para[naxes]): ## purely real
@@ -3025,10 +3040,9 @@ class rg_space(space):
         if(not self.fourier):
             x = self.calc_weight(x,power=1)
         ## explicit power indices
-        if("pindex" in kwargs)and("kindex" in kwargs)and("rho" in kwargs):
-            pindex,kindex,rho = kwargs.get("pindex"),kwargs.get("kindex"),kwargs.get("rho")
-        else:
+        pindex,kindex,rho = kwargs.get("pindex",None),kwargs.get("kindex",None),kwargs.get("rho",None)
         ## implicit power indices
+        if(pindex is None)or(kindex is None)or(rho is None):
             try:
                 self.set_power_indices(**kwargs)
             except:
@@ -3121,10 +3135,9 @@ class rg_space(space):
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
             ## explicit kindex
-            if("kindex" in kwargs):
-                xaxes = kwargs.get("kindex")
+            xaxes = kwargs.get("kindex",None)
             ## implicit kindex
-            else:
+            if(xaxes is None):
                 try:
                     self.set_power_indices(**kwargs)
                 except:
@@ -3151,11 +3164,11 @@ class rg_space(space):
                         if(isinstance(other[ii],field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
-                            other[ii] = self.enforce_power(other[ii],size=np.size(xaxes))
+                            other[ii] = self.enforce_power(other[ii],size=np.size(xaxes),kindex=xaxes)
                 elif(isinstance(other,field)):
                     other = [other.power(**kwargs)]
                 else:
-                    other = [self.enforce_power(other,size=np.size(xaxes))]
+                    other = [self.enforce_power(other,size=np.size(xaxes),kindex=xaxes)]
                 imax = max(1,len(other)-1)
                 for ii in range(len(other)):
                     ax0.loglog(xaxes[1:],(xaxes**norm*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
