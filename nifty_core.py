@@ -483,7 +483,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.3.1"
+        self._version = "0.3.9" ## FIXME: release veriosn 0.4.0 << REFERENCE + README
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -1071,7 +1071,7 @@ class space(object):
 
     def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
-            Provides the indexing array of the power spectrum.
+            **DEPRECATED** Provides the indexing array of the power spectrum.
 
             Provides either an array giving for each component of a field the
             corresponding index of a power spectrum (if ``irreducible==False``)
@@ -1105,9 +1105,9 @@ class space(object):
         about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_power_index'."))
 
-    def get_power_undex(self,pindex=None):
+    def get_power_undex(self,pindex=None): ## TODO: remove in future version
         """
-            Provides the unindexing list for an indexed power spectrum.
+            **DEPRECATED** Provides the unindexing list for an indexed power spectrum.
 
             Parameters
             ----------
@@ -1948,8 +1948,8 @@ class point_space(space):
 
     def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
-            Raises an error since the power spectrum is ill-defined for point
-            spaces.
+            **DEPRECATED** Raises an error since the power spectrum is
+            ill-defined for point spaces.
         """
         about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
         raise AttributeError(about._errors.cstring("ERROR: power spectra ill-defined for (unstructured) point spaces."))
@@ -2454,7 +2454,7 @@ class rg_space(space):
 
     def get_power_index(self,irreducible=False):  ## TODO: remove in future version
         """
-            Provides the indexing array of the power spectrum.
+            **DEPRECATED** Provides the indexing array of the power spectrum.
 
             Provides either an array giving for each component of a field the
             corresponding index of a power spectrum (if ``irreducible==False``)
@@ -3542,7 +3542,7 @@ class lm_space(space):
 
     def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
-            Provides the indexing array of the power spectrum.
+            **DEPRECATED** Provides the indexing array of the power spectrum.
 
             Provides either an array giving for each component of a field the
             corresponding index of a power spectrum (if ``irreducible==False``)
@@ -4367,7 +4367,7 @@ class gl_space(space):
 
     def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
-            Raises an error since the power spectrum for a field on the sphere
+            **DEPRECATED** Raises an error since the power spectrum for a field on the sphere
             is defined via the spherical harmonics components and not its
             position-space representation.
         """
@@ -5000,7 +5000,7 @@ class hp_space(space):
 
     def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
-            Raises an error since the power spectrum for a field on the sphere
+            **DEPRECATED** Raises an error since the power spectrum for a field on the sphere
             is defined via the spherical harmonics components and not its
             position-space representation.
         """
@@ -5528,8 +5528,8 @@ class nested_space(space):
 
     def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
-            Raises an error since there is no canonical definition for the
-            power spectrum on a generic product space.
+            **DEPRECATED** Raises an error since there is no canonical
+            definition for the power spectrum on a generic product space.
         """
         about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
         raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))

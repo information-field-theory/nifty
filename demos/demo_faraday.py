@@ -91,8 +91,7 @@ def run(projection=False, power=False):
     m1 = m0.transform(l)
     if(projection):
         ## define projection operator
-        powerindex = l.get_power_index()
-        Sk = projection_operator(l, assign=powerindex)
+        Sk = projection_operator(l)
         ## project quadrupole
         m2 = Sk(m0, band=2)
 
@@ -116,7 +115,7 @@ def run(projection=False, power=False):
     m3.plot(title=r"$m$ on a spherical Gauss-Legendre grid", vmin=-4, vmax=4, cmap=ncmap.fm())
     m4.plot(title=r"$m$ on a regular 2D grid", vmin=-4, vmax=4, cmap=ncmap.fm())
     if(power):
-        m5.plot(title=r"(restricted) Fourier power spectrum of $m$", vmin=1E-3, vmax=1E+0, mono=False)
+        m5.plot(title=r"(restricted, binned) Fourier power spectrum of $m$", vmin=1E-3, vmax=1E+0, mono=False, log=True)
 
 ##=============================================================================
 
