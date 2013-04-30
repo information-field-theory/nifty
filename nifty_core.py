@@ -9612,7 +9612,7 @@ class projection_operator(operator):
             x : valid field
             band : int, *optional*
                 Projection band whereon to project. (default: None)
-            bandsup: list of integers, *optional*
+            bandsup: {integer, list/array of integers}, *optional*
                 List of projection bands whereon to project and which to sum
                 up. The `band` keyword is prefered over `bandsup`.
                 (default: None)
@@ -9631,8 +9631,11 @@ class projection_operator(operator):
             return Px
 
         elif(bandsup is not None):
-            bandsup = [int(bb) for bb in bandsup if -1<bb<self.bands()]
-            if(bandsup==[]):
+            if(np.isscalar(bandsup)):
+                bandsup = np.arange(int(bandsup),dtype=np.int)
+            else:
+                bandsup = np.array(bandsup,dtype=np.int)
+            if(np.any(bandsup>self.bands()-1))or(np.any(bandsup<0)):
                 raise ValueError(about._errors.cstring("ERROR: invalid input."))
             Px = field(self.domain,val=None,target=x.target)
             for bb in bandsup:
