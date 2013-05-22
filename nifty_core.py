@@ -9632,7 +9632,7 @@ class projection_operator(operator):
 
         elif(bandsup is not None):
             if(np.isscalar(bandsup)):
-                bandsup = np.arange(int(bandsup),dtype=np.int)
+                bandsup = np.arange(int(bandsup+1),dtype=np.int)
             else:
                 bandsup = np.array(bandsup,dtype=np.int)
             if(np.any(bandsup>self.bands()-1))or(np.any(bandsup<0)):
