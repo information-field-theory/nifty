@@ -2395,7 +2395,6 @@ class rg_space(space):
                 (default: 0).
 
         """
-
         if(size is None)or(callable(spec)):
             ## explicit kindex
             kindex = kwargs.get("kindex",None)
@@ -6635,8 +6634,6 @@ class field(object):
             rho : scalar
                 Number of degrees of freedom per irreducible band
                 (default=None).
-            codomain : nifty.space, *optional*
-                A compatible codomain for power indexing (default: None).
             log : bool, *optional*
                 Flag specifying if the spectral binning is performed on logarithmic
                 scale or not; if set, the number of used bins is set
@@ -6661,6 +6658,8 @@ class field(object):
                 Returns the power spectrum.
 
         """
+        if("codomain" in kwargs):
+            kwargs.__delitem__("codomain")
         return self.domain.calc_power(self.val,codomain=self.target,**kwargs)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -6756,6 +6755,8 @@ class field(object):
         if(not interactive):
             pl.ion()
 
+        if("codomain" in kwargs):
+            kwargs.__delitem__("codomain")
         self.domain.get_plot(self.val,codomain=self.target,**kwargs)
 
         if(not interactive):
