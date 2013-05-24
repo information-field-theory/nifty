@@ -1650,6 +1650,9 @@ class space(object):
                 Whether to show the legend or not (default: False).
             mono : bool, *optional*
                 Whether to plot the monopole or not (default: True).
+            save : string, *optional*
+                Valid file name where the figure is to be stored, by default
+                the figure is not saved (default: False).
             error : {float, numpy.ndarray, nifty.field}, *optional*
                 Object indicating some confidence interval to be plotted
                 (default: None).
@@ -2063,8 +2066,12 @@ class point_space(space):
                 scalars, arrays, or fields (default: None).
             legend : bool, *optional*
                 Whether to show the legend or not (default: False).
+            save : string, *optional*
+                Valid file name where the figure is to be stored, by default
+                the figure is not saved (default: False).
+
         """
-        if(not pl.isinteractive()):
+        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
@@ -2118,6 +2125,9 @@ class point_space(space):
         ax0.set_ylabel("values"+unit)
         ax0.set_title(title)
 
+        if(bool(kwargs.get("save",False))):
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            pl.close(fig)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3096,6 +3106,9 @@ class rg_space(space):
                 Whether to show the legend or not (default: False).
             mono : bool, *optional*
                 Whether to plot the monopole or not (default: True).
+            save : string, *optional*
+                Valid file name where the figure is to be stored, by default
+                the figure is not saved (default: False).
             error : {float, numpy.ndarray, nifty.field}, *optional*
                 Object indicating some confidence interval to be plotted
                 (default: None).
@@ -3121,7 +3134,7 @@ class rg_space(space):
                 (default: 0).
 
         """
-        if(not pl.isinteractive()):
+        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
         naxes = (np.size(self.para)-1)//2
@@ -3289,6 +3302,10 @@ class rg_space(space):
 
             else:
                 raise ValueError(about._errors.cstring("ERROR: unsupported number of axes ( "+str(naxes)+" > 2 )."))
+
+        if(bool(kwargs.get("save",False))):
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            pl.close(fig)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -4038,8 +4055,12 @@ class lm_space(space):
                 Whether to show the legend or not (default: False).
             mono : bool, *optional*
                 Whether to plot the monopole or not (default: True).
+            save : string, *optional*
+                Valid file name where the figure is to be stored, by default
+                the figure is not saved (default: False).
+
         """
-        if(not pl.isinteractive()):
+        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
         if(power):
@@ -4137,6 +4158,10 @@ class lm_space(space):
                         v_ = None
                     fig.colorbar(sub,ax=ax0,orientation="horizontal",fraction=0.1,pad=0.05,shrink=0.75,aspect=20,ticks=[vmin,vmax],format=f_,drawedges=False,boundaries=b_,values=v_)
                 ax0.set_title(title)
+
+        if(bool(kwargs.get("save",False))):
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            pl.close(fig)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -4717,8 +4742,12 @@ class gl_space(space):
                 Whether to show the legend or not (default: False).
             mono : bool, *optional*
                 Whether to plot the monopole or not (default: True).
+            save : string, *optional*
+                Valid file name where the figure is to be stored, by default
+                the figure is not saved (default: False).
+
         """
-        if(not pl.isinteractive()):
+        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
         if(power):
@@ -4798,6 +4827,10 @@ class gl_space(space):
                 cb0 = fig.colorbar(sub,ax=ax0,orientation="horizontal",fraction=0.1,pad=0.05,shrink=0.5,aspect=25,ticks=[vmin,vmax],format=f_,drawedges=False,boundaries=b_,values=v_)
                 cb0.ax.text(0.5,-1.0,unit,fontdict=None,withdash=False,transform=cb0.ax.transAxes,horizontalalignment="center",verticalalignment="center")
             ax0.set_title(title)
+
+        if(bool(kwargs.get("save",False))):
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            pl.close(fig)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -5330,11 +5363,14 @@ class hp_space(space):
                 Whether to show the legend or not (default: False).
             mono : bool, *optional*
                 Whether to plot the monopole or not (default: True).
+            save : string, *optional*
+                Valid file name where the figure is to be stored, by default
+                the figure is not saved (default: False).
             iter : int, *optional*
                 Number of iterations performed in the HEALPix basis
                 transformation.
         """
-        if(not pl.isinteractive()):
+        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
         if(power):
@@ -5386,6 +5422,10 @@ class hp_space(space):
                 cmap = pl.cm.jet ## default
             cmap.set_under(color='k',alpha=0.0) ## transparent box
             hp.mollview(x,fig=None,rot=None,coord=None,unit=unit,xsize=800,title=title,nest=False,min=vmin,max=vmax,flip="astro",remove_dip=False,remove_mono=False,gal_cut=0,format="%g",format2="%g",cbar=cbar,cmap=cmap,notext=False,norm=norm,hold=False,margins=None,sub=None)
+
+        if(bool(kwargs.get("save",False))):
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            pl.close(fig)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -6715,14 +6755,17 @@ class field(object):
                 A color map (default=None).
             cbar : bool
                 Whether to show the color bar or not (default=True).
-            other : {scalar, ndarray, fiels}
+            other : {scalar, ndarray, field}
                 Object or tuple of objects to be added (default=None).
             legend : bool
                 Whether to show the legend or not (default=False).
             mono : bool
                 Whether to plot the monopol of the power spectrum or not
                 (default=True).
-            error : {scalar, ndarray, fiels}
+            save : string, *optional*
+                Valid file name where the figure is to be stored, by default
+                the figure is not saved (default: False).
+            error : {scalar, ndarray, field}
                 object indicating some confidence intervall (default=None).
             iter : scalar
                 Number of iterations (default: 0).
@@ -6752,15 +6795,13 @@ class field(object):
 
         """
         interactive = pl.isinteractive()
-        if(not interactive):
-            pl.ion()
+        pl.matplotlib.interactive(not bool(kwargs.get("save",False)))
 
         if("codomain" in kwargs):
             kwargs.__delitem__("codomain")
         self.domain.get_plot(self.val,codomain=self.target,**kwargs)
 
-        if(not interactive):
-            pl.ioff()
+        pl.matplotlib.interactive(interactive)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -9544,7 +9585,7 @@ class projection_operator(operator):
         else:
             assign = self.domain.enforce_shape(assign).astype(np.int)
         assign = np.maximum(-1,assign) ## condensing all negative integers
-        ## build indexing
+        ## build indexing ## TODO: optimize
         ind = [[]]*len(set(assign.flatten(order='C')))
         if(np.size(self.domain.dim(split=True))==1):
             for ii in range(self.domain.dim(split=True)):
