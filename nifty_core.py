@@ -483,7 +483,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.3.9" ## FIXME: release veriosn 0.4.0 << REFERENCE + README
+        self._version = "0.3.97" ## FIXME: release veriosn 0.4.0 << REFERENCE + README
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -1721,19 +1721,19 @@ class space(object):
             if(not isinstance(x,type(self)))or(np.size(self.para)!=np.size(x.para))or(np.size(self.vol)!=np.size(x.vol)):
                 raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
             elif(self.discrete==x.discrete): ## data types are ignored
-                for ii in range(np.size(self.para)):
+                for ii in xrange(np.size(self.para)):
                     if(self.para[ii]<x.para[ii]):
                         return True
                     elif(self.para[ii]>x.para[ii]):
                         return False
-                for ii in range(np.size(self.vol)):
+                for ii in xrange(np.size(self.vol)):
                     if(self.vol[ii]<x.vol[ii]):
                         return True
                     elif(self.vol[ii]>x.vol[ii]):
                         return False
                 s_mars = self._meta_vars()
                 x_mars = x._meta_vars()
-                for ii in range(np.size(s_mars)):
+                for ii in xrange(np.size(s_mars)):
                     if(np.all(s_mars[ii]<x_mars[ii])):
                         return True
                     elif(np.any(s_mars[ii]>x_mars[ii])):
@@ -1745,19 +1745,19 @@ class space(object):
             if(not isinstance(x,type(self)))or(np.size(self.para)!=np.size(x.para))or(np.size(self.vol)!=np.size(x.vol)):
                 raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
             elif(self.discrete==x.discrete): ## data types are ignored
-                for ii in range(np.size(self.para)):
+                for ii in xrange(np.size(self.para)):
                     if(self.para[ii]<x.para[ii]):
                         return True
                     if(self.para[ii]>x.para[ii]):
                         return False
-                for ii in range(np.size(self.vol)):
+                for ii in xrange(np.size(self.vol)):
                     if(self.vol[ii]<x.vol[ii]):
                         return True
                     if(self.vol[ii]>x.vol[ii]):
                         return False
                 s_mars = self._meta_vars()
                 x_mars = x._meta_vars()
-                for ii in range(np.size(s_mars)):
+                for ii in xrange(np.size(s_mars)):
                     if(np.all(s_mars[ii]<x_mars[ii])):
                         return True
                     elif(np.any(s_mars[ii]>x_mars[ii])):
@@ -1770,19 +1770,19 @@ class space(object):
             if(not isinstance(x,type(self)))or(np.size(self.para)!=np.size(x.para))or(np.size(self.vol)!=np.size(x.vol)):
                 raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
             elif(self.discrete==x.discrete): ## data types are ignored
-                for ii in range(np.size(self.para)):
+                for ii in xrange(np.size(self.para)):
                     if(self.para[ii]>x.para[ii]):
                         return True
                     elif(self.para[ii]<x.para[ii]):
                         break
-                for ii in range(np.size(self.vol)):
+                for ii in xrange(np.size(self.vol)):
                     if(self.vol[ii]>x.vol[ii]):
                         return True
                     elif(self.vol[ii]<x.vol[ii]):
                         break
                 s_mars = self._meta_vars()
                 x_mars = x._meta_vars()
-                for ii in range(np.size(s_mars)):
+                for ii in xrange(np.size(s_mars)):
                     if(np.all(s_mars[ii]>x_mars[ii])):
                         return True
                     elif(np.any(s_mars[ii]<x_mars[ii])):
@@ -1794,19 +1794,19 @@ class space(object):
             if(not isinstance(x,type(self)))or(np.size(self.para)!=np.size(x.para))or(np.size(self.vol)!=np.size(x.vol)):
                 raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
             elif(self.discrete==x.discrete): ## data types are ignored
-                for ii in range(np.size(self.para)):
+                for ii in xrange(np.size(self.para)):
                     if(self.para[ii]>x.para[ii]):
                         return True
                     if(self.para[ii]<x.para[ii]):
                         return False
-                for ii in range(np.size(self.vol)):
+                for ii in xrange(np.size(self.vol)):
                     if(self.vol[ii]>x.vol[ii]):
                         return True
                     if(self.vol[ii]<x.vol[ii]):
                         return False
                 s_mars = self._meta_vars()
                 x_mars = x._meta_vars()
-                for ii in range(np.size(s_mars)):
+                for ii in xrange(np.size(s_mars)):
                     if(np.all(s_mars[ii]>x_mars[ii])):
                         return True
                     elif(np.any(s_mars[ii]<x_mars[ii])):
@@ -2107,7 +2107,7 @@ class point_space(space):
             else:
                 other = [self.enforce_values(other,extend=True)]
             imax = max(1,len(other)-1)
-            for ii in range(len(other)):
+            for ii in xrange(len(other)):
                 ax0.scatter(xaxes,other[ii],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,label="graph "+str(ii),linewidths=None,verts=None,zorder=-ii)
             if(legend):
                 ax0.legend()
@@ -3173,7 +3173,7 @@ class rg_space(space):
             if(other is not None):
                 if(isinstance(other,tuple)):
                     other = list(other)
-                    for ii in range(len(other)):
+                    for ii in xrange(len(other)):
                         if(isinstance(other[ii],field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
@@ -3183,7 +3183,7 @@ class rg_space(space):
                 else:
                     other = [self.enforce_power(other,size=np.size(xaxes),kindex=xaxes)]
                 imax = max(1,len(other)-1)
-                for ii in range(len(other)):
+                for ii in xrange(len(other)):
                     ax0.loglog(xaxes[1:],(xaxes**norm*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
                     if(mono):
                         ax0.scatter(0.5*(xaxes[1]+xaxes[2]),other[ii][0],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=-ii)
@@ -3234,7 +3234,7 @@ class rg_space(space):
                     else:
                         other = [self.enforce_values(other,extend=True)]
                     imax = max(1,len(other)-1)
-                    for ii in range(len(other)):
+                    for ii in xrange(len(other)):
                         ax0graph(xaxes,other[ii],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
                     if("error" in kwargs):
                         error = self.enforce_values(np.absolute(kwargs.get("error")),extend=True)
@@ -4081,7 +4081,7 @@ class lm_space(space):
             if(other is not None):
                 if(isinstance(other,tuple)):
                     other = list(other)
-                    for ii in range(len(other)):
+                    for ii in xrange(len(other)):
                         if(isinstance(other[ii],field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
@@ -4091,7 +4091,7 @@ class lm_space(space):
                 else:
                     other = [self.enforce_power(other)]
                 imax = max(1,len(other)-1)
-                for ii in range(len(other)):
+                for ii in xrange(len(other)):
                     ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
                     if(mono):
                         ax0.scatter(0.5*(xaxes[1]+xaxes[2]),other[ii][0],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=-ii)
@@ -4124,7 +4124,7 @@ class lm_space(space):
                 xmesh[4,1] = None
                 xmesh[1,4] = None
                 lm = 0
-                for mm in range(self.para[1]+1):
+                for mm in xrange(self.para[1]+1):
                     xmesh[mm][mm:] = x[lm:lm+self.para[0]+1-mm]
                     lm += self.para[0]+1-mm
 
@@ -4768,7 +4768,7 @@ class gl_space(space):
             if(other is not None):
                 if(isinstance(other,tuple)):
                     other = list(other)
-                    for ii in range(len(other)):
+                    for ii in xrange(len(other)):
                         if(isinstance(other[ii],field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
@@ -4778,7 +4778,7 @@ class gl_space(space):
                 else:
                     other = [self.enforce_power(other)]
                 imax = max(1,len(other)-1)
-                for ii in range(len(other)):
+                for ii in xrange(len(other)):
                     ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
                     if(mono):
                         ax0.scatter(0.5*(xaxes[1]+xaxes[2]),other[ii][0],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=-ii)
@@ -5391,7 +5391,7 @@ class hp_space(space):
             if(other is not None):
                 if(isinstance(other,tuple)):
                     other = list(other)
-                    for ii in range(len(other)):
+                    for ii in xrange(len(other)):
                         if(isinstance(other[ii],field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
@@ -5401,7 +5401,7 @@ class hp_space(space):
                 else:
                     other = [self.enforce_power(other)]
                 imax = max(1,len(other)-1)
-                for ii in range(len(other)):
+                for ii in xrange(len(other)):
                     ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
                     if(mono):
                         ax0.scatter(0.5*(xaxes[1]+xaxes[2]),other[ii][0],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=-ii)
@@ -5489,7 +5489,7 @@ class nested_space(space):
         if(not isinstance(nest,list)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         ## check nest
-        purenest = list([])
+        purenest = []
         para = np.array([],dtype=np.int)
         for nn in nest:
             if(not isinstance(nn,space)):
@@ -5807,8 +5807,8 @@ class nested_space(space):
                 ## check permutability
                 unpaired = range(len(self.nest))
                 ambiguous = False
-                for ii in range(len(self.nest)):
-                    for jj in range(len(self.nest)):
+                for ii in xrange(len(self.nest)):
+                    for jj in xrange(len(self.nest)):
                         if(codomain.nest[ii]==self.nest[jj]):
                             if(jj in unpaired):
                                 unpaired.remove(jj)
@@ -6023,8 +6023,8 @@ class nested_space(space):
                 ## check coorder
                 if(coorder is None):
                     coorder = -np.ones(len(self.nest),dtype=np.int,order='C')
-                    for ii in range(len(self.nest)):
-                        for jj in range(len(self.nest)):
+                    for ii in xrange(len(self.nest)):
+                        for jj in xrange(len(self.nest)):
                             if(codomain.nest[ii]==self.nest[jj]):
                                 if(ii not in coorder):
                                     coorder[jj] = ii
@@ -6035,20 +6035,20 @@ class nested_space(space):
                     coorder = np.array(coorder,dtype=np.int).reshape(len(self.nest),order='C')
                     if(np.any(np.sort(coorder,axis=0,kind="quicksort",order=None)!=np.arange(len(self.nest)))):
                         raise ValueError(about._errors.cstring("ERROR: invalid input."))
-                    for ii in range(len(self.nest)):
+                    for ii in xrange(len(self.nest)):
                         if(codomain.nest[coorder[ii]]!=self.nest[ii]):
                             raise ValueError(about._errors.cstring("ERROR: invalid input."))
                 ## compute axes permutation
                 lim = np.zeros((len(self.nest),2),dtype=np.int)
-                for ii in range(len(self.nest)):
+                for ii in xrange(len(self.nest)):
                     lim[ii] = np.array([lim[ii-1][1],lim[ii-1][1]+np.size(self.nest[coorder[ii]].dim(split=True))])
                 lim = lim[coorder]
                 reorder = []
-                for ii in range(len(self.nest)):
+                for ii in xrange(len(self.nest)):
                     reorder += range(lim[ii][0],lim[ii][1])
                 ## permute
                 Tx = np.copy(x)
-                for ii in range(len(reorder)):
+                for ii in xrange(len(reorder)):
                     while(reorder[ii]!=ii):
                         Tx = np.swapaxes(Tx,ii,reorder[ii])
                         ii_ = reorder[reorder[ii]]
@@ -9579,28 +9579,13 @@ class projection_operator(operator):
             try:
                 self.domain.set_power_indices(**kwargs)
             except:
-                assign = np.arange(self.domain.dim(split=False),dtype=np.int).reshape(self.domain.dim(split=True),order='C')
+                assign = np.arange(self.domain.dim(split=False),dtype=np.int)
             else:
-                assign = self.domain.power_indices.get("pindex")
+                assign = self.domain.power_indices.get("pindex").flatten(order='C')
         else:
-            assign = self.domain.enforce_shape(assign).astype(np.int)
-        assign = np.maximum(-1,assign) ## condensing all negative integers
-        ## build indexing ## TODO: optimize
-        ind = [[]]*len(set(assign.flatten(order='C')))
-        if(np.size(self.domain.dim(split=True))==1):
-            for ii in range(self.domain.dim(split=True)):
-                if(assign[ii]!=-1):
-                    ind[assign[ii]] = ind[assign[ii]]+[ii] ## adding index
-        else:
-            for ii in np.ndindex(tuple(self.domain.dim(split=True))):
-                if(assign[ii]!=-1):
-                    ind[assign[ii]] = ind[assign[ii]]+[ii] ## adding index
-        self.ind = []
-        for ii in ind:
-            if(len(ii)>0):
-                self.ind = self.ind+[np.array(ii,dtype=np.int).T]
-            else:
-                about.warnings.cprint("WARNING: empty projection band removed.")
+            assign = self.domain.enforce_shape(assign).astype(np.int).flatten(order='C')
+        ## build indexing
+        self.ind = [np.where(assign==ii)[0] for ii in xrange(np.max(assign,axis=None,out=None)+1) if ii in assign]
 
         self.sym = True
 #        about.infos.cprint("INFO: pseudo unitary projection operator.")
@@ -9635,12 +9620,12 @@ class projection_operator(operator):
         """
         rho = np.empty(len(self.ind),dtype=np.int,order='C')
         if(self.domain.dim(split=False)==self.domain.dof()): ## no hidden degrees of freedom
-            for ii in range(len(self.ind)):
-                rho[ii] = np.size(self.ind[ii].T,axis=0)
+            for ii in xrange(len(self.ind)):
+                rho[ii] = len(self.ind[ii])
         else: ## hidden degrees of freedom
-            mof = np.round(np.real(self.domain.calc_weight(self.domain.get_meta_volume(total=False),power=-1)),decimals=0,out=None).astype(np.int) ## meta degrees of freedom
-            for ii in range(len(self.ind)):
-                rho[ii] = np.sum(mof[self.ind[ii].tolist()],axis=None,dtype=np.int,out=None)
+            mof = np.round(np.real(self.domain.calc_weight(self.domain.get_meta_volume(total=False),power=-1).flatten(order='C')),decimals=0,out=None).astype(np.int) ## meta degrees of freedom
+            for ii in xrange(len(self.ind)):
+                rho[ii] = np.sum(mof[self.ind[ii]],axis=None,dtype=np.int,out=None)
         return rho
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -9668,8 +9653,9 @@ class projection_operator(operator):
             band = int(band)
             if(band>self.bands()-1)or(band<0):
                 raise TypeError(about._errors.cstring("ERROR: invalid band."))
-            Px = field(self.domain,val=None,target=x.target)
-            Px[self.ind[band].tolist()] += x[self.ind[band].tolist()]
+            Px = np.zeros(self.domain.dim(split=True),dtype=self.domain.datatype,order='C').flatten(order='C')
+            Px[self.ind[band]] += x.val.flatten(order='C')[self.ind[band]]
+            Px = field(self.domain,val=Px,target=x.target)
             return Px
 
         elif(bandsup is not None):
@@ -9679,15 +9665,19 @@ class projection_operator(operator):
                 bandsup = np.array(bandsup,dtype=np.int)
             if(np.any(bandsup>self.bands()-1))or(np.any(bandsup<0)):
                 raise ValueError(about._errors.cstring("ERROR: invalid input."))
-            Px = field(self.domain,val=None,target=x.target)
+            Px = np.zeros(self.domain.dim(split=True),dtype=self.domain.datatype,order='C').flatten(order='C')
+            x_ = x.val.flatten(order='C')
             for bb in bandsup:
-                Px[self.ind[bb].tolist()] += x[self.ind[bb].tolist()]
+                Px[self.ind[bb]] += x_[self.ind[bb]]
+            Px = field(self.domain,val=Px,target=x.target)
             return Px
 
         else:
-            Px = field(self.target,val=None,target=nested_space([point_space(len(self.ind),datatype=x.target.datatype),x.target]))
-            for bb in range(self.bands()):
-                Px[bb][self.ind[bb].tolist()] += x[self.ind[bb].tolist()]
+            Px = np.zeros((len(self.ind),self.domain.dim(split=False)),dtype=self.target.datatype,order='C')
+            x_ = x.val.flatten(order='C')
+            for bb in xrange(self.bands()):
+                Px[bb][self.ind[bb]] += x_[self.ind[bb]]
+            Px = field(self.target,val=Px,target=nested_space([point_space(len(self.ind),datatype=x.target.datatype),x.target]))
             return Px
 
     def _inverse_multiply(self,x,**kwargs):
@@ -9781,13 +9771,13 @@ class projection_operator(operator):
         else:
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
-        x = np.real(x)
+        x = np.real(x.flatten(order='C'))
         if(not self.domain.dim(split=False)==self.domain.dof()):
-            x *= np.round(np.real(self.domain.calc_weight(self.domain.get_meta_volume(total=False),power=-1)),decimals=0,out=None).astype(np.int) ## meta degrees of freedom
+            x *= np.round(np.real(self.domain.calc_weight(self.domain.get_meta_volume(total=False),power=-1).flatten(order='C')),decimals=0,out=None).astype(np.int) ## meta degrees of freedom
 
         tr = np.empty(self.bands(),dtype=x.dtype,order='C')
-        for bb in range(self.bands()):
-            tr[bb] = np.sum(x[self.ind[bb].tolist()],axis=None,dtype=None,out=None)
+        for bb in xrange(self.bands()):
+            tr[bb] = np.sum(x[self.ind[bb]],axis=None,dtype=None,out=None)
         return tr
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -10067,7 +10057,7 @@ class response_operator(operator):
         ..   /   __/ /   __  / /  _____/ /   _   | /   _   | /   _   | /  _____/ /   __  /
         ..  /  /    /  /____/ /_____  / /  /_/  / /  /_/  / /  / /  / /_____  / /  /____/
         .. /__/     \______/ /_______/ /   ____/  \______/ /__/ /__/ /_______/  \______/  operator class
-                                    /__/
+        ..                            /__/
 
         NIFTY subclass for response operators (of a certain family)
 
@@ -10187,7 +10177,7 @@ class response_operator(operator):
                 assign = np.array(assign,dtype=np.int)
                 if(np.ndim(assign)!=2)or(np.size(assign,axis=1)!=np.size(self.domain.dim(split=True))):
                     raise ValueError(about._errors.cstring("ERROR: invalid input."))
-                for ii in range(np.size(assign,axis=1)):
+                for ii in xrange(np.size(assign,axis=1)):
                     if(np.any(assign[:,ii]>=self.domain.dim(split=True)[ii]))or(np.any(assign[:,ii]<-self.domain.dim(split=True)[ii])):
                         raise IndexError(about._errors.cstring("ERROR: invalid bounds."))
         self.assign = assign.T ## transpose
@@ -11298,11 +11288,11 @@ class diagonal_probing(probing):
                 return np.mean(np.array(results),axis=0,dtype=None,out=None)
         else:
             final = np.copy(np.load(self.save+"%08u.npy"%results[0],mmap_mode=None))
-            for ii in range(1,num):
+            for ii in xrange(1,num):
                 final += np.load(self.save+"%08u.npy"%results[ii],mmap_mode=None)
             if(self.var):
                 var = np.zeros(self.domain.dim(split=True),dtype=self.domain.datatype,order='C')
-                for ii in range(num):
+                for ii in xrange(num):
                     var += (final-np.load(self.save+"%08u.npy"%results[ii],mmap_mode=None))**2
                 return final/num,var/(num*(num-1))
             else:
