@@ -1133,7 +1133,8 @@ class space(object):
         about.warnings.cprint("WARNING: 'get_power_undex' is deprecated.")
         if(pindex is None):
             pindex = self.get_power_index(irreducible=False)
-        return list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
+#        return list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C')) ## < version 0.4
+        return np.unique(pindex,return_index=True,return_inverse=False)[1]
 
     def set_power_indices(self,**kwargs):
         """
@@ -2567,7 +2568,7 @@ class rg_space(space):
             if(np.any(rho==0)):
                 raise ValueError(about._errors.cstring("ERROR: empty bin(s).")) ## binning too fine
         ## power undex
-        pundex = list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
+        pundex = np.unique(pindex,return_index=True,return_inverse=False)[1]
         ## storage
         self.power_indices = {"config":config,"kindex":kindex,"pindex":pindex,"pundex":pundex,"rho":rho} ## alphabetical
         about.infos.cprint(" done.")
@@ -3620,7 +3621,7 @@ class lm_space(space):
             kindex = np.arange(self.para[0]+1,dtype=np.int)
             rho = 2*kindex+1
             pindex = hp.Alm.getlm(self.para[0],i=None)[0] ## l of (l,m)
-            pundex = list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
+            pundex = np.unique(pindex,return_index=True,return_inverse=False)[1]
             ## storage
             self.power_indices = {"kindex":kindex,"pindex":pindex,"pundex":pundex,"rho":rho} ## alphabetical
 #            about.infos.cprint(" done.")
@@ -9383,15 +9384,12 @@ class power_operator(diagonal_operator):
                 if(not np.all(np.array(np.shape(pindex))==self.domain.dim(split=True))):
                     raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(self.domain.dim(split=True))+" )."))
                 ## quick pundex
-                pundex = list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
+                pundex = np.unique(pindex,return_index=True,return_inverse=False)[1]
         ## check explicit pundex
         else:
-            if(not isinstance(pundex,list)):
-                raise TypeError(about._errors.cstring("ERROR: invalid input."))
-            elif(len(pundex)!=np.size(self.domain.dim(split=True))):
-                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(len(pundex))+" <> "+str(np.size(self.domain.dim(split=True)))+" )."))
+            pundex = np.array(pundex,dtype=np.int)
 
-        return diag[pundex]
+        return diag.flatten(order='C')[pundex]
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

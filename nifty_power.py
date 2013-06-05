@@ -111,10 +111,10 @@ def weight_power(domain,spec,power=1,pindex=None,pundex=None,**kwargs):
             pindex = domain.power_indices.get("pindex")
             if(pundex is None):
                 pundex = domain.power_indices.get("pundex")
-            elif(not isinstance(pundex,list)):
-                raise TypeError(about._errors.cstring("ERROR: invalid input."))
-            elif(len(pundex)!=np.size(domain.dim(split=True))):
-                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(len(pundex))+" <> "+str(np.size(domain.dim(split=True)))+" )."))
+            else:
+                pundex = np.array(pundex,dtype=np.int)
+                if(np.size(pundex)!=np.max(pindex,axis=None,out=None)+1):
+                    raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(pundex))+" <> "+str(np.max(pindex,axis=None,out=None)+1)+" )."))
     ## check explicit power indices
     else:
         pindex = np.array(pindex,dtype=np.int)
@@ -122,13 +122,13 @@ def weight_power(domain,spec,power=1,pindex=None,pundex=None,**kwargs):
             raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(domain.dim(split=True))+" )."))
         if(pundex is None):
             ## quick pundex
-            pundex = list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
-        elif(not isinstance(pundex,list)):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
-        elif(len(pundex)!=np.size(domain.dim(split=True))):
-            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(len(pundex))+" <> "+str(np.size(domain.dim(split=True)))+" )."))
+            pundex = np.unique(pindex,return_index=True,return_inverse=False)[1]
+        else:
+            pundex = np.array(pundex,dtype=np.int)
+            if(np.size(pundex)!=np.max(pindex,axis=None,out=None)+1):
+                raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(pundex))+" <> "+str(np.max(pindex,axis=None,out=None)+1)+" )."))
 
-    return np.real(domain.calc_weight(domain.enforce_power(spec,size=np.max(pindex,axis=None,out=None)+1)[pindex],power=power)[pundex])
+    return np.real(domain.calc_weight(domain.enforce_power(spec,size=np.max(pindex,axis=None,out=None)+1)[pindex],power=power).flatten(order='C')[pundex])
 
 ##-----------------------------------------------------------------------------
 
@@ -441,14 +441,9 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
             raise ValueError(about._errors.cstring("ERROR: invalid input."))
         else:
             pindex = domain.power_indices.get("pindex")
+            pundex = domain.power_indices.get("pundex")
             kindex = domain.power_indices.get("kindex")
             rho = domain.power_indices.get("rho")
-            if(pundex is None):
-                pundex = domain.power_indices.get("pundex")
-            elif(not isinstance(pundex,list)):
-                raise TypeError(about._errors.cstring("ERROR: invalid input."))
-            elif(len(pundex)!=np.size(domain.dim(split=True))):
-                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(len(pundex))+" <> "+str(np.size(domain.dim(split=True)))+" )."))
     ## check explicit power indices
     else:
         pindex = np.array(pindex,dtype=np.int)
@@ -458,11 +453,9 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
         rho = np.array(rho,dtype=np.int)
         if(pundex is None):
             ## quick pundex
-            pundex = list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
-        elif(not isinstance(pundex,list)):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
-        elif(len(pundex)!=np.size(domain.dim(split=True))):
-            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(len(pundex))+" <> "+str(np.size(domain.dim(split=True)))+" )."))
+            pundex = np.unique(pindex,return_index=True,return_inverse=False)[1]
+        else:
+            pundex = np.array(pundex,dtype=np.int)
     ## check projection operator
     if(Sk is None):
         Sk = projection_operator(domain,assign=pindex)
