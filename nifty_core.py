@@ -107,24 +107,28 @@
     References
     ----------
     .. [#] Selig et al., "NIFTY -- Numerical Information Field Theory --
-        a versatile Python library for signal inference", submitted to A&A,
+        a versatile Python library for signal inference",
+        `A&A, vol. 554, id. A26 <http://dx.doi.org/10.1051/0004-6361/201321236>`_,
         2013; `arXiv:1301.4499 <http://www.arxiv.org/abs/1301.4499>`_
 
 """
+## standard libraries
 from __future__ import division
 import os
 #import sys
 from sys import stdout as so
 import numpy as np
-import gfft as gf
-import healpy as hp
-import libsharp_wrapper_gl as gl
-import smoothing as gs
-import powerspectrum as gp
 import pylab as pl
 from matplotlib.colors import LogNorm as ln
 from matplotlib.ticker import LogFormatter as lf
 from multiprocessing import Pool as mp
+## third party libraries
+import gfft as gf
+import healpy as hp
+import libsharp_wrapper_gl as gl
+## internal libraries
+import smoothing as gs
+import powerspectrum as gp
 
 
 pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679
@@ -480,7 +484,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.3.0"
+        self._version = "0.4.0"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -627,7 +631,7 @@ class random(object):
             var : {scalar, list, ndarray, field}, *optional*
                 Variance of the normal distribution (outranks the standard
                 deviation) if ``random == "gau"`` (default: None).
-            spec : {scalar, list, ndarray, field}, *optional*
+            spec : {scalar, list, array, field, function}, *optional*
                 Power spectrum for ``random == "syn"`` (default: 1).
             size : integer, *optional*
                 Number of irreducible bands for ``random == "syn"``
@@ -637,9 +641,6 @@ class random(object):
                 (default: None).
             kindex : numpy.ndarray, *optional*
                 Scale of each irreducible band (default: None).
-            vmin : {scalar, list, ndarray, field}, *optional*
-                Lower limit of the uniform distribution if ``random == "uni"``
-                (default: 0).
             vmax : {scalar, list, ndarray, field}, *optional*
                 Upper limit of the uniform distribution if ``random == "uni"``
                 (default: 1).
@@ -650,13 +651,33 @@ class random(object):
                 Ordered list of arguments (to be processed in
                 ``get_random_values`` of the domain).
 
+            Other Parameters
+            ----------------
+            codomain : nifty.space, *optional*
+                A compatible codomain for power indexing (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+
             Raises
             ------
             KeyError
                 If the `random` key is not supporrted.
 
         """
-        if(kwargs.has_key("random")):
+        if("random" in kwargs):
             key = kwargs.get("random")
         else:
             return None
@@ -665,40 +686,61 @@ class random(object):
             return [key]
 
         elif(key=="gau"):
-            if(kwargs.has_key("mean")):
+            if("mean" in kwargs):
                 mean = domain.enforce_values(kwargs.get("mean"),extend=False)
             else:
                 mean = None
-            if(kwargs.has_key("dev")):
+            if("dev" in kwargs):
                 dev = domain.enforce_values(kwargs.get("dev"),extend=False)
             else:
                 dev = None
-            if(kwargs.has_key("var")):
+            if("var" in kwargs):
                 var = domain.enforce_values(kwargs.get("var"),extend=False)
             else:
                 var = None
             return [key,mean,dev,var]
 
         elif(key=="syn"):
-            if(kwargs.has_key("spec")):
-                spec = kwargs.get("spec")
+            ## explicit power indices
+            if("pindex" in kwargs)and("kindex" in kwargs):
+                kindex = kwargs.get("kindex")
+                if(kindex is None):
+                    spec = domain.enforce_power(kwargs.get("spec",1),size=kwargs.get("size",None))
+                    kpack = None
+                else:
+                    spec = domain.enforce_power(kwargs.get("spec",1),size=len(kindex),kindex=kindex)
+                    pindex = kwargs.get("pindex",None)
+                    if(pindex is None):
+                        kpack = None
+                    else:
+                        kpack = [pindex,kindex]
+            ## implicit power indices
             else:
-                spec = 1
-            size = None
-            kpack = None
-            if(kwargs.has_key("size")):
-                size = kwargs.get("size")
-            if(kwargs.has_key("pindex"))and(kwargs.has_key("kindex")):
-                kpack = [kwargs.get("pindex"),kwargs.get("kindex")]
-                size = len(kpack[1])
-            return [key,domain.enforce_power(spec,size=size),kpack]
+                try:
+                    domain.set_power_indices(**kwargs)
+                except:
+                    codomain = kwargs.get("codomain",None)
+                    if(codomain is None):
+                        spec = domain.enforce_power(kwargs.get("spec",1),size=kwargs.get("size",None))
+                        kpack = None
+                    else:
+                        domain.check_codomain(codomain)
+                        codomain.set_power_indices(**kwargs)
+                        kindex = codomain.power_indices.get("kindex")
+                        spec = domain.enforce_power(kwargs.get("spec",1),size=len(kindex),kindex=kindex,codomain=codomain)
+                        kpack = [codomain.power_indices.get("pindex"),kindex]
+                else:
+                    kindex = domain.power_indixes.get("kindex")
+                    spec = domain.enforce_power(kwargs.get("spec",1),size=len(kindex),kindex=kindex)
+                    kpack = [domain.power_indixes.get("pindex"),kindex]
+            return [key,spec,kpack]
 
         elif(key=="uni"):
-            if(kwargs.has_key("vmin")):
+            if("vmin" in kwargs):
                 vmin = domain.enforce_values(kwargs.get("vmin"),extend=False)
             else:
                 vmin = 0
-            if(kwargs.has_key("vmax")):
+            if("vmax" in kwargs):
                 vmax = domain.enforce_values(kwargs.get("vmax"),extend=False)
             else:
                 vmax = 1
@@ -898,8 +940,9 @@ class space(object):
         .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
                High-Resolution Discretization and Fast Analysis of Data
                Distributed on the Sphere", *ApJ* 622..759G.
-        .. [#] M. Reinecke, 2011, "Libpsht - algorithms for efficient spherical
-               harmonic transforms", *A&A* 526A.108R.
+        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+               harmonic transforms revisited";
+               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
 
         Attributes
         ----------
@@ -988,7 +1031,7 @@ class space(object):
 
             Parameters
             ----------
-            spec : {float, numpy.ndarray, nifty.field}
+            spec : {scalar, list, numpy.ndarray, nifty.field, function}
                 Fiducial power spectrum from which a valid power spectrum is to
                 be calculated. Scalars are interpreted as constant power
                 spectra.
@@ -1004,15 +1047,32 @@ class space(object):
                 Number of bands the power spectrum shall have (default: None).
             kindex : numpy.ndarray, *optional*
                 Scale of each band.
+            codomain : nifty.space, *optional*
+                A compatible codomain for power indexing (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
 
         """
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'enforce_power'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False):
+    def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
-            Provides the indexing array of the power spectrum.
+            **DEPRECATED** Provides the indexing array of the power spectrum.
 
             Provides either an array giving for each component of a field the
             corresponding index of a power spectrum (if ``irreducible==False``)
@@ -1043,11 +1103,12 @@ class space(object):
             space and contains the indices of the associated bands.
             kindex and rho are each one-dimensional arrays.
         """
+        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_power_index'."))
 
-    def get_power_undex(self,pindex=None):
+    def get_power_undex(self,pindex=None): ## TODO: remove in future version
         """
-            Provides the unindexing list for an indexed power spectrum.
+            **DEPRECATED** Provides the Unindexing array for an indexed power spectrum.
 
             Parameters
             ----------
@@ -1057,22 +1118,108 @@ class space(object):
 
             Returns
             -------
-            pundex : list
-                Unindexing list undoing power indexing.
+            pundex : numpy.ndarray
+                Unindexing array undoing power indexing.
 
             Notes
             -----
-            Indexing with the unindexing list undoes the indexing with the
-            indexing array; i.e., ``x == x[pindex][pundex]``.
+            Indexing with the unindexing array undoes the indexing with the
+            indexing array; i.e., ``power == power[pindex].flatten()[pundex]``.
 
             See also
             --------
             get_power_index
 
         """
+        about.warnings.cprint("WARNING: 'get_power_undex' is deprecated.")
         if(pindex is None):
             pindex = self.get_power_index(irreducible=False)
-        return list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C'))
+#        return list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C')) ## < version 0.4
+        return np.unique(pindex,return_index=True,return_inverse=False)[1]
+
+    def set_power_indices(self,**kwargs):
+        """
+            Sets the (un)indexing objects for spectral indexing internally.
+
+            Parameters
+            ----------
+            log : bool
+                Flag specifying if the binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer
+                Number of used bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).
+
+            Returns
+            -------
+            None
+
+            See also
+            --------
+            get_power_indices
+
+        """
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'set_power_indices'."))
+
+    def get_power_indices(self,**kwargs):
+        """
+            Provides the (un)indexing objects for spectral indexing.
+
+            Provides one-dimensional arrays containing the scales of the
+            spectral bands and the numbers of modes per scale, and an array
+            giving for each component of a field the corresponding index of a
+            power spectrum as well as an Unindexing array.
+
+            Parameters
+            ----------
+            log : bool
+                Flag specifying if the binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer
+                Number of used bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).
+
+            Returns
+            -------
+            kindex : numpy.ndarray
+                Scale of each spectral band.
+            rho : numpy.ndarray
+                Number of modes per scale represented in the discretization.
+            pindex : numpy.ndarray
+                Indexing array giving the power spectrum index for each
+                represented mode.
+            pundex : numpy.ndarray
+                Unindexing array undoing power spectrum indexing.
+
+            Notes
+            -----
+            The ``kindex`` and ``rho`` are each one-dimensional arrays.
+            The indexing array is of the same shape as a field living in this
+            space and contains the indices of the associated bands.
+            Indexing with the unindexing array undoes the indexing with the
+            indexing array; i.e., ``power == power[pindex].flatten()[pundex]``.
+
+            See also
+            --------
+            set_power_indices
+
+        """
+        self.set_power_indices(**kwargs)
+        return self.power_indices.get("kindex"),self.power_indices.get("rho"),self.power_indices.get("pindex"),self.power_indices.get("pundex")
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1180,13 +1327,30 @@ class space(object):
             var : float, *optional*
                 Variance, overriding `dev` if both are specified
                 (default: 1).
-            spec : {float, numpy.ndarray}, *optional*
+            spec : {scalar, list, numpy.ndarray, nifty.field, function}, *optional*
                 Power spectrum (default: 1).
             pindex : numpy.ndarray, *optional*
                 Indexing array giving the power spectrum index of each band
                 (default: None).
             kindex : numpy.ndarray, *optional*
                 Scale of each band (default: None).
+            codomain : nifty.space, *optional*
+                A compatible codomain with power indices (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
             vmin : float, *optional*
                 Lower limit for a uniform distribution (default: 0).
             vmax : float, *optional*
@@ -1425,6 +1589,24 @@ class space(object):
                 (default: None).
             rho : numpy.ndarray, *optional*
                 Number of degrees of freedom per band (default: None).
+            codomain : nifty.space, *optional*
+                A compatible codomain for power indexing (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+
         """
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'calc_power'."))
 
@@ -1470,14 +1652,35 @@ class space(object):
                 Whether to show the legend or not (default: False).
             mono : bool, *optional*
                 Whether to plot the monopole or not (default: True).
+            save : string, *optional*
+                Valid file name where the figure is to be stored, by default
+                the figure is not saved (default: False).
             error : {float, numpy.ndarray, nifty.field}, *optional*
                 Object indicating some confidence interval to be plotted
                 (default: None).
             kindex : numpy.ndarray, *optional*
                 Scale corresponding to each band in the power spectrum
                 (default: None).
+            codomain : nifty.space, *optional*
+                A compatible codomain for power indexing (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
             iter : int, *optional*
                 Number of iterations (default: 0).
+
         """
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_plot'."))
 
@@ -1497,7 +1700,7 @@ class space(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _meta_vars(self): ## > captures all nonstandard properties
-        mars = np.array([ii[1] for ii in vars(self).iteritems() if ii[0] not in ["para","datatype","discrete","vol"]],dtype=np.object)
+        mars = np.array([ii[1] for ii in vars(self).iteritems() if ii[0] not in ["para","datatype","discrete","vol","power_indices"]],dtype=np.object)
         if(np.size(mars)==0):
             return None
         else:
@@ -1505,31 +1708,34 @@ class space(object):
 
     def __eq__(self,x): ## __eq__ : self == x
         if(isinstance(x,space)):
-            if(isinstance(x,type(self)))and(np.all(self.para==x.para))and(self.discrete==x.discrete)and(np.all(self._meta_vars()==x._meta_vars())): ## data types are ignored
+            if(isinstance(x,type(self)))and(np.all(self.para==x.para))and(self.discrete==x.discrete)and(np.all(self.vol==x.vol))and(np.all(self._meta_vars()==x._meta_vars())): ## data types are ignored
                 return True
         return False
 
     def __ne__(self,x): ## __ne__ : self <> x
         if(isinstance(x,space)):
-            if(not isinstance(x,type(self)))or(np.any(self.para!=x.para))or(self.discrete!=x.discrete)or(np.any(self._meta_vars()!=x._meta_vars())): ## data types are ignored
+            if(not isinstance(x,type(self)))or(np.any(self.para!=x.para))or(self.discrete!=x.discrete)or(np.any(self.vol!=x.vol))or(np.any(self._meta_vars()!=x._meta_vars())): ## data types are ignored
                 return True
         return False
 
     def __lt__(self,x): ## __lt__ : self < x
         if(isinstance(x,space)):
-            if(not isinstance(x,type(self))):
+            if(not isinstance(x,type(self)))or(np.size(self.para)!=np.size(x.para))or(np.size(self.vol)!=np.size(x.vol)):
                 raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
-            elif(np.size(self.para)!=np.size(x.para)):
-                raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
-            elif(self.discrete==x.discrete): ## data types are ignored:
-                for ii in range(np.size(self.para)):
+            elif(self.discrete==x.discrete): ## data types are ignored
+                for ii in xrange(np.size(self.para)):
                     if(self.para[ii]<x.para[ii]):
                         return True
                     elif(self.para[ii]>x.para[ii]):
                         return False
+                for ii in xrange(np.size(self.vol)):
+                    if(self.vol[ii]<x.vol[ii]):
+                        return True
+                    elif(self.vol[ii]>x.vol[ii]):
+                        return False
                 s_mars = self._meta_vars()
                 x_mars = x._meta_vars()
-                for ii in range(np.size(s_mars)):
+                for ii in xrange(np.size(s_mars)):
                     if(np.all(s_mars[ii]<x_mars[ii])):
                         return True
                     elif(np.any(s_mars[ii]>x_mars[ii])):
@@ -1538,19 +1744,22 @@ class space(object):
 
     def __le__(self,x): ## __le__ : self <= x
         if(isinstance(x,space)):
-            if(not isinstance(x,type(self))):
-                raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
-            elif(np.size(self.para)!=np.size(x.para)):
+            if(not isinstance(x,type(self)))or(np.size(self.para)!=np.size(x.para))or(np.size(self.vol)!=np.size(x.vol)):
                 raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
             elif(self.discrete==x.discrete): ## data types are ignored
-                for ii in range(np.size(self.para)):
+                for ii in xrange(np.size(self.para)):
                     if(self.para[ii]<x.para[ii]):
                         return True
                     if(self.para[ii]>x.para[ii]):
                         return False
+                for ii in xrange(np.size(self.vol)):
+                    if(self.vol[ii]<x.vol[ii]):
+                        return True
+                    if(self.vol[ii]>x.vol[ii]):
+                        return False
                 s_mars = self._meta_vars()
                 x_mars = x._meta_vars()
-                for ii in range(np.size(s_mars)):
+                for ii in xrange(np.size(s_mars)):
                     if(np.all(s_mars[ii]<x_mars[ii])):
                         return True
                     elif(np.any(s_mars[ii]>x_mars[ii])):
@@ -1560,19 +1769,22 @@ class space(object):
 
     def __gt__(self,x): ## __gt__ : self > x
         if(isinstance(x,space)):
-            if(not isinstance(x,type(self))):
-                raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
-            elif(np.size(self.para)!=np.size(x.para)):
+            if(not isinstance(x,type(self)))or(np.size(self.para)!=np.size(x.para))or(np.size(self.vol)!=np.size(x.vol)):
                 raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
             elif(self.discrete==x.discrete): ## data types are ignored
-                for ii in range(np.size(self.para)):
+                for ii in xrange(np.size(self.para)):
                     if(self.para[ii]>x.para[ii]):
                         return True
                     elif(self.para[ii]<x.para[ii]):
                         break
+                for ii in xrange(np.size(self.vol)):
+                    if(self.vol[ii]>x.vol[ii]):
+                        return True
+                    elif(self.vol[ii]<x.vol[ii]):
+                        break
                 s_mars = self._meta_vars()
                 x_mars = x._meta_vars()
-                for ii in range(np.size(s_mars)):
+                for ii in xrange(np.size(s_mars)):
                     if(np.all(s_mars[ii]>x_mars[ii])):
                         return True
                     elif(np.any(s_mars[ii]<x_mars[ii])):
@@ -1581,19 +1793,22 @@ class space(object):
 
     def __ge__(self,x): ## __ge__ : self >= x
         if(isinstance(x,space)):
-            if(not isinstance(x,type(self))):
-                raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
-            elif(np.size(self.para)!=np.size(x.para)):
+            if(not isinstance(x,type(self)))or(np.size(self.para)!=np.size(x.para))or(np.size(self.vol)!=np.size(x.vol)):
                 raise ValueError(about._errors.cstring("ERROR: incomparable spaces."))
             elif(self.discrete==x.discrete): ## data types are ignored
-                for ii in range(np.size(self.para)):
+                for ii in xrange(np.size(self.para)):
                     if(self.para[ii]>x.para[ii]):
                         return True
                     if(self.para[ii]<x.para[ii]):
                         return False
+                for ii in xrange(np.size(self.vol)):
+                    if(self.vol[ii]>x.vol[ii]):
+                        return True
+                    if(self.vol[ii]<x.vol[ii]):
+                        return False
                 s_mars = self._meta_vars()
                 x_mars = x._meta_vars()
-                for ii in range(np.size(s_mars)):
+                for ii in xrange(np.size(s_mars)):
                     if(np.all(s_mars[ii]>x_mars[ii])):
                         return True
                     elif(np.any(s_mars[ii]<x_mars[ii])):
@@ -1736,12 +1951,23 @@ class point_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False):
+    def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
-            Raises an error since the power spectrum is ill-defined for point
-            spaces.
+            **DEPRECATED** Raises an error since the power spectrum is
+            ill-defined for point spaces.
         """
+        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
         raise AttributeError(about._errors.cstring("ERROR: power spectra ill-defined for (unstructured) point spaces."))
+
+    def set_power_indices(self,**kwargs):
+        """
+            Raises
+            ------
+            AttributeError
+                Always. -- The power spectrum is ill-defined for point spaces.
+
+        """
+        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1842,8 +2068,12 @@ class point_space(space):
                 scalars, arrays, or fields (default: None).
             legend : bool, *optional*
                 Whether to show the legend or not (default: False).
+            save : string, *optional*
+                Valid file name where the figure is to be stored, by default
+                the figure is not saved (default: False).
+
         """
-        if(not pl.isinteractive()):
+        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
@@ -1879,7 +2109,7 @@ class point_space(space):
             else:
                 other = [self.enforce_values(other,extend=True)]
             imax = max(1,len(other)-1)
-            for ii in range(len(other)):
+            for ii in xrange(len(other)):
                 ax0.scatter(xaxes,other[ii],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,label="graph "+str(ii),linewidths=None,verts=None,zorder=-ii)
             if(legend):
                 ax0.legend()
@@ -1897,6 +2127,9 @@ class point_space(space):
         ax0.set_ylabel("values"+unit)
         ax0.set_title(title)
 
+        if(bool(kwargs.get("save",False))):
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            pl.close(fig)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2139,7 +2372,7 @@ class rg_space(space):
 
             Parameters
             ----------
-            spec : {float, numpy.ndarray, nifty.field}
+            spec : {float, list, numpy.ndarray, nifty.field, function}
                 Fiducial power spectrum from which a valid power spectrum is to
                 be calculated. Scalars are interpreted as constant power
                 spectra.
@@ -2155,30 +2388,66 @@ class rg_space(space):
                 Number of bands the power spectrum shall have (default: None).
             kindex : numpy.ndarray, *optional*
                 Scale of each band.
+            codomain : nifty.space, *optional*
+                A compatible codomain for power indexing (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
 
         """
+        if(size is None)or(callable(spec)):
+            ## explicit kindex
+            kindex = kwargs.get("kindex",None)
+            if(kindex is None):
+                ## quick kindex
+                if(self.fourier)and(not hasattr(self,"power_indices"))and(len(kwargs)==0):
+                    kindex = gp.nklength(gp.nkdict(self.para[:(np.size(self.para)-1)//2],self.vol,fourier=True))
+                ## implicit kindex
+                else:
+                    try:
+                        self.set_power_indices(**kwargs)
+                    except:
+                        codomain = kwargs.get("codomain",self.get_codomain())
+                        codomain.set_power_indices(**kwargs)
+                        kindex = codomain.power_indices.get("kindex")
+                    else:
+                        kindex = self.power_indices.get("kindex")
+            size = len(kindex)
+
         if(isinstance(spec,field)):
             spec = spec.val.astype(self.datatype)
+        elif(callable(spec)):
+            try:
+                spec = np.array(spec(kindex),dtype=self.datatype)
+            except:
+                TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
             spec = np.array([spec],dtype=self.datatype)
         else:
             spec = np.array(spec,dtype=self.datatype)
+
+        ## drop imaginary part
+        spec = np.real(spec)
         ## check finiteness
         if(not np.all(np.isfinite(spec))):
             about.warnings.cprint("WARNING: infinite value(s).")
         ## check positivity (excluding null)
-        if(np.any(spec==0)):
-            about.warnings.cprint("WARNING: nonpositive value(s).")
         if(np.any(spec<0)):
             raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
-
-        if(size is None):
-            if(kwargs.has_key("kindex")):
-                size = len(kwargs.get("kindex"))
-            else:
-                size = np.size(gp.get_power_index(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-(np.size(self.para)-1)//2:].astype(np.bool),irred=True,fourier=self.fourier)[0]) ## nontrivial
-        ## drop imaginary part
-        spec = np.real(spec)
+        elif(np.any(spec==0)):
+            about.warnings.cprint("WARNING: nonpositive value(s).")
 
         ## extend
         if(np.size(spec)==1):
@@ -2194,9 +2463,9 @@ class rg_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False):
+    def get_power_index(self,irreducible=False):  ## TODO: remove in future version
         """
-            Provides the indexing array of the power spectrum.
+            **DEPRECATED** Provides the indexing array of the power spectrum.
 
             Provides either an array giving for each component of a field the
             corresponding index of a power spectrum (if ``irreducible==False``)
@@ -2227,10 +2496,84 @@ class rg_space(space):
             space and contains the indices of the associated bands.
             kindex and rho are each one-dimensional arrays.
         """
+        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
         if(self.fourier):
             return gp.get_power_index(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),irred=irreducible,fourier=self.fourier) ## nontrivial
         else:
             raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
+
+#    def set_power_indices(self,log=None,nbin=None,binbounds=None,**kwargs):
+    def set_power_indices(self,**kwargs):
+        """
+            Sets the (un)indexing objects for spectral indexing internally.
+
+            Parameters
+            ----------
+            log : bool
+                Flag specifying if the binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer
+                Number of used bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).
+
+            Returns
+            -------
+            None
+
+            See also
+            --------
+            get_power_indices
+
+            Raises
+            ------
+            AttributeError
+                If ``self.fourier == False``.
+            ValueError
+                If the binning leaves one or more bins empty.
+
+        """
+        if(not self.fourier):
+            raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
+        ## check storage
+        if(hasattr(self,"power_indices")):
+            config = self.power_indices.get("config")
+            ## check configuration
+            redo = False
+            if(config.get("log")!=kwargs.get("log",config.get("log"))):
+                config["log"] = kwargs.get("log")
+                redo = True
+            if(config.get("nbin")!=kwargs.get("nbin",config.get("nbin"))):
+                config["nbin"] = kwargs.get("nbin")
+                redo = True
+            if(np.any(config.get("binbounds")!=kwargs.get("binbounds",config.get("binbounds")))):
+                config["binbounds"] = kwargs.get("binbounds")
+                redo = True
+            if(not redo):
+                return None
+        else:
+            config = {"binbounds":kwargs.get("binbounds",None),"log":kwargs.get("log",None),"nbin":kwargs.get("nbin",None)}
+        ## power indices
+        about.infos.cflush("INFO: setting power indices ...")
+        pindex,kindex,rho = gp.get_power_indices(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=True)
+        ## bin if ...
+        if(config.get("log") is not None)or(config.get("nbin") is not None)or(config.get("binbounds") is not None):
+            pindex,kindex,rho = gp.bin_power_indices(pindex,kindex,rho,**config)
+            ## check binning
+            if(np.any(rho==0)):
+                raise ValueError(about._errors.cstring("ERROR: empty bin(s).")) ## binning too fine
+        ## power undex
+        pundex = np.unique(pindex,return_index=True,return_inverse=False)[1]
+        ## storage
+        self.power_indices = {"config":config,"kindex":kindex,"pindex":pindex,"pundex":pundex,"rho":rho} ## alphabetical
+        about.infos.cprint(" done.")
+        return None
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2317,14 +2660,30 @@ class rg_space(space):
             var : float, *optional*
                 Variance, overriding `dev` if both are specified
                 (default: 1).
-            spec : {float, numpy.ndarray}, *optional*
+            spec : {scalar, list, numpy.ndarray, nifty.field, function}, *optional*
                 Power spectrum (default: 1).
             pindex : numpy.ndarray, *optional*
                 Indexing array giving the power spectrum index of each band
                 (default: None).
             kindex : numpy.ndarray, *optional*
                 Scale of each band (default: None).
-            vmin : float, *optional*
+            codomain : nifty.rg_space, *optional*
+                A compatible codomain with power indices (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).            vmin : float, *optional*
                 Lower limit for a uniform distribution (default: 0).
             vmax : float, *optional*
                 Upper limit for a uniform distribution (default: 1).
@@ -2610,7 +2969,8 @@ class rg_space(space):
                 Array of field values to be smoothed.
             sigma : float, *optional*
                 Standard deviation of the Gaussian kernel, specified in units
-                of length in position space (default: 0).
+                of length in position space; for testing: a sigma of -1 will be
+                reset to a reasonable value (default: 0).
 
             Returns
             -------
@@ -2618,23 +2978,28 @@ class rg_space(space):
                 Smoothed array.
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
+        naxes = (np.size(self.para)-1)//2
 
         ## check sigma
-        if(sigma<0):
-            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        elif(sigma==0):
+        if(sigma==0):
             return x
-        else:
-            ## smooth
-            naxes = (np.size(self.para)-1)//2
-            Gx = gs.smooth_field(x,self.fourier,self.para[-naxes:].astype(np.bool).tolist(),bool(self.para[naxes]==1),self.vol,smooth_length=sigma)
-            ## check complexity
-            if(not self.para[naxes]): ## purely real
-                ## check imaginary part
-                if(np.any(Gx.imag!=0))and(np.dot(Gx.imag.flatten(order='C'),Gx.imag.flatten(order='C'),out=None)>self.epsilon**2*np.dot(Gx.real.flatten(order='C'),Gx.real.flatten(order='C'),out=None)):
-                    about.warnings.cprint("WARNING: discarding considerable imaginary part.")
-                Gx = np.real(Gx)
-            return Gx
+        elif(sigma==-1):
+            about.infos.cprint("INFO: invalid sigma reset.")
+            if(self.fourier):
+                sigma = 1.5/np.min(self.para[:naxes]*self.vol) ## sqrt(2)*max(dist)
+            else:
+                sigma = 1.5*np.max(self.vol) ## sqrt(2)*max(dist)
+        elif(sigma<0):
+            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
+        ## smooth
+        Gx = gs.smooth_field(x,self.fourier,self.para[-naxes:].astype(np.bool).tolist(),bool(self.para[naxes]==1),self.vol,smooth_length=sigma)
+        ## check complexity
+        if(not self.para[naxes]): ## purely real
+            ## check imaginary part
+            if(np.any(Gx.imag!=0))and(np.dot(Gx.imag.flatten(order='C'),Gx.imag.flatten(order='C'),out=None)>self.epsilon**2*np.dot(Gx.real.flatten(order='C'),Gx.real.flatten(order='C'),out=None)):
+                about.warnings.cprint("WARNING: discarding considerable imaginary part.")
+            Gx = np.real(Gx)
+        return Gx
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2663,17 +3028,43 @@ class rg_space(space):
                 (default: None).
             rho : numpy.ndarray, *optional*
                 Number of degrees of freedom per band (default: None).
+            codomain : nifty.space, *optional*
+                A compatible codomain for power indexing (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         ## correct for 'fft'
         if(not self.fourier):
             x = self.calc_weight(x,power=1)
+        ## explicit power indices
+        pindex,kindex,rho = kwargs.get("pindex",None),kwargs.get("kindex",None),kwargs.get("rho",None)
+        ## implicit power indices
+        if(pindex is None)or(kindex is None)or(rho is None):
+            try:
+                self.set_power_indices(**kwargs)
+            except:
+                codomain = kwargs.get("codomain",self.get_codomain())
+                codomain.set_power_indices(**kwargs)
+                pindex,kindex,rho = codomain.power_indices.get("pindex"),codomain.power_indices.get("kindex"),codomain.power_indices.get("rho")
+            else:
+                pindex,kindex,rho = self.power_indices.get("pindex"),self.power_indices.get("kindex"),self.power_indices.get("rho")
         ## power spectrum
-        return gp.calc_ps_fast(x,self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier,**kwargs)
-#        if(kwargs.has_key("pindex"))and(kwargs.has_key("rho")):
-#            return gp.calc_ps_fast(x,self.para[:(np.size(self.para)-1)//2],self.vol,[kwargs.get("pindex"),kwargs.get("rho")],self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier)
-#        else:
-#            return gp.calc_ps(x,self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier)
+        return gp.calc_ps_fast(x,self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier,pindex=pindex,kindex=kindex,rho=rho)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2717,15 +3108,35 @@ class rg_space(space):
                 Whether to show the legend or not (default: False).
             mono : bool, *optional*
                 Whether to plot the monopole or not (default: True).
+            save : string, *optional*
+                Valid file name where the figure is to be stored, by default
+                the figure is not saved (default: False).
             error : {float, numpy.ndarray, nifty.field}, *optional*
                 Object indicating some confidence interval to be plotted
                 (default: None).
             kindex : numpy.ndarray, *optional*
                 Scale corresponding to each band in the power spectrum
                 (default: None).
+            codomain : nifty.space, *optional*
+                A compatible codomain for power indexing (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
 
         """
-        if(not pl.isinteractive()):
+        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
         naxes = (np.size(self.para)-1)//2
@@ -2738,10 +3149,19 @@ class rg_space(space):
             fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
-            if(kwargs.has_key("kindex")):
-                xaxes = kwargs.get("kindex")
-            else:
-                xaxes = gp.get_power_index(self.para[:naxes],self.vol,self.para[-naxes:].astype(np.bool),irred=True,fourier=self.fourier)[0] ## nontrivial
+            ## explicit kindex
+            xaxes = kwargs.get("kindex",None)
+            ## implicit kindex
+            if(xaxes is None):
+                try:
+                    self.set_power_indices(**kwargs)
+                except:
+                    codomain = kwargs.get("codomain",self.get_codomain())
+                    codomain.set_power_indices(**kwargs)
+                    xaxes = codomain.power_indices.get("kindex")
+                else:
+                    xaxes = self.power_indices.get("kindex")
+
             if(norm is None)or(not isinstance(norm,int)):
                 norm = naxes
             if(vmin is None):
@@ -2755,17 +3175,17 @@ class rg_space(space):
             if(other is not None):
                 if(isinstance(other,tuple)):
                     other = list(other)
-                    for ii in range(len(other)):
+                    for ii in xrange(len(other)):
                         if(isinstance(other[ii],field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
-                            other[ii] = self.enforce_power(other[ii],size=np.size(xaxes))
+                            other[ii] = self.enforce_power(other[ii],size=np.size(xaxes),kindex=xaxes)
                 elif(isinstance(other,field)):
                     other = [other.power(**kwargs)]
                 else:
-                    other = [self.enforce_power(other,size=np.size(xaxes))]
+                    other = [self.enforce_power(other,size=np.size(xaxes),kindex=xaxes)]
                 imax = max(1,len(other)-1)
-                for ii in range(len(other)):
+                for ii in xrange(len(other)):
                     ax0.loglog(xaxes[1:],(xaxes**norm*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
                     if(mono):
                         ax0.scatter(0.5*(xaxes[1]+xaxes[2]),other[ii][0],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=-ii)
@@ -2816,16 +3236,16 @@ class rg_space(space):
                     else:
                         other = [self.enforce_values(other,extend=True)]
                     imax = max(1,len(other)-1)
-                    for ii in range(len(other)):
+                    for ii in xrange(len(other)):
                         ax0graph(xaxes,other[ii],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
-                    if(kwargs.has_key("error")):
+                    if("error" in kwargs):
                         error = self.enforce_values(np.absolute(kwargs.get("error")),extend=True)
                         ax0.fill_between(xaxes,x-error,x+error,color=[0.8,0.8,0.8],label="error 0",zorder=-len(other))
                     if(legend):
                         ax0.legend()
                 else:
                     ax0graph(xaxes,x,color=[0.0,0.5,0.0],label="graph 0",linestyle='-',linewidth=2.0,zorder=1)
-                    if(kwargs.has_key("error")):
+                    if("error" in kwargs):
                         error = self.enforce_values(np.absolute(kwargs.get("error")),extend=True)
                         ax0.fill_between(xaxes,x-error,x+error,color=[0.8,0.8,0.8],label="error 0",zorder=0)
 
@@ -2884,6 +3304,10 @@ class rg_space(space):
 
             else:
                 raise ValueError(about._errors.cstring("ERROR: unsupported number of axes ( "+str(naxes)+" > 2 )."))
+
+        if(bool(kwargs.get("save",False))):
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            pl.close(fig)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2944,8 +3368,9 @@ class lm_space(space):
         .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
                High-Resolution Discretization and Fast Analysis of Data
                Distributed on the Sphere", *ApJ* 622..759G.
-        .. [#] M. Reinecke, 2011, "Libpsht - algorithms for efficient spherical
-               harmonic transforms", *A&A* 526A.108R.
+        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+               harmonic transforms revisited";
+               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
 
         Attributes
         ----------
@@ -3085,7 +3510,7 @@ class lm_space(space):
 
             Parameters
             ----------
-            spec : {float, numpy.ndarray, nifty.field}
+            spec : {float, list, numpy.ndarray, nifty.field, function}
                 Fiducial power spectrum from which a valid power spectrum is to
                 be calculated. Scalars are interpreted as constant power
                 spectra.
@@ -3097,23 +3522,28 @@ class lm_space(space):
         """
         if(isinstance(spec,field)):
             spec = spec.val.astype(self.datatype)
+        elif(callable(spec)):
+            try:
+                spec = np.array(spec(np.arange(self.para[0]+1,dtype=np.int)),dtype=self.datatype)
+            except:
+                TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
             spec = np.array([spec],dtype=self.datatype)
         else:
             spec = np.array(spec,dtype=self.datatype)
+
+        ## drop imaginary part
+        spec = np.real(spec)
         ## check finiteness
         if(not np.all(np.isfinite(spec))):
             about.warnings.cprint("WARNING: infinite value(s).")
         ## check positivity (excluding null)
-        if(np.any(spec==0)):
-            about.warnings.cprint("WARNING: nonpositive value(s).")
         if(np.any(spec<0)):
             raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+        elif(np.any(spec==0)):
+            about.warnings.cprint("WARNING: nonpositive value(s).")
 
         size = self.para[0]+1 ## lmax+1
-        ## drop imaginary part
-        spec = np.real(spec)
-
         ## extend
         if(np.size(spec)==1):
             spec = spec*np.ones(size,dtype=spec.dtype,order='C')
@@ -3128,9 +3558,9 @@ class lm_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False):
+    def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
-            Provides the indexing array of the power spectrum.
+            **DEPRECATED** Provides the indexing array of the power spectrum.
 
             Provides either an array giving for each component of a field the
             corresponding index of a power spectrum (if ``irreducible==False``)
@@ -3161,11 +3591,41 @@ class lm_space(space):
             space and contains the indices of the associated bands.
             kindex and rho are each one-dimensional arrays.
         """
+        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
         if(irreducible):
-            ind = np.sort(list(set(hp.Alm.getlm(self.para[0],i=None)[0])),axis=0,kind="quicksort",order=None)
+            ind = np.arange(self.para[0]+1)
             return ind,2*ind+1
         else:
             return hp.Alm.getlm(self.para[0],i=None)[0] ## l of (l,m)
+
+    def set_power_indices(self,**kwargs):
+        """
+            Sets the (un)indexing objects for spectral indexing internally.
+
+            Parameters
+            ----------
+            None
+
+            Returns
+            -------
+            None
+
+            See also
+            --------
+            get_power_indices
+
+        """
+        ## check storage
+        if(not hasattr(self,"power_indices")):
+            ## power indices
+#            about.infos.cflush("INFO: setting power indices ...")
+            kindex = np.arange(self.para[0]+1,dtype=np.int)
+            rho = 2*kindex+1
+            pindex = hp.Alm.getlm(self.para[0],i=None)[0] ## l of (l,m)
+            pundex = np.unique(pindex,return_index=True,return_inverse=False)[1]
+            ## storage
+            self.power_indices = {"kindex":kindex,"pindex":pindex,"pundex":pundex,"rho":rho} ## alphabetical
+#            about.infos.cprint(" done.")
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3253,7 +3713,7 @@ class lm_space(space):
             var : float, *optional*
                 Variance, overriding `dev` if both are specified
                 (default: 1).
-            spec : {float, numpy.ndarray}, *optional*
+            spec : {scalar, list, numpy.array, nifty.field, function}, *optional*
                 Power spectrum (default: 1).
             vmin : float, *optional*
                 Lower limit for a uniform distribution (default: 0).
@@ -3276,7 +3736,7 @@ class lm_space(space):
             if(self.datatype==np.complex64):
                 x = gl.synalm_f(arg[1],lmax=lmax,mmax=lmax)
             else:
-                #x = gl.synalm(spec,lmax=lmax,mmax=lmax)
+                #x = gl.synalm(arg[1],lmax=lmax,mmax=lmax)
                 x = hp.synalm(arg[1],lmax=lmax,mmax=lmax)
             return x
 
@@ -3364,8 +3824,10 @@ class lm_space(space):
             .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
                    High-Resolution Discretization and Fast Analysis of Data
                    Distributed on the Sphere", *ApJ* 622..759G.
-            .. [#] M. Reinecke, 2011, "Libpsht - algorithms for efficient spherical
-                   harmonic transforms", *A&A* 526A.108R.
+            .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+                   harmonic transforms revisited";
+                   `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
+
         """
         if(coname=="gl")or(coname is None)and(about.lm2gl.status): ## order matters
             if(self.datatype==np.complex64):
@@ -3507,7 +3969,8 @@ class lm_space(space):
                 Array of field values to be smoothed.
             sigma : float, *optional*
                 Standard deviation of the Gaussian kernel, specified in units
-                of length in position space (default: 0).
+                of length in position space; for testing: a sigma of -1 will be
+                reset to a reasonable value (default: 0).
 
             Returns
             -------
@@ -3516,14 +3979,16 @@ class lm_space(space):
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         ## check sigma
-        if(sigma<0):
-            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        elif(sigma==0):
+        if(sigma==0):
             return x
-        else:
-            ## smooth
-            #return gl.smoothalm(x,lmax=self.para[0],mmax=self.para[1],fwhm=0.0,sigma=sigma,overwrite=False) ## no overwrite
-            return hp.smoothalm(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,mmax=self.para[1],verbose=False,inplace=False) ## no overwrite
+        elif(sigma==-1):
+            about.infos.cprint("INFO: invalid sigma reset.")
+            sigma = 4.5/(self.para[0]+1) ## sqrt(2)*pi/(lmax+1)
+        elif(sigma<0):
+            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
+        ## smooth
+        #return gl.smoothalm(x,lmax=self.para[0],mmax=self.para[1],fwhm=0.0,sigma=sigma,overwrite=False) ## no overwrite
+        return hp.smoothalm(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,mmax=self.para[1],verbose=False,inplace=False) ## no overwrite
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3592,12 +4057,16 @@ class lm_space(space):
                 Whether to show the legend or not (default: False).
             mono : bool, *optional*
                 Whether to plot the monopole or not (default: True).
+            save : string, *optional*
+                Valid file name where the figure is to be stored, by default
+                the figure is not saved (default: False).
+
         """
-        if(not pl.isinteractive()):
+        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
         if(power):
-            x = self.calc_power(x,**kwargs)
+            x = self.calc_power(x)
 
             fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
@@ -3614,17 +4083,17 @@ class lm_space(space):
             if(other is not None):
                 if(isinstance(other,tuple)):
                     other = list(other)
-                    for ii in range(len(other)):
+                    for ii in xrange(len(other)):
                         if(isinstance(other[ii],field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
-                            other[ii] = self.enforce_power(other[ii],**kwargs)
+                            other[ii] = self.enforce_power(other[ii])
                 elif(isinstance(other,field)):
                     other = [other.power(**kwargs)]
                 else:
-                    other = [self.enforce_power(other,**kwargs)]
+                    other = [self.enforce_power(other)]
                 imax = max(1,len(other)-1)
-                for ii in range(len(other)):
+                for ii in xrange(len(other)):
                     ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
                     if(mono):
                         ax0.scatter(0.5*(xaxes[1]+xaxes[2]),other[ii][0],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=-ii)
@@ -3657,7 +4126,7 @@ class lm_space(space):
                 xmesh[4,1] = None
                 xmesh[1,4] = None
                 lm = 0
-                for mm in range(self.para[1]+1):
+                for mm in xrange(self.para[1]+1):
                     xmesh[mm][mm:] = x[lm:lm+self.para[0]+1-mm]
                     lm += self.para[0]+1-mm
 
@@ -3691,6 +4160,10 @@ class lm_space(space):
                         v_ = None
                     fig.colorbar(sub,ax=ax0,orientation="horizontal",fraction=0.1,pad=0.05,shrink=0.75,aspect=20,ticks=[vmin,vmax],format=f_,drawedges=False,boundaries=b_,values=v_)
                 ax0.set_title(title)
+
+        if(bool(kwargs.get("save",False))):
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            pl.close(fig)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3739,8 +4212,9 @@ class gl_space(space):
 
         References
         ----------
-        .. [#] M. Reinecke, 2011, "Libpsht - algorithms for efficient spherical
-               harmonic transforms", *A&A* 526A.108R.
+        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+               harmonic transforms revisited";
+               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
         .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
                High-Resolution Discretization and Fast Analysis of Data
                Distributed on the Sphere", *ApJ* 622..759G.
@@ -3871,7 +4345,7 @@ class gl_space(space):
 
             Parameters
             ----------
-            spec : {float, numpy.ndarray, nifty.field}
+            spec : {float, list, numpy.ndarray, nifty.field, function}
                 Fiducial power spectrum from which a valid power spectrum is to
                 be calculated. Scalars are interpreted as constant power
                 spectra.
@@ -3883,21 +4357,26 @@ class gl_space(space):
         """
         if(isinstance(spec,field)):
             spec = spec.val.astype(self.datatype)
+        elif(callable(spec)):
+            try:
+                spec = np.array(spec(np.arange(self.para[0],dtype=np.int)),dtype=self.datatype)
+            except:
+                TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
             spec = np.array([spec],dtype=self.datatype)
         else:
             spec = np.array(spec,dtype=self.datatype)
+
         ## check finiteness
         if(not np.all(np.isfinite(spec))):
             about.warnings.cprint("WARNING: infinite value(s).")
         ## check positivity (excluding null)
-        if(np.any(spec==0)):
-            about.warnings.cprint("WARNING: nonpositive value(s).")
         if(np.any(spec<0)):
             raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+        elif(np.any(spec==0)):
+            about.warnings.cprint("WARNING: nonpositive value(s).")
 
         size = self.para[0] ## nlat
-
         ## extend
         if(np.size(spec)==1):
             spec = spec*np.ones(size,dtype=spec.dtype,order='C')
@@ -3912,11 +4391,24 @@ class gl_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False):
+    def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
-            Raises an error since the power spectrum for a field on the sphere
+            **DEPRECATED** Raises an error since the power spectrum for a field on the sphere
             is defined via the spherical harmonics components and not its
             position-space representation.
+        """
+        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
+        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
+
+    def set_power_indices(self,**kwargs):
+        """
+            Raises
+            ------
+            AttributeError
+                Always. -- The power spectrum for a field on the sphere
+            is defined by its spherical harmonics components and not its
+            position space representation.
+
         """
         raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
@@ -3951,8 +4443,10 @@ class gl_space(space):
             var : float, *optional*
                 Variance, overriding `dev` if both are specified
                 (default: 1).
-            spec : {float, numpy.ndarray}, *optional*
+            spec : {scalar, list, numpy.array, nifty.field, function}, *optional*
                 Power spectrum (default: 1).
+            codomain : nifty.lm_space, *optional*
+                A compatible codomain for power indexing (default: None).
             vmin : float, *optional*
                 Lower limit for a uniform distribution (default: 0).
             vmax : float, *optional*
@@ -4161,7 +4655,8 @@ class gl_space(space):
                 Array of field values to be smoothed.
             sigma : float, *optional*
                 Standard deviation of the Gaussian kernel, specified in units
-                of length in position space (default: 0).
+                of length in position space; for testing: a sigma of -1 will be
+                reset to a reasonable value (default: 0).
 
             Returns
             -------
@@ -4170,13 +4665,15 @@ class gl_space(space):
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         ## check sigma
-        if(sigma<0):
-            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        elif(sigma==0):
+        if(sigma==0):
             return x
-        else:
-            ## smooth
-            return gl.smoothmap(x,nlat=self.para[0],nlon=self.para[1],lmax=self.para[0]-1,mmax=self.para[0]-1,fwhm=0.0,sigma=sigma)
+        elif(sigma==-1):
+            about.infos.cprint("INFO: invalid sigma reset.")
+            sigma = 4.5/self.para[0] ## sqrt(2)*pi/(lmax+1)
+        elif(sigma<0):
+            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
+        ## smooth
+        return gl.smoothmap(x,nlat=self.para[0],nlon=self.para[1],lmax=self.para[0]-1,mmax=self.para[0]-1,fwhm=0.0,sigma=sigma)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -4247,12 +4744,16 @@ class gl_space(space):
                 Whether to show the legend or not (default: False).
             mono : bool, *optional*
                 Whether to plot the monopole or not (default: True).
+            save : string, *optional*
+                Valid file name where the figure is to be stored, by default
+                the figure is not saved (default: False).
+
         """
-        if(not pl.isinteractive()):
+        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
         if(power):
-            x = self.calc_power(x,**kwargs)
+            x = self.calc_power(x)
 
             fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
@@ -4269,17 +4770,17 @@ class gl_space(space):
             if(other is not None):
                 if(isinstance(other,tuple)):
                     other = list(other)
-                    for ii in range(len(other)):
+                    for ii in xrange(len(other)):
                         if(isinstance(other[ii],field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
-                            other[ii] = self.enforce_power(other[ii],**kwargs)
+                            other[ii] = self.enforce_power(other[ii])
                 elif(isinstance(other,field)):
                     other = [other.power(**kwargs)]
                 else:
-                    other = [self.enforce_power(other,**kwargs)]
+                    other = [self.enforce_power(other)]
                 imax = max(1,len(other)-1)
-                for ii in range(len(other)):
+                for ii in xrange(len(other)):
                     ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
                     if(mono):
                         ax0.scatter(0.5*(xaxes[1]+xaxes[2]),other[ii][0],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=-ii)
@@ -4329,6 +4830,10 @@ class gl_space(space):
                 cb0.ax.text(0.5,-1.0,unit,fontdict=None,withdash=False,transform=cb0.ax.transAxes,horizontalalignment="center",verticalalignment="center")
             ax0.set_title(title)
 
+        if(bool(kwargs.get("save",False))):
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            pl.close(fig)
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
@@ -4376,8 +4881,9 @@ class hp_space(space):
         .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
                High-Resolution Discretization and Fast Analysis of Data
                Distributed on the Sphere", *ApJ* 622..759G.
-        .. [#] M. Reinecke, 2011, "Libpsht - algorithms for efficient spherical
-               harmonic transforms", *A&A* 526A.108R.
+        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+               harmonic transforms revisited";
+               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
 
         Attributes
         ----------
@@ -4480,7 +4986,7 @@ class hp_space(space):
 
             Parameters
             ----------
-            spec : {float, numpy.ndarray, nifty.field}
+            spec : {float, list, numpy.ndarray, nifty.field, function}
                 Fiducial power spectrum from which a valid power spectrum is to
                 be calculated. Scalars are interpreted as constant power
                 spectra.
@@ -4492,21 +4998,26 @@ class hp_space(space):
         """
         if(isinstance(spec,field)):
             spec = spec.val.astype(self.datatype)
+        elif(callable(spec)):
+            try:
+                spec = np.array(spec(np.arange(3*self.para[0],dtype=np.int)),dtype=self.datatype)
+            except:
+                TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
             spec = np.array([spec],dtype=self.datatype)
         else:
             spec = np.array(spec,dtype=self.datatype)
+
         ## check finiteness
         if(not np.all(np.isfinite(spec))):
             about.warnings.cprint("WARNING: infinite value(s).")
         ## check positivity (excluding null)
-        if(np.any(spec==0)):
-            about.warnings.cprint("WARNING: nonpositive value(s).")
         if(np.any(spec<0)):
             raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+        elif(np.any(spec==0)):
+            about.warnings.cprint("WARNING: nonpositive value(s).")
 
         size = 3*self.para[0] ## 3*nside
-
         ## extend
         if(np.size(spec)==1):
             spec = spec*np.ones(size,dtype=spec.dtype,order='C')
@@ -4521,11 +5032,24 @@ class hp_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False):
+    def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
-            Raises an error since the power spectrum for a field on the sphere
+            **DEPRECATED** Raises an error since the power spectrum for a field on the sphere
             is defined via the spherical harmonics components and not its
             position-space representation.
+        """
+        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
+        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
+
+    def set_power_indices(self,**kwargs):
+        """
+            Raises
+            ------
+            AttributeError
+                Always. -- The power spectrum for a field on the sphere
+            is defined by its spherical harmonics components and not its
+            position space representation.
+
         """
         raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
@@ -4560,8 +5084,10 @@ class hp_space(space):
             var : float, *optional*
                 Variance, overriding `dev` if both are specified
                 (default: 1).
-            spec : {float, numpy.ndarray}, *optional*
+            spec : {scalar, list, numpy.array, nifty.field, function}, *optional*
                 Power spectrum (default: 1).
+            codomain : nifty.lm_space, *optional*
+                A compatible codomain for power indexing (default: None).
             vmin : float, *optional*
                 Lower limit for a uniform distribution (default: 0).
             vmax : float, *optional*
@@ -4720,13 +5246,8 @@ class hp_space(space):
             ## weight if discrete
             if(self.discrete):
                 x = self.calc_weight(x,power=-0.5)
-            ## check keyword arguments
-            if(kwargs.has_key("iter")):
-                iterations = kwargs.get("iter")
-            else:
-                iterations = self.niter
             ## transform
-            Tx = hp.map2alm(x.astype(np.float64),lmax=codomain.para[0],mmax=codomain.para[1],iter=iterations,pol=True,use_weights=False,regression=True,datapath=None)
+            Tx = hp.map2alm(x.astype(np.float64),lmax=codomain.para[0],mmax=codomain.para[1],iter=kwargs.get("iter",self.niter),pol=True,use_weights=False,regression=True,datapath=None)
 
         else:
             raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
@@ -4746,7 +5267,8 @@ class hp_space(space):
                 Array of field values to be smoothed.
             sigma : float, *optional*
                 Standard deviation of the Gaussian kernel, specified in units
-                of length in position space (default: 0).
+                of length in position space; for testing: a sigma of -1 will be
+                reset to a reasonable value (default: 0).
 
             Returns
             -------
@@ -4761,18 +5283,15 @@ class hp_space(space):
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         ## check sigma
-        if(sigma<0):
-            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        elif(sigma==0):
+        if(sigma==0):
             return x
-        else:
-            ## check keyword arguments
-            if(kwargs.has_key("iter")):
-                iterations = kwargs.get("iter")
-            else:
-                iterations = self.niter
-            ## smooth
-            return hp.smoothing(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,iter=iterations,lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,use_weights=False,regression=True,datapath=None)
+        elif(sigma==-1):
+            about.infos.cprint("INFO: invalid sigma reset.")
+            sigma = 1.5/self.para[0] ## sqrt(2)*pi/(lmax+1)
+        elif(sigma<0):
+            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
+        ## smooth
+        return hp.smoothing(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,iter=kwargs.get("iter",self.niter),lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,use_weights=False,regression=True,datapath=None)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -4802,11 +5321,7 @@ class hp_space(space):
         if(self.discrete):
             x = self.calc_weight(x,power=-0.5)
         ## power spectrum
-        if(kwargs.has_key("iter")):
-            iterations = kwargs.get("iter")
-        else:
-            iterations = self.niter
-        return hp.anafast(x,map2=None,nspec=None,lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,iter=iterations,alm=False,pol=True,use_weights=False,regression=True,datapath=None)
+        return hp.anafast(x,map2=None,nspec=None,lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,iter=kwargs.get("iter",self.niter),alm=False,pol=True,use_weights=False,regression=True,datapath=None)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -4850,11 +5365,14 @@ class hp_space(space):
                 Whether to show the legend or not (default: False).
             mono : bool, *optional*
                 Whether to plot the monopole or not (default: True).
+            save : string, *optional*
+                Valid file name where the figure is to be stored, by default
+                the figure is not saved (default: False).
             iter : int, *optional*
                 Number of iterations performed in the HEALPix basis
                 transformation.
         """
-        if(not pl.isinteractive()):
+        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
         if(power):
@@ -4875,17 +5393,17 @@ class hp_space(space):
             if(other is not None):
                 if(isinstance(other,tuple)):
                     other = list(other)
-                    for ii in range(len(other)):
+                    for ii in xrange(len(other)):
                         if(isinstance(other[ii],field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
-                            other[ii] = self.enforce_power(other[ii],**kwargs)
+                            other[ii] = self.enforce_power(other[ii])
                 elif(isinstance(other,field)):
                     other = [other.power(**kwargs)]
                 else:
-                    other = [self.enforce_power(other,**kwargs)]
+                    other = [self.enforce_power(other)]
                 imax = max(1,len(other)-1)
-                for ii in range(len(other)):
+                for ii in xrange(len(other)):
                     ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
                     if(mono):
                         ax0.scatter(0.5*(xaxes[1]+xaxes[2]),other[ii][0],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=-ii)
@@ -4906,6 +5424,10 @@ class hp_space(space):
                 cmap = pl.cm.jet ## default
             cmap.set_under(color='k',alpha=0.0) ## transparent box
             hp.mollview(x,fig=None,rot=None,coord=None,unit=unit,xsize=800,title=title,nest=False,min=vmin,max=vmax,flip="astro",remove_dip=False,remove_mono=False,gal_cut=0,format="%g",format2="%g",cbar=cbar,cmap=cmap,notext=False,norm=norm,hold=False,margins=None,sub=None)
+
+        if(bool(kwargs.get("save",False))):
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            pl.close(fig)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -4969,7 +5491,7 @@ class nested_space(space):
         if(not isinstance(nest,list)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         ## check nest
-        purenest = list([])
+        purenest = []
         para = np.array([],dtype=np.int)
         for nn in nest:
             if(not isinstance(nn,space)):
@@ -5045,10 +5567,21 @@ class nested_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False):
+    def get_power_index(self,irreducible=False): ## TODO: remove in future version
         """
-            Raises an error since there is no canonical definition for the
-            power spectrum on a generic product space.
+            **DEPRECATED** Raises an error since there is no canonical
+            definition for the power spectrum on a generic product space.
+        """
+        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
+        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
+
+    def set_power_indices(self,**kwargs):
+        """
+            Raises
+            ------
+            AttributeError
+                Always. -- There is no canonical definition for the power
+                spectrum on a generic product space.
         """
         raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
@@ -5276,8 +5809,8 @@ class nested_space(space):
                 ## check permutability
                 unpaired = range(len(self.nest))
                 ambiguous = False
-                for ii in range(len(self.nest)):
-                    for jj in range(len(self.nest)):
+                for ii in xrange(len(self.nest)):
+                    for jj in xrange(len(self.nest)):
                         if(codomain.nest[ii]==self.nest[jj]):
                             if(jj in unpaired):
                                 unpaired.remove(jj)
@@ -5492,8 +6025,8 @@ class nested_space(space):
                 ## check coorder
                 if(coorder is None):
                     coorder = -np.ones(len(self.nest),dtype=np.int,order='C')
-                    for ii in range(len(self.nest)):
-                        for jj in range(len(self.nest)):
+                    for ii in xrange(len(self.nest)):
+                        for jj in xrange(len(self.nest)):
                             if(codomain.nest[ii]==self.nest[jj]):
                                 if(ii not in coorder):
                                     coorder[jj] = ii
@@ -5504,20 +6037,20 @@ class nested_space(space):
                     coorder = np.array(coorder,dtype=np.int).reshape(len(self.nest),order='C')
                     if(np.any(np.sort(coorder,axis=0,kind="quicksort",order=None)!=np.arange(len(self.nest)))):
                         raise ValueError(about._errors.cstring("ERROR: invalid input."))
-                    for ii in range(len(self.nest)):
+                    for ii in xrange(len(self.nest)):
                         if(codomain.nest[coorder[ii]]!=self.nest[ii]):
                             raise ValueError(about._errors.cstring("ERROR: invalid input."))
                 ## compute axes permutation
                 lim = np.zeros((len(self.nest),2),dtype=np.int)
-                for ii in range(len(self.nest)):
+                for ii in xrange(len(self.nest)):
                     lim[ii] = np.array([lim[ii-1][1],lim[ii-1][1]+np.size(self.nest[coorder[ii]].dim(split=True))])
                 lim = lim[coorder]
                 reorder = []
-                for ii in range(len(self.nest)):
+                for ii in xrange(len(self.nest)):
                     reorder += range(lim[ii][0],lim[ii][1])
                 ## permute
                 Tx = np.copy(x)
-                for ii in range(len(reorder)):
+                for ii in xrange(len(reorder)):
                     while(reorder[ii]!=ii):
                         Tx = np.swapaxes(Tx,ii,reorder[ii])
                         ii_ = reorder[reorder[ii]]
@@ -5548,7 +6081,8 @@ class nested_space(space):
                 Array of field values to be smoothed.
             sigma : float, *optional*
                 Standard deviation of the Gaussian kernel, specified in units
-                of length in position space of the innermost subspace
+                of length in position space of the innermost subspace; for
+                testing: a sigma of -1 will be reset to a reasonable value
                 (default: 0).
 
             Returns
@@ -5563,9 +6097,7 @@ class nested_space(space):
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         ## check sigma
-        if(sigma<0):
-            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        elif(sigma==0):
+        if(sigma==0):
             return x
         else:
             ## reshape
@@ -5646,10 +6178,23 @@ class field(object):
             Sets the variance of the Gaussian distribution, outranking the dev
             parameter (default=1).
 
-        spec : {scalar, ndarray}
+        spec : {scalar, list, array, field, function}
             Specifies a power spectrum from which the field values should be
             synthesized (default=1). Can be given as a constant, or as an
             array with indvidual entries per mode.
+        log : bool
+            Flag specifying if the spectral binning is performed on logarithmic
+            scale or not; if set, the number of used bins is set
+            automatically (if not given otherwise); by default no binning
+            is done (default: None).
+        nbin : integer
+            Number of used spectral bins; if given `log` is set to ``False``;
+            integers below the minimum of 3 induce an automatic setting;
+            by default no binning is done (default: None).
+        binbounds : {list, array}
+            User specific inner boundaries of the bins, which are preferred
+            over the above parameters; by default no binning is done
+            (default: None).
 
         vmin : scalar
             Sets the lower limit for the uniform distribution.
@@ -5694,20 +6239,21 @@ class field(object):
         Nothing
 
         """
+        ## check domain
         if(not isinstance(domain,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.domain = domain
-
-        if(val is None):
-            self.val = self.domain.get_random_values(**kwargs)
-        else:
-            self.val = self.domain.enforce_values(val,extend=True)
-
+        ## check codomain
         if(target is None):
             target = domain.get_codomain()
-        ## check codomain
-        self.domain.check_codomain(target) ## a bit pointless
+        else:
+            self.domain.check_codomain(target)
         self.target = target
+        ## check values
+        if(val is None):
+            self.val = self.domain.get_random_values(codomain=self.target,**kwargs)
+        else:
+            self.val = self.domain.enforce_values(val,extend=True)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -5812,10 +6358,11 @@ class field(object):
                  (default=None).
 
         """
+        ## check codomain
         if(newtarget is None):
             newtarget = self.domain.get_codomain()
-        ## check codomain
-        self.domain.check_codomain(newtarget) ## a bit pointless
+        else:
+            self.domain.check_codomain(newtarget)
         self.target = newtarget
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -6090,7 +6637,7 @@ class field(object):
             ----------
             sigma : scalar, *optional*
                 standard deviation of the Gaussian kernel specified in units of
-                length in position space (default=1)
+                length in position space (default: 0)
 
             overwrite : bool, *optional*
                 Whether to overwrite the field or not (default: False).
@@ -6120,7 +6667,7 @@ class field(object):
 
             Other Parameters
             ----------------
-            pindex : ndarray
+            pindex : ndarray, *optional*
                 Specifies the indexing array for the distribution of
                 indices in conjugate space (default: None).
             kindex : numpy.ndarray, *optional*
@@ -6129,6 +6676,21 @@ class field(object):
             rho : scalar
                 Number of degrees of freedom per irreducible band
                 (default=None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
             iter : scalar
                 Number of iterations (default: 0)
 
@@ -6138,7 +6700,9 @@ class field(object):
                 Returns the power spectrum.
 
         """
-        return self.domain.calc_power(self.val,**kwargs)
+        if("codomain" in kwargs):
+            kwargs.__delitem__("codomain")
+        return self.domain.calc_power(self.val,codomain=self.target,**kwargs)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -6193,19 +6757,37 @@ class field(object):
                 A color map (default=None).
             cbar : bool
                 Whether to show the color bar or not (default=True).
-            other : {scalar, ndarray, fiels}
+            other : {scalar, ndarray, field}
                 Object or tuple of objects to be added (default=None).
             legend : bool
                 Whether to show the legend or not (default=False).
             mono : bool
                 Whether to plot the monopol of the power spectrum or not
                 (default=True).
-            error : {scalar, ndarray, fiels}
+            save : string, *optional*
+                Valid file name where the figure is to be stored, by default
+                the figure is not saved (default: False).
+            error : {scalar, ndarray, field}
                 object indicating some confidence intervall (default=None).
             iter : scalar
                 Number of iterations (default: 0).
             kindex : scalar
                 The spectral index per irreducible band (default=None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
 
             Notes
             -----
@@ -6215,13 +6797,13 @@ class field(object):
 
         """
         interactive = pl.isinteractive()
-        if(not interactive):
-            pl.ion()
+        pl.matplotlib.interactive(not bool(kwargs.get("save",False)))
 
-        self.domain.get_plot(self.val,**kwargs)
+        if("codomain" in kwargs):
+            kwargs.__delitem__("codomain")
+        self.domain.get_plot(self.val,codomain=self.target,**kwargs)
 
-        if(not interactive):
-            pl.ioff()
+        pl.matplotlib.interactive(interactive)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -8405,7 +8987,7 @@ class diagonal_operator(operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_random_field(self,domain=None,target=None,**kwargs): ## TODO: remove **kwargs for downward compatibility in future version
+    def get_random_field(self,domain=None,target=None,**kwargs):
         """
             Generates a Gaussian random field with variance equal to the
             diagonal.
@@ -8425,6 +9007,8 @@ class diagonal_operator(operator):
                 Random field.
 
         """
+        if(len(kwargs)):  ## TODO: remove **kwargs in future version
+            about.warnings.cprint("WARNING: deprecated keyword(s).")
         ## weight if ...
         if(not self.domain.discrete):
             diag = self.domain.calc_weight(self.val,power=-1)
@@ -8522,17 +9106,35 @@ class power_operator(diagonal_operator):
             The space wherein valid arguments live. If no domain is given
             then the diag parameter *must* be a field and the domain
             of that field is assumed. (default: None)
-        spec : {scalar, ndarray, field}
+        spec : {scalar, list, array, field, function}
             The power spectrum. For a scalar, a constant power
             spectrum is defined having the value provided. If no domain
             is given, diag must be a field. (default: 1)
         bare : bool, *optional*
             whether the entries are `bare` or not
             (mandatory for the correct incorporation of volume weights)
-            (default: False)
+            (default: True)
         pindex : ndarray, *optional*
-            indexing array, obtainable from domain.get_power_index
+            indexing array, obtainable from domain.get_power_indices
             (default: None)
+
+        Other Parameters
+        ----------------
+        log : bool, *optional*
+            Flag specifying if the spectral binning is performed on logarithmic
+            scale or not; if set, the number of used bins is set
+            automatically (if not given otherwise); by default no binning
+            is done (default: None).
+        nbin : integer, *optional*
+            Number of used spectral bins; if given `log` is set to ``False``;
+            integers below the minimum of 3 induce an automatic setting;
+            by default no binning is done (default: None).
+        binbounds : {list, array}, *optional*
+            User specific inner boundaries of the bins, which are preferred
+            over the above parameters; by default no binning is done
+            (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+            Lower limit of the uniform distribution if ``random == "uni"``
+            (default: 0).
 
         Notes
         -----
@@ -8563,7 +9165,7 @@ class power_operator(diagonal_operator):
             The space wherein the operator output lives
 
     """
-    def __init__(self,domain,spec=1,bare=True,pindex=None):
+    def __init__(self,domain,spec=1,bare=True,pindex=None,**kwargs):
         """
             Sets the diagonal operator's standard properties
 
@@ -8573,32 +9175,53 @@ class power_operator(diagonal_operator):
                 The space wherein valid arguments live. If no domain is given
                 then the diag parameter *must* be a field and the domain
                 of that field is assumed. (default: None)
-            spec : {scalar, ndarray, field}
+            spec : {scalar, list, array, field, function}
                 The power spectrum. For a scalar, a constant power
                 spectrum is defined having the value provided. If no domain
                 is given, diag must be a field. (default: 1)
             bare : bool, *optional*
                 whether the entries are `bare` or not
                 (mandatory for the correct incorporation of volume weights)
-                (default: False)
+                (default: True)
             pindex : ndarray, *optional*
-                indexing array, obtainable from domain.get_power_index
+                indexing array, obtainable from domain.get_power_indices
                 (default: None)
 
             Returns
             -------
             None
+
+            Other Parameters
+            ----------------
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+
         """
         if(not isinstance(domain,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.domain = domain
-
-        ## check power_index
+        ## check implicit pindex
         if(pindex is None):
             try:
-                pindex = self.domain.get_power_index(irreducible=False)
-            except(AttributeError):
+                self.domain.set_power_indices(**kwargs)
+            except:
                 raise ValueError(about._errors.cstring("ERROR: invalid input."))
+            else:
+                pindex = self.domain.power_indices.get("pindex")
+        ## check explicit pindex
         else:
             pindex = np.array(pindex,dtype=np.int)
             if(not np.all(np.array(np.shape(pindex))==self.domain.dim(split=True))):
@@ -8627,38 +9250,58 @@ class power_operator(diagonal_operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def set_power(self,newspec,bare=None,pindex=None):
+    def set_power(self,newspec,bare=None,pindex=None,**kwargs):
         """
             Sets the power spectrum of the diagonal operator
 
             Parameters
             ----------
-            newspec : {scalar, ndarray, field}
+            newspec : {scalar, list, array, field, function}
                 The entries of the operator. For a scalar, a constant
                 diagonal is defined having the value provided. If no domain
                 is given, diag must be a field. (default: 1)
-            bare : bool, *optional*
+            bare : bool
                 whether the entries are `bare` or not
                 (mandatory for the correct incorporation of volume weights)
-                (default: False)
             pindex : ndarray, *optional*
-                indexing array, obtainable from domain.get_power_index
+                indexing array, obtainable from domain.get_power_indices
                 (default: None)
 
             Returns
             -------
             None
+
+            Other Parameters
+            ----------------
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+
         """
         if(bare is None):
             about.warnings.cprint("WARNING: bare keyword set to default.")
             bare = True
-
-        ## check power_index
+        ## check implicit pindex
         if(pindex is None):
             try:
-                pindex = self.domain.get_power_index(irreducible=False)
-            except(AttributeError):
-                raise ValueError(about._errors.cstring("ERROR: invalid input."))
+                self.domain.set_power_indices(**kwargs)
+            except:
+                raise ValueError(about._errors.cstring("ERROR: invalid domain."))
+            else:
+                pindex = self.domain.power_indices.get("pindex")
+        ## check explicit pindex
         else:
             pindex = np.array(pindex,dtype=np.int)
             if(not np.all(np.array(np.shape(pindex))==self.domain.dim(split=True))):
@@ -8682,7 +9325,7 @@ class power_operator(diagonal_operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power(self,bare=True,pundex=None,pindex=None,**kwargs): ## TODO: remove **kwargs for downward compatibility in future version
+    def get_power(self,bare=True,pundex=None,pindex=None,**kwargs):
         """
             Computes the power spectrum
 
@@ -8691,87 +9334,108 @@ class power_operator(diagonal_operator):
             bare : bool, *optional*
                 whether the entries are `bare` or not
                 (mandatory for the correct incorporation of volume weights)
-                (default: False)
+                (default: True)
             pundex : ndarray, *optional*
-                unindexing array, obtainable from domain.get_power_undex
+                unindexing array, obtainable from domain.get_power_indices
                 (default: None)
             pindex : ndarray, *optional*
-                indexing array, obtainable from domain.get_power_index
+                indexing array, obtainable from domain.get_power_indices
                 (default: None)
 
             Returns
             -------
             spec : ndarray
                 The power spectrum
+
+            Other Parameters
+            ----------------
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+
         """
         ## weight if ...
         if(not self.domain.discrete)and(bare):
             diag = np.real(self.domain.calc_weight(self.val,power=-1))
         else:
             diag = self.val
-
+        ## check implicit pundex
         if(pundex is None):
-            pundex = self.domain.get_power_undex(pindex=pindex)
-        return diag[pundex]
+            if(pindex is None):
+                try:
+                    self.domain.set_power_indices(**kwargs)
+                except:
+                    raise ValueError(about._errors.cstring("ERROR: invalid domain."))
+                else:
+                    pundex = self.domain.power_indices.get("pundex")
+            else:
+                pindex = np.array(pindex,dtype=np.int)
+                if(not np.all(np.array(np.shape(pindex))==self.domain.dim(split=True))):
+                    raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(self.domain.dim(split=True))+" )."))
+                ## quick pundex
+                pundex = np.unique(pindex,return_index=True,return_inverse=False)[1]
+        ## check explicit pundex
+        else:
+            pundex = np.array(pundex,dtype=np.int)
+
+        return diag.flatten(order='C')[pundex]
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#    def get_random_field(self,domain=None,target=None,**kwargs): ## TODO: remove in future version
-#        """
-#            Generates a Gaussian random field with variance equal to the power spectrum
-#
-#            Parameters
-#            ----------
-#            domain : space
-#                The space wherein the field lives (default: None,
-#                 indicates to use self.domain)
-#            target : space
-#                The space wherein the transform of the field lives
-#                (default: None, indicates to use self.domain.target)
-#            pindex : numpy.ndarray, *optional*
-#                Indexing array giving the power spectrum index of each band
-#                (default: None).
-#            kindex : numpy.ndarray, *optional*
-#                Scale of each irreducible band (default: None).
-#
-#            Returns
-#            -------
-#            x : field
-#                The random field defined on domain
-#        """
-#        if(np.any(self.val==0)):
-#            return super(power_operator,self).get_random_field(domain=domain,target=target,**kwargs)
-#
-#        if(domain is None)or(domain==self.domain):
-#            if(np.any(self.val==0)):
-#                return super(power_operator,self).get_random_field(domain=self.domain,target=target,**kwargs)
-#            else:
-#                return field(self.domain,val=None,target=target,random="syn",spec=self.get_power(),**kwargs)
-#        else:
-#            if(np.any(self.val==0)):
-#                return super(power_operator,self).get_random_field(domain=self.domain,target=domain,**kwargs).transform(target=domain,overwrite=False)
-#            else:
-#                return field(self.domain,val=None,target=domain,random="syn",spec=self.get_power(),**kwargs).transform(target=domain,overwrite=False)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_projection_operator(self,pindex=None):
+    def get_projection_operator(self,pindex=None,**kwargs):
         """
             Generates a spectral projection operator
 
             Parameters
             ----------
             pindex : ndarray
-                indexing array obtainable from domain.get_power_index
+                indexing array obtainable from domain.get_power_indices
                 (default: None)
 
             Returns
             -------
             P : projection_operator
+
+            Other Parameters
+            ----------------
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+
         """
-        ## check power_index
+        ## check implicit pindex
         if(pindex is None):
-            pindex = self.domain.get_power_index(irreducible=False)
+            try:
+                self.domain.set_power_indices(**kwargs)
+            except:
+                raise ValueError(about._errors.cstring("ERROR: invalid domain."))
+            else:
+                pindex = self.domain.power_indices.get("pindex")
+        ## check explicit pindex
         else:
             pindex = np.array(pindex,dtype=np.int)
             if(not np.all(np.array(np.shape(pindex))==self.domain.dim(split=True))):
@@ -8810,6 +9474,24 @@ class projection_operator(operator):
             Assignments of domain items to projection bands. An array
             of integers, negative integers are associated with the
             nullspace of the projection. (default: None)
+
+        Other Parameters
+        ----------------
+        log : bool, *optional*
+            Flag specifying if the spectral binning is performed on logarithmic
+            scale or not; if set, the number of used bins is set
+            automatically (if not given otherwise); by default no binning
+            is done (default: None).
+        nbin : integer, *optional*
+            Number of used spectral bins; if given `log` is set to ``False``;
+            integers below the minimum of 3 induce an automatic setting;
+            by default no binning is done (default: None).
+        binbounds : {list, array}, *optional*
+            User specific inner boundaries of the bins, which are preferred
+            over the above parameters; by default no binning is done
+            (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+            Lower limit of the uniform distribution if ``random == "uni"``
+            (default: 0).
 
         Examples
         --------
@@ -8851,7 +9533,7 @@ class projection_operator(operator):
             The space wherein the operator output lives
 
     """
-    def __init__(self,domain,assign=None):
+    def __init__(self,domain,assign=None,**kwargs):
         """
             Sets the standard operator properties and `indexing`.
 
@@ -8867,6 +9549,25 @@ class projection_operator(operator):
             Returns
             -------
             None
+
+            Other Parameters
+            ----------------
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+
         """
         if(not isinstance(domain,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
@@ -8874,29 +9575,19 @@ class projection_operator(operator):
 
         ## check assignment(s)
         if(assign is None):
-            assign = np.arange(self.domain.dim(split=False),dtype=np.int).reshape(self.domain.dim(split=True),order='C')
-        else:
-            assign = self.domain.enforce_shape(assign).astype(np.int)
-        assign = np.maximum(-1,assign) ## condensing all negative integers
-        ## build indexing
-        ind = [[]]*len(set(assign.flatten(order='C')))
-        if(np.size(self.domain.dim(split=True))==1):
-            for ii in range(self.domain.dim(split=True)):
-                if(assign[ii]!=-1):
-                    ind[assign[ii]] = ind[assign[ii]]+[ii] ## adding index
-        else:
-            for ii in np.ndindex(tuple(self.domain.dim(split=True))):
-                if(assign[ii]!=-1):
-                    ind[assign[ii]] = ind[assign[ii]]+[ii] ## adding index
-        self.ind = []
-        for ii in ind:
-            if(len(ii)>0):
-                self.ind = self.ind+[np.array(ii,dtype=np.int).T]
+            try:
+                self.domain.set_power_indices(**kwargs)
+            except:
+                assign = np.arange(self.domain.dim(split=False),dtype=np.int)
             else:
-                about.warnings.cprint("WARNING: empty projection band removed.")
+                assign = self.domain.power_indices.get("pindex").flatten(order='C')
+        else:
+            assign = self.domain.enforce_shape(assign).astype(np.int).flatten(order='C')
+        ## build indexing
+        self.ind = [np.where(assign==ii)[0] for ii in xrange(np.max(assign,axis=None,out=None)+1) if ii in assign]
 
         self.sym = True
-        #about.infos.cprint("INFO: pseudo unitary projection operator.")
+#        about.infos.cprint("INFO: pseudo unitary projection operator.")
         self.uni = False
         self.imp = True
 
@@ -8928,12 +9619,12 @@ class projection_operator(operator):
         """
         rho = np.empty(len(self.ind),dtype=np.int,order='C')
         if(self.domain.dim(split=False)==self.domain.dof()): ## no hidden degrees of freedom
-            for ii in range(len(self.ind)):
-                rho[ii] = np.size(self.ind[ii].T,axis=0)
+            for ii in xrange(len(self.ind)):
+                rho[ii] = len(self.ind[ii])
         else: ## hidden degrees of freedom
-            mof = np.round(np.real(self.domain.calc_weight(self.domain.get_meta_volume(total=False),power=-1)),decimals=0,out=None).astype(np.int) ## meta degrees of freedom
-            for ii in range(len(self.ind)):
-                rho[ii] = np.sum(mof[self.ind[ii].tolist()],axis=None,dtype=np.int,out=None)
+            mof = np.round(np.real(self.domain.calc_weight(self.domain.get_meta_volume(total=False),power=-1).flatten(order='C')),decimals=0,out=None).astype(np.int) ## meta degrees of freedom
+            for ii in xrange(len(self.ind)):
+                rho[ii] = np.sum(mof[self.ind[ii]],axis=None,dtype=np.int,out=None)
         return rho
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -8947,7 +9638,7 @@ class projection_operator(operator):
             x : valid field
             band : int, *optional*
                 Projection band whereon to project. (default: None)
-            bandsup: list of integers, *optional*
+            bandsup: {integer, list/array of integers}, *optional*
                 List of projection bands whereon to project and which to sum
                 up. The `band` keyword is prefered over `bandsup`.
                 (default: None)
@@ -8961,23 +9652,31 @@ class projection_operator(operator):
             band = int(band)
             if(band>self.bands()-1)or(band<0):
                 raise TypeError(about._errors.cstring("ERROR: invalid band."))
-            Px = field(self.domain,val=None,target=x.target)
-            Px[self.ind[band].tolist()] += x[self.ind[band].tolist()]
+            Px = np.zeros(self.domain.dim(split=True),dtype=self.domain.datatype,order='C').flatten(order='C')
+            Px[self.ind[band]] += x.val.flatten(order='C')[self.ind[band]]
+            Px = field(self.domain,val=Px,target=x.target)
             return Px
 
         elif(bandsup is not None):
-            bandsup = [int(bb) for bb in bandsup if -1<bb<self.bands()]
-            if(bandsup==[]):
+            if(np.isscalar(bandsup)):
+                bandsup = np.arange(int(bandsup+1),dtype=np.int)
+            else:
+                bandsup = np.array(bandsup,dtype=np.int)
+            if(np.any(bandsup>self.bands()-1))or(np.any(bandsup<0)):
                 raise ValueError(about._errors.cstring("ERROR: invalid input."))
-            Px = field(self.domain,val=None,target=x.target)
+            Px = np.zeros(self.domain.dim(split=True),dtype=self.domain.datatype,order='C').flatten(order='C')
+            x_ = x.val.flatten(order='C')
             for bb in bandsup:
-                Px[self.ind[bb].tolist()] += x[self.ind[bb].tolist()]
+                Px[self.ind[bb]] += x_[self.ind[bb]]
+            Px = field(self.domain,val=Px,target=x.target)
             return Px
 
         else:
-            Px = field(self.target,val=None,target=nested_space([point_space(len(self.ind),datatype=x.target.datatype),x.target]))
-            for bb in range(self.bands()):
-                Px[bb][self.ind[bb].tolist()] += x[self.ind[bb].tolist()]
+            Px = np.zeros((len(self.ind),self.domain.dim(split=False)),dtype=self.target.datatype,order='C')
+            x_ = x.val.flatten(order='C')
+            for bb in xrange(self.bands()):
+                Px[bb][self.ind[bb]] += x_[self.ind[bb]]
+            Px = field(self.target,val=Px,target=nested_space([point_space(len(self.ind),datatype=x.target.datatype),x.target]))
             return Px
 
     def _inverse_multiply(self,x,**kwargs):
@@ -9071,13 +9770,13 @@ class projection_operator(operator):
         else:
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
-        x = np.real(x)
+        x = np.real(x.flatten(order='C'))
         if(not self.domain.dim(split=False)==self.domain.dof()):
-            x *= np.round(np.real(self.domain.calc_weight(self.domain.get_meta_volume(total=False),power=-1)),decimals=0,out=None).astype(np.int) ## meta degrees of freedom
+            x *= np.round(np.real(self.domain.calc_weight(self.domain.get_meta_volume(total=False),power=-1).flatten(order='C')),decimals=0,out=None).astype(np.int) ## meta degrees of freedom
 
         tr = np.empty(self.bands(),dtype=x.dtype,order='C')
-        for bb in range(self.bands()):
-            tr[bb] = np.sum(x[self.ind[bb].tolist()],axis=None,dtype=None,out=None)
+        for bb in xrange(self.bands()):
+            tr[bb] = np.sum(x[self.ind[bb]],axis=None,dtype=None,out=None)
         return tr
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -9357,7 +10056,7 @@ class response_operator(operator):
         ..   /   __/ /   __  / /  _____/ /   _   | /   _   | /   _   | /  _____/ /   __  /
         ..  /  /    /  /____/ /_____  / /  /_/  / /  /_/  / /  / /  / /_____  / /  /____/
         .. /__/     \______/ /_______/ /   ____/  \______/ /__/ /__/ /_______/  \______/  operator class
-                                    /__/
+        ..                            /__/
 
         NIFTY subclass for response operators (of a certain family)
 
@@ -9477,7 +10176,7 @@ class response_operator(operator):
                 assign = np.array(assign,dtype=np.int)
                 if(np.ndim(assign)!=2)or(np.size(assign,axis=1)!=np.size(self.domain.dim(split=True))):
                     raise ValueError(about._errors.cstring("ERROR: invalid input."))
-                for ii in range(np.size(assign,axis=1)):
+                for ii in xrange(np.size(assign,axis=1)):
                     if(np.any(assign[:,ii]>=self.domain.dim(split=True)[ii]))or(np.any(assign[:,ii]<-self.domain.dim(split=True)[ii])):
                         raise IndexError(about._errors.cstring("ERROR: invalid bounds."))
         self.assign = assign.T ## transpose
@@ -9574,6 +10273,8 @@ class response_operator(operator):
         return "<nifty.response_operator>"
 
 ##-----------------------------------------------------------------------------
+
+## IDEA: explicit_operator
 
 
 
@@ -9799,22 +10500,22 @@ class probing(object):
                 whether the variance will be additionally returned (default: False)
 
         """
-        if(kwargs.has_key("random")):
+        if("random" in kwargs):
             if(kwargs.get("random") not in ["pm1","gau"]):
                 raise ValueError(about._errors.cstring("ERROR: unsupported random key '"+str(kwargs.get("random"))+"'."))
-            self.random = random
+            self.random = kwargs.get("random")
 
-        if(kwargs.has_key("ncpu")):
+        if("ncpu" in kwargs):
             self.ncpu = int(max(1,kwargs.get("ncpu")))
-        if(kwargs.has_key("nrun")):
+        if("nrun" in kwargs):
             self.nrun = int(max(self.ncpu**2,kwargs.get("nrun")))
-        if(kwargs.has_key("nper")):
+        if("nper" in kwargs):
             if(kwargs.get("nper") is None):
                 self.nper = None
             else:
                 self.nper = int(max(1,min(self.nrun//self.ncpu,kwargs.get("nper"))))
 
-        if(kwargs.has_key("var")):
+        if("var" in kwargs):
             self.var = bool(kwargs.get("var"))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -10484,33 +11185,33 @@ class diagonal_probing(probing):
                 a prefix for the saved probing results (default: "")
 
         """
-        if(kwargs.has_key("random")):
+        if("random" in kwargs):
             if(kwargs.get("random") not in ["pm1","gau"]):
                 raise ValueError(about._errors.cstring("ERROR: unsupported random key '"+str(kwargs.get("random"))+"'."))
-            self.random = random
+            self.random = kwargs.get("random")
 
-        if(kwargs.has_key("ncpu")):
+        if("ncpu" in kwargs):
             self.ncpu = int(max(1,kwargs.get("ncpu")))
-        if(kwargs.has_key("nrun")):
+        if("nrun" in kwargs):
             self.nrun = int(max(self.ncpu**2,kwargs.get("nrun")))
-        if(kwargs.has_key("nper")):
+        if("nper" in kwargs):
             if(kwargs.get("nper") is None):
                 self.nper = None
             else:
                 self.nper = int(max(1,min(self.nrun//self.ncpu,kwargs.get("nper"))))
 
-        if(kwargs.has_key("var")):
+        if("var" in kwargs):
             self.var = bool(kwargs.get("var"))
 
-        if(kwargs.has_key("save")):
+        if("save" in kwargs):
             if(kwargs.get("save")):
-                if(kwargs.has_key("path")):
+                if("path" in kwargs):
                     path = kwargs.get("path")
                 else:
                     if(self.save is not None):
                         about.warnings.cprint("WARNING: save path set to default.")
                     path = "tmp"
-                if(kwargs.has_key("prefix")):
+                if("prefix" in kwargs):
                     prefix = kwargs.get("prefix")
                 else:
                     if(self.save is not None):
@@ -10586,11 +11287,11 @@ class diagonal_probing(probing):
                 return np.mean(np.array(results),axis=0,dtype=None,out=None)
         else:
             final = np.copy(np.load(self.save+"%08u.npy"%results[0],mmap_mode=None))
-            for ii in range(1,num):
+            for ii in xrange(1,num):
                 final += np.load(self.save+"%08u.npy"%results[ii],mmap_mode=None)
             if(self.var):
                 var = np.zeros(self.domain.dim(split=True),dtype=self.domain.datatype,order='C')
-                for ii in range(num):
+                for ii in xrange(num):
                     var += (final-np.load(self.save+"%08u.npy"%results[ii],mmap_mode=None))**2
                 return final/num,var/(num*(num-1))
             else:
@@ -10602,4 +11303,6 @@ class diagonal_probing(probing):
         return "<nifty.diagonal_probing>"
 
 ##-----------------------------------------------------------------------------
+
+## IDEA: diagonal_inference
 

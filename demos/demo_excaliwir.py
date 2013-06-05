@@ -52,7 +52,7 @@ g = gl_space(48)
 z = s_space = k = k_space = p = d_space = None
 
 ## power spectrum (and more)
-power = powerindex = powerundex = kindex = rho = None
+power = kindex = rho = powerindex = powerundex = None
 
 ## operators
 S = Sk = R = N = Nj = D = None
@@ -111,7 +111,7 @@ def setup(space,s2n=3,nvar=None):
             the noise variance, `nvar` will be calculated according to
             `s2n` if not specified (default: None)
     """
-    global z,s_space,k,k_space,p,d_space,power,powerindex,powerundex,kindex,rho,S,Sk,R,N,Nj,D,s,n,d,j,m
+    global z,s_space,k,k_space,p,d_space,power,kindex,rho,powerindex,powerundex,S,Sk,R,N,Nj,D,s,n,d,j,m
 
     ## signal space
     z = s_space = space
@@ -119,17 +119,15 @@ def setup(space,s2n=3,nvar=None):
     ## conjugate space
     k = k_space = s_space.get_codomain()
     ## the power indices are calculated once and saved
-    powerindex = k_space.get_power_index()
-    powerundex = k_space.get_power_undex()
-    kindex,rho = k_space.get_power_index(irreducible=True)
+    kindex,rho,powerindex,powerundex = k_space.get_power_indices()
 
     ## power spectrum
-    power = [42/(kk+1)**3 for kk in kindex]
+    power = (lambda kk: 42/(kk+1)**3)
 
     ## prior signal covariance operator (power operator)
-    S = power_operator(k_space,spec=power,pindex=powerindex)
+    S = power_operator(k_space,spec=power)
     ## projection operator to the spectral bands
-    Sk = S.get_projection_operator(pindex=powerindex)
+    Sk = S.get_projection_operator()
     ## the Gaussian random field generated from its power operator S
     s = S.get_random_field(domain=s_space,target=k_space)
 
@@ -169,7 +167,7 @@ def run(space=r1,s2n=3,nvar=None,**kwargs):
             the noise variance, `nvar` will be calculated according to
             `s2n` if not specified (default: None)
     """
-    global z,s_space,k,k_space,p,d_space,power,powerindex,powerundex,kindex,rho,S,Sk,R,N,Nj,D,s,n,d,j,m
+    global s_space,k_space,d_space,power,S,Sk,R,N,Nj,D,s,n,d,j,m
 
     ## setting up signal, noise, data and the operators S, N and R
     setup(space,s2n=s2n,nvar=nvar)
@@ -196,7 +194,7 @@ def run(space=r1,s2n=3,nvar=None,**kwargs):
     m.plot(title="reconstructed map",vmin=np.min(s.val),vmax=np.max(s.val),**kwargs)
 
     ## power spectrum
-#    s.plot(title="power spectra",power=True,other=(m,power),mono=False,kindex=kindex)
+#    s.plot(title="power spectra",power=True,other=(m,power),mono=False)
 
     ## uncertainty
 #    uncertainty = D.hat(bare=True,nrun=D.domain.dim()//4,target=k_space)
@@ -234,7 +232,7 @@ def run_critical(space=r2,s2n=3,nvar=None,q=1E-12,alpha=1,perception=[1,0],**kwa
         infer_power
 
     """
-    global z,s_space,k,k_space,p,d_space,power,powerindex,powerundex,kindex,rho,S,Sk,R,N,Nj,D,s,n,d,j,m
+    global s_space,k_space,d_space,power,rho,S,Sk,R,N,Nj,D,s,n,d,j,m
 
     ## setting up signal, noise, data and the operators S, N and R
     setup(space,s2n=s2n,nvar=nvar)
@@ -245,7 +243,7 @@ def run_critical(space=r2,s2n=3,nvar=None,q=1E-12,alpha=1,perception=[1,0],**kwa
     j = R.adjoint_times(N.inverse_times(d))
 
     ## unknown power spectrum, the power operator is given an initial value
-    S.set_power(42,bare=True,pindex=powerindex) ## The answer is 42. I double checked.
+    S.set_power(42,bare=True) ## The answer is 42. I double checked.
     ## the power spectrum is drawn from the first guess power operator
     pk = S.get_power(bare=False) ## non-bare(!)
 
@@ -266,14 +264,14 @@ def run_critical(space=r2,s2n=3,nvar=None,q=1E-12,alpha=1,perception=[1,0],**kwa
         b1 = Sk.pseudo_tr(m) ## == Sk(m).pseudo_dot(m), but faster
         b2 = Sk.pseudo_tr(D,nrun=np.sqrt(Sk.domain.dim())//4) ## probing of the partial traces of D
         pk_new = (2*q+b1+perception[0]*b2)/(rho+2*(alpha-1+perception[1])) ## non-bare(!)
-        pk_new = smooth_power(pk_new,kindex,mode="2s",exclude=min(8,len(power))) ## smoothing
+        pk_new = smooth_power(pk_new,domain=k_space,mode="2s",exclude=min(8,len(rho))) ## smoothing
         ## the power operator is given the new spectrum
-        S.set_power(pk_new,bare=False,pindex=powerindex) ## auto-updates D
+        S.set_power(pk_new,bare=False) ## auto-updates D
 
         ## check convergence
         log_change = np.max(np.abs(log(pk_new/pk)))
         if(log_change<=0.01):
-            note.cprint("NOTE: accuracy reached in iteration %u."%(iteration))
+            note.cprint("NOTE: desired accuracy reached in iteration %u."%(iteration))
             break
         else:
             note.cprint("NOTE: log-change == %4.3f ( > 1%% ) in iteration %u."%(log_change,iteration))
@@ -290,7 +288,7 @@ def run_critical(space=r2,s2n=3,nvar=None,q=1E-12,alpha=1,perception=[1,0],**kwa
     m.plot(title="reconstructed map",vmin=np.min(s.val),vmax=np.max(s.val),**kwargs)
 
     ## power spectrum
-    s.plot(title="power spectra",power=True,other=(S.get_power(pundex=powerundex),power),mono=False,kindex=kindex)
+    s.plot(title="power spectra",power=True,other=(S.get_power(),power),mono=False)
 
     ## uncertainty
 #    uncertainty = D.hat(bare=True,nrun=D.domain.dim()//4,target=k_space)

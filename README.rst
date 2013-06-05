@@ -96,7 +96,7 @@ Requirements
 Download
 ........
 
-The latest release is tagged **v0.3.0** and is available as a source package
+The latest release is tagged **v0.4.0** and is available as a source package
 at `<https://github.com/mselig/nifty/tags>`_. The current version can be
 obtained by cloning the repository::
 
@@ -128,8 +128,9 @@ References
 ..........
 
 .. [1] Selig et al., "NIFTY - Numerical Information Field Theory - a
-    versatile Python library for signal inference", submitted to A&A, 2013;
-    `arXiv:1301.4499 <http://www.arxiv.org/abs/1301.4499>`_
+    versatile Python library for signal inference",
+    `A&A, vol. 554, id. A26 <http://dx.doi.org/10.1051/0004-6361/201321236>`_,
+    2013; `arXiv:1301.4499 <http://www.arxiv.org/abs/1301.4499>`_
 
 Release Notes
 -------------
