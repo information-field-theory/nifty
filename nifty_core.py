@@ -107,7 +107,8 @@
     References
     ----------
     .. [#] Selig et al., "NIFTY -- Numerical Information Field Theory --
-        a versatile Python library for signal inference", submitted to A&A,
+        a versatile Python library for signal inference",
+        `A&A, vol. 554, id. A26 <http://dx.doi.org/10.1051/0004-6361/201321236>`_,
         2013; `arXiv:1301.4499 <http://www.arxiv.org/abs/1301.4499>`_
 
 """
@@ -483,7 +484,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.3.97" ## FIXME: release veriosn 0.4.0 << REFERENCE + README
+        self._version = "0.4.0"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -1107,7 +1108,7 @@ class space(object):
 
     def get_power_undex(self,pindex=None): ## TODO: remove in future version
         """
-            **DEPRECATED** Provides the unindexing list for an indexed power spectrum.
+            **DEPRECATED** Provides the Unindexing array for an indexed power spectrum.
 
             Parameters
             ----------
@@ -1117,13 +1118,13 @@ class space(object):
 
             Returns
             -------
-            pundex : list
-                Unindexing list undoing power indexing.
+            pundex : numpy.ndarray
+                Unindexing array undoing power indexing.
 
             Notes
             -----
-            Indexing with the unindexing list undoes the indexing with the
-            indexing array; i.e., ``x == x[pindex][pundex]``.
+            Indexing with the unindexing array undoes the indexing with the
+            indexing array; i.e., ``power == power[pindex].flatten()[pundex]``.
 
             See also
             --------
@@ -1174,7 +1175,7 @@ class space(object):
             Provides one-dimensional arrays containing the scales of the
             spectral bands and the numbers of modes per scale, and an array
             giving for each component of a field the corresponding index of a
-            power spectrum as well as an unindexing list.
+            power spectrum as well as an Unindexing array.
 
             Parameters
             ----------
@@ -1201,16 +1202,16 @@ class space(object):
             pindex : numpy.ndarray
                 Indexing array giving the power spectrum index for each
                 represented mode.
-            pundex : list
-                Unindexing list undoing power spectrum indexing.
+            pundex : numpy.ndarray
+                Unindexing array undoing power spectrum indexing.
 
             Notes
             -----
             The ``kindex`` and ``rho`` are each one-dimensional arrays.
             The indexing array is of the same shape as a field living in this
             space and contains the indices of the associated bands.
-            Indexing with the unindexing list undoes the indexing with the
-            indexing array; i.e., ``power == power[pindex][pundex]``.
+            Indexing with the unindexing array undoes the indexing with the
+            indexing array; i.e., ``power == power[pindex].flatten()[pundex]``.
 
             See also
             --------

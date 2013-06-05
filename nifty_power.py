@@ -64,8 +64,8 @@ def weight_power(domain,spec,power=1,pindex=None,pundex=None,**kwargs):
         pindex : ndarray, *optional*
             Indexing array giving the power spectrum index for each
             represented mode.
-        pundex : list, *optional*
-            Unindexing list undoing power indexing.
+        pundex : ndarray, *optional*
+            Unindexing array undoing power indexing.
 
         Returns
         -------
@@ -265,7 +265,7 @@ def _calc_laplace(kindex): ## > computes Laplace operator and integrand
     klim = len(kindex)
     L = np.zeros((klim,klim))
     I = np.zeros(klim)
-    for jj in range(2,klim-1): ## leave out {0,1,kmax}
+    for jj in xrange(2,klim-1): ## leave out {0,1,kmax}
         L[jj,jj-1] = 2/(dl2[jj-1]*dl1[jj-1])
         L[jj,jj] = -2/dl2[jj-1]*(1/dl1[jj]+1/dl1[jj-1])
         L[jj,jj+1] = 2/(dl2[jj-1]*dl1[jj])
@@ -317,8 +317,8 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
         pindex : numpy.ndarray, *optional*
             Indexing array giving the power spectrum index for each
             represented mode (default: None).
-        pundex : list, *optional*
-            Unindexing list undoing power indexing.
+        pundex : ndarray, *optional*
+            Unindexing array undoing power indexing.
         kindex : numpy.ndarray, *optional*
             Scale corresponding to each band in the power spectrum
             (default: None).
