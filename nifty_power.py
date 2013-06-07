@@ -502,7 +502,7 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
 
     if(smoothness):
         if(not domain.discrete):
-            numerator = weight_power(domain,numerator,power=-1,pindex=pindex,pundex=pundex)
+            numerator = weight_power(domain,numerator,power=-1,pindex=pindex,pundex=pundex) ## bare(!)
         pk = numerator/denominator1 ## bare(!)
 
         ## smoothness prior
@@ -535,8 +535,8 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
     else:
         pk = numerator/denominator1 ## non-bare(!)
         ## weight if ...
-        if(not domain.discrete)and(not bare):
-            pk = weight_power(domain,pk,power=1,pindex=pindex,pundex=pundex) ## non-bare(!)
+        if(not domain.discrete)and(bare):
+            pk = weight_power(domain,pk,power=-1,pindex=pindex,pundex=pundex) ## bare(!)
 
     return pk
 
