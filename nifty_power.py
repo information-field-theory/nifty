@@ -495,7 +495,7 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
         trB2 = Sk.pseudo_tr(D,**kwargs) ## probing of the partial traces of D
         if(np.any(trB2<0)):
             about.warnings.cprint("WARNING: nonpositive value(s) in tr[DSk] reset to 0.")
-            trB2 = np.minimum(0,trB2)
+            trB2 = np.maximumlgo(0,trB2)
     ## power spectrum
     numerator = 2*q+trB1+perception[0]*trB2 ## non-bare(!)
     denominator1 = rho+2*(alpha-1+perception[1])
