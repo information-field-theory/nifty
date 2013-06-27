@@ -8367,10 +8367,6 @@ class operator(object):
 
             Parameters
             ----------
-            bare : bool, *optional*
-                Indicatese whether the diagonal entries are `bare` or not
-                (mandatory for the correct incorporation of volume weights)
-                (default: False)
             domain : space, *optional*
                 space wherein the probes live (default: self.domain)
             target : space, *optional*
@@ -8431,10 +8427,6 @@ class operator(object):
 
             Parameters
             ----------
-            bare : bool, *optional*
-                Indicatese whether the diagonal entries are `bare` or not
-                (mandatory for the correct incorporation of volume weights)
-                (default: False)
             domain : space, *optional*
                 space wherein the probes live (default: self.domain)
             target : space, *optional*
