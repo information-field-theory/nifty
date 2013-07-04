@@ -484,7 +484,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.4.1"
+        self._version = "0.4.2"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -8597,7 +8597,7 @@ class diagonal_operator(operator):
             self.sym = True
         else:
             self.val = diag
-            about.infos.cprint("INFO: non-self-adjoint complex diagonal operator.")
+#            about.infos.cprint("INFO: non-self-adjoint complex diagonal operator.")
             self.sym = False
 
         ## check whether identity
@@ -8641,7 +8641,7 @@ class diagonal_operator(operator):
             self.sym = True
         else:
             self.val = newdiag
-            about.infos.cprint("INFO: non-self-adjoint complex diagonal operator.")
+#            about.infos.cprint("INFO: non-self-adjoint complex diagonal operator.")
             self.sym = False
 
         ## check whether identity

@@ -216,14 +216,13 @@ def calc_ps_fast(field,axes,dgrid,zerocentered=False,fourier=False,pindex=None,k
             Fourier space have the same length (default=None).
 
     """
-
     ## field absolutes
     if(not fourier):
-        foufield = np.fft.fftshift(np.fft.fftn(field))
-    elif(np.any(zerocentered==False)):
-        foufield = np.fft.fftshift(field, axes=shiftaxes(zerocentered,st_to_zero_mode=True))
+        foufield = np.fft.fftn(field)
     else:
         foufield = field
+    if(np.any(zerocentered==False))and(pindex is None): ## kdict is zerocentered, but pindex is shifted
+        foufield = np.fft.fftshift(foufield, axes=shiftaxes(zerocentered,st_to_zero_mode=True))
     fieldabs = np.abs(foufield)**2
 
     if(rho is None):
@@ -244,7 +243,7 @@ def calc_ps_fast(field,axes,dgrid,zerocentered=False,fourier=False,pindex=None,k
                 rho[position] += 1
         else:
             ## power spectrum
-            ps = np.zeros(len(set(pindex.flatten())))
+            ps = np.zeros(np.max(pindex)+1)
             rho = np.zeros(ps.size)
             for ii in np.ndindex(pindex.shape):
                 ps[pindex[ii]] += fieldabs[ii]
