@@ -21,8 +21,9 @@
 
 from __future__ import division
 from nifty_core import *
-#from nifty_power import *
-#from nifty_cmaps import *
+from nifty_cmaps import *
+from nifty_power import *
+
 
 
 ##-----------------------------------------------------------------------------

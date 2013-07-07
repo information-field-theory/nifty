@@ -484,7 +484,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.4.0"
+        self._version = "0.4.2"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -2178,6 +2178,9 @@ class rg_space(space):
         Notes
         -----
         Only even numbers of grid points per axis are supported.
+        The basis transformations between position `x` and Fourier mode `k`
+        rely on (inverse) fast Fourier transformations using the
+        :math:`exp(2 \pi i k^\dagger x)`-formulation.
 
         Attributes
         ----------
@@ -8367,10 +8370,6 @@ class operator(object):
 
             Parameters
             ----------
-            bare : bool, *optional*
-                Indicatese whether the diagonal entries are `bare` or not
-                (mandatory for the correct incorporation of volume weights)
-                (default: False)
             domain : space, *optional*
                 space wherein the probes live (default: self.domain)
             target : space, *optional*
@@ -8431,10 +8430,6 @@ class operator(object):
 
             Parameters
             ----------
-            bare : bool, *optional*
-                Indicatese whether the diagonal entries are `bare` or not
-                (mandatory for the correct incorporation of volume weights)
-                (default: False)
             domain : space, *optional*
                 space wherein the probes live (default: self.domain)
             target : space, *optional*
@@ -8605,7 +8600,7 @@ class diagonal_operator(operator):
             self.sym = True
         else:
             self.val = diag
-            about.infos.cprint("INFO: non-self-adjoint complex diagonal operator.")
+#            about.infos.cprint("INFO: non-self-adjoint complex diagonal operator.")
             self.sym = False
 
         ## check whether identity
@@ -8649,7 +8644,7 @@ class diagonal_operator(operator):
             self.sym = True
         else:
             self.val = newdiag
-            about.infos.cprint("INFO: non-self-adjoint complex diagonal operator.")
+#            about.infos.cprint("INFO: non-self-adjoint complex diagonal operator.")
             self.sym = False
 
         ## check whether identity
@@ -9652,7 +9647,7 @@ class projection_operator(operator):
             band = int(band)
             if(band>self.bands()-1)or(band<0):
                 raise TypeError(about._errors.cstring("ERROR: invalid band."))
-            Px = np.zeros(self.domain.dim(split=True),dtype=self.domain.datatype,order='C').flatten(order='C')
+            Px = np.zeros(self.domain.dim(split=False),dtype=self.domain.datatype,order='C')
             Px[self.ind[band]] += x.val.flatten(order='C')[self.ind[band]]
             Px = field(self.domain,val=Px,target=x.target)
             return Px
@@ -9664,7 +9659,7 @@ class projection_operator(operator):
                 bandsup = np.array(bandsup,dtype=np.int)
             if(np.any(bandsup>self.bands()-1))or(np.any(bandsup<0)):
                 raise ValueError(about._errors.cstring("ERROR: invalid input."))
-            Px = np.zeros(self.domain.dim(split=True),dtype=self.domain.datatype,order='C').flatten(order='C')
+            Px = np.zeros(self.domain.dim(split=False),dtype=self.domain.datatype,order='C')
             x_ = x.val.flatten(order='C')
             for bb in bandsup:
                 Px[self.ind[bb]] += x_[self.ind[bb]]
