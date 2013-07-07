@@ -2178,6 +2178,9 @@ class rg_space(space):
         Notes
         -----
         Only even numbers of grid points per axis are supported.
+        The basis transformations between position `x` and Fourier mode `k`
+        rely on (inverse) fast Fourier transformations using the
+        :math:`exp(2 \pi i k^\dagger x)`-formulation.
 
         Attributes
         ----------

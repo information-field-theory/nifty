@@ -218,11 +218,11 @@ def calc_ps_fast(field,axes,dgrid,zerocentered=False,fourier=False,pindex=None,k
     """
     ## field absolutes
     if(not fourier):
-        foufield = np.fft.fftn(field)
+        foufield = np.fft.fftshift(np.fft.fftn(field))
+    elif(np.any(zerocentered==False)):
+        foufield = np.fft.fftshift(field, axes=shiftaxes(zerocentered,st_to_zero_mode=True))
     else:
         foufield = field
-    if(np.any(zerocentered==False))and(pindex is None): ## kdict is zerocentered, but pindex is shifted
-        foufield = np.fft.fftshift(foufield, axes=shiftaxes(zerocentered,st_to_zero_mode=True))
     fieldabs = np.abs(foufield)**2
 
     if(rho is None):
@@ -242,6 +242,9 @@ def calc_ps_fast(field,axes,dgrid,zerocentered=False,fourier=False,pindex=None,k
                 ps[position] += fieldabs[ii]
                 rho[position] += 1
         else:
+            ## zerocenter pindex
+            if(np.any(zerocentered==False)):
+                pindex = np.fft.fftshift(pindex, axes=shiftaxes(zerocentered,st_to_zero_mode=True))
             ## power spectrum
             ps = np.zeros(np.max(pindex)+1)
             rho = np.zeros(ps.size)
@@ -262,6 +265,9 @@ def calc_ps_fast(field,axes,dgrid,zerocentered=False,fourier=False,pindex=None,k
             position = np.searchsorted(klength,kdict[ii])
             ps[position] += fieldabs[ii]
     else:
+        ## zerocenter pindex
+        if(np.any(zerocentered==False)):
+            pindex = np.fft.fftshift(pindex, axes=shiftaxes(zerocentered,st_to_zero_mode=True))
         ## power spectrum
         ps = np.zeros(rho.size)
         for ii in np.ndindex(pindex.shape):

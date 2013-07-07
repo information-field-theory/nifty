@@ -291,7 +291,7 @@ def _calc_inverse(tk,var,kindex,rho,b1,Amem): ## > computes the inverse Hessian 
     ## inversion
     return np.linalg.inv(T2+np.diag(b2,k=0)),b2,Amem
 
-def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None,rho=None,q=1E-42,alpha=1,perception=(1,0),smoothness=False,var=100,bare=True,**kwargs):
+def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None,rho=None,q=1E-42,alpha=1,perception=(1,0),smoothness=True,var=10,bare=True,**kwargs):
     """
         Infers the power spectrum.
 
@@ -335,9 +335,9 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
             (default: (1,0)).
         smoothness : bool, *optional*
             Indicates whether the smoothness prior is used or not
-            (default: False).
+            (default: True).
         var : {scalar, list, array}, *optional*
-            Variance of the assumed spectral smoothness prior (default: 100).
+            Variance of the assumed spectral smoothness prior (default: 10).
         bare : bool, *optional*
             Indicates whether the power spectrum entries returned are "bare"
             or not (mandatory for the correct incorporation of volume weights)
@@ -503,30 +503,45 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
     if(smoothness):
         if(not domain.discrete):
             numerator = weight_power(domain,numerator,power=-1,pindex=pindex,pundex=pundex) ## bare(!)
-        pk = numerator/denominator1 ## bare(!)
 
         ## smoothness prior
-        tk = np.log(pk)
-        Amemory = None
-        var_ = var*1.1 # temporally increasing the variance
-        breakinfo = False
-        while(var_>=var): # slowly lowering the variance
-            absdelta = 1
-            while(absdelta>1E-3): # solving with fixed variance
-                ## solution of A delta = b1 - b2
-                Ainverse,denominator2,Amemory = _calc_inverse(tk,var_,kindex,rho,denominator1,Amemory)
-                delta = np.dot(Ainverse,numerator/pk-denominator2,out=None)
-                if(np.abs(delta).max()>absdelta): # increasing variance when speeding up
-                    var_ *= 1.1
-                absdelta = np.abs(delta).max()
-                tk += min(1,0.1/absdelta)*delta # adaptive step width
-                pk *= np.exp(min(1,0.1/absdelta)*delta) # adaptive step width
-            var_ /= 1.1 # lowering the variance when converged
-            if(var_<var):
-                if(breakinfo): # making sure there's one iteration with the correct variance
-                    break
-                var_ = var
-                breakinfo = True
+        divergence = 1
+        while(divergence):
+            pk = numerator/denominator1 ## bare(!)
+            tk = np.log(pk)
+            Amemory = None
+            var_ = var*1.1 # temporally increasing the variance
+            var_OLD = -1
+            breakinfo = False
+            while(var_>=var): # slowly lowering the variance
+                absdelta = 1
+                while(absdelta>1E-3): # solving with fixed variance
+                    ## solution of A delta = b1 - b2
+                    Ainverse,denominator2,Amemory = _calc_inverse(tk,var_,kindex,rho,denominator1,Amemory)
+                    delta = np.dot(Ainverse,numerator/pk-denominator2,out=None)
+                    if(np.abs(delta).max()>absdelta): # increasing variance when speeding up
+                        var_ *= 1.1
+                    absdelta = np.abs(delta).max()
+                    tk += min(1,0.1/absdelta)*delta # adaptive step width
+                    pk *= np.exp(min(1,0.1/absdelta)*delta) # adaptive step width
+                var_ /= 1.1 # lowering the variance when converged
+                if(var_<var):
+                    if(breakinfo): # making sure there's one iteration with the correct variance
+                        break
+                    var_ = var
+                    breakinfo = True
+                elif(var_==var_OLD):
+                    if(divergence==3):
+                        pot = int(np.log10(var_))
+                        var = int(1+var_*10**-pot)*10**pot
+                        about.warnings.cprint("WARNING: smoothness variance increased ( var = "+str(var)+" ).")
+                        break
+                    else:
+                        divergence += 1
+                else:
+                    var_OLD = var_
+            if(breakinfo):
+                break
 
         ## weight if ...
         if(not domain.discrete)and(not bare):
