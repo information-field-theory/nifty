@@ -484,7 +484,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.4.2"
+        self._version = "0.5.0"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -2151,7 +2151,7 @@ class rg_space(space):
         ..    /   __/ /   _   /
         ..   /  /    /  /_/  /
         ..  /__/     \____  /  space class
-        ..           /_____/
+        ..          /______/
 
         NIFTY subclass for spaces of regular Cartesian grids.
 
@@ -5427,6 +5427,7 @@ class hp_space(space):
                 cmap = pl.cm.jet ## default
             cmap.set_under(color='k',alpha=0.0) ## transparent box
             hp.mollview(x,fig=None,rot=None,coord=None,unit=unit,xsize=800,title=title,nest=False,min=vmin,max=vmax,flip="astro",remove_dip=False,remove_mono=False,gal_cut=0,format="%g",format2="%g",cbar=cbar,cmap=cmap,notext=False,norm=norm,hold=False,margins=None,sub=None)
+            fig = pl.gcf()
 
         if(bool(kwargs.get("save",False))):
             fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
@@ -7437,8 +7438,6 @@ def arctanh(x):
     else:
         return np.arctanh(np.array(x))
 
-## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 def sqrt(x):
     """
         Returns the square root of a given object.
@@ -7465,8 +7464,6 @@ def sqrt(x):
         return field(x.domain,val=np.sqrt(x.val),target=x.target)
     else:
         return np.sqrt(np.array(x))
-
-## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 def exp(x):
     """
@@ -7541,8 +7538,6 @@ def log(x,base=None):
     else:
         raise ValueError(about._errors.cstring("ERROR: invalid input basis."))
 
-## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 def conjugate(x):
     """
         Computes the complex conjugate of a given object.
@@ -7561,9 +7556,6 @@ def conjugate(x):
         return field(x.domain,val=np.conjugate(x.val),target=x.target)
     else:
         return np.conjugate(np.array(x))
-
-##-----------------------------------------------------------------------------
-
 
 ##-----------------------------------------------------------------------------
 
@@ -7679,7 +7671,7 @@ class operator(object):
         self.uni = bool(uni)
 
         if(self.domain.discrete):
-            self.imp = False
+            self.imp = True
         else:
             self.imp = bool(imp)
 
@@ -9245,7 +9237,7 @@ class power_operator(diagonal_operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def set_power(self,newspec,bare=None,pindex=None,**kwargs):
+    def set_power(self,newspec,bare=True,pindex=None,**kwargs):
         """
             Sets the power spectrum of the diagonal operator
 
@@ -9280,14 +9272,12 @@ class power_operator(diagonal_operator):
             binbounds : {list, array}, *optional*
                 User specific inner boundaries of the bins, which are preferred
                 over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
-                Lower limit of the uniform distribution if ``random == "uni"``
-                (default: 0).
+                (default: None).
 
         """
-        if(bare is None):
-            about.warnings.cprint("WARNING: bare keyword set to default.")
-            bare = True
+#        if(bare is None):
+#            about.warnings.cprint("WARNING: bare keyword set to default.")
+#            bare = True
         ## check implicit pindex
         if(pindex is None):
             try:
@@ -10615,13 +10605,15 @@ class probing(object):
         pool = mp(processes=self.ncpu,initializer=None,initargs=(),maxtasksperchild=self.nper)
         try:
             ## retrieve results
-            results = pool.map_async(self._serial_probing,zip(seed,np.arange(self.nrun,dtype=np.int)),chunksize=None,callback=None).get(timeout=None)
-            ## close pool
+            results = pool.map(self._serial_probing,zip(seed,np.arange(self.nrun,dtype=np.int)),chunksize=None)#,callback=None).get(timeout=None) ## map_async replaced
+            ## close and join pool
             about.infos.cflush(" done.")
             pool.close()
+            pool.join()
         except:
-            ## terminate pool
+            ## terminate and join pool
             pool.terminate()
+            pool.join()
             raise Exception(about._errors.cstring("ERROR: unknown. NOTE: pool terminated.")) ## traceback by looping
         ## cleanup
         results = [rr for rr in results if(rr is not None)]
