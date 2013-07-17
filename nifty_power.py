@@ -43,7 +43,7 @@
 from __future__ import division
 from scipy.interpolate import interp1d as ip ## conflicts with sphinx's autodoc
 #import numpy as np
-from nifty.nifty_core import *
+from nifty_core import *
 import smoothing as gs
 
 

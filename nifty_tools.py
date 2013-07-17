@@ -35,7 +35,7 @@
 """
 from __future__ import division
 #import numpy as np
-from nifty.nifty_core import *
+from nifty_core import *
 
 
 ##-----------------------------------------------------------------------------
@@ -191,9 +191,9 @@ class invertible_operator(operator):
             A = self._inverse_multiply
         else:
             A = self.inverse_times
-        x_,converged = conjugate_gradient(A,x_,W=W,spam=spam,reset=reset,note=note)(x0=x0,tol=tol,clevel=clevel,limii=limii)
+        x_,convergence = conjugate_gradient(A,x_,W=W,spam=spam,reset=reset,note=note)(x0=x0,tol=tol,clevel=clevel,limii=limii)
         ## evaluate
-        if(not converged):
+        if(not convergence):
             if(not force):
                 return None
             about.warnings.cprint("WARNING: conjugate gradient failed.")
@@ -257,9 +257,9 @@ class invertible_operator(operator):
             A = self._multiply
         else:
             A = self.times
-        x_,converged = conjugate_gradient(A,x_,W=W,spam=spam,reset=reset,note=note)(x0=x0,tol=tol,clevel=clevel,limii=limii)
+        x_,convergence = conjugate_gradient(A,x_,W=W,spam=spam,reset=reset,note=note)(x0=x0,tol=tol,clevel=clevel,limii=limii)
         ## evaluate
-        if(not converged):
+        if(not convergence):
             if(not force):
                 return None
             about.warnings.cprint("WARNING: conjugate gradient failed.")
@@ -517,9 +517,9 @@ class propagator_operator(operator):
             A = self._inverse_multiply_1
         else:
             A = self._inverse_multiply_2
-        x_,converged = conjugate_gradient(A,x_,W=W,spam=spam,reset=reset,note=note)(x0=x0,tol=tol,clevel=clevel,limii=limii)
+        x_,convergence = conjugate_gradient(A,x_,W=W,spam=spam,reset=reset,note=note)(x0=x0,tol=tol,clevel=clevel,limii=limii)
         ## evaluate
-        if(not converged):
+        if(not convergence):
             if(not force):
                 return None
             about.warnings.cprint("WARNING: conjugate gradient failed.")
@@ -600,8 +600,8 @@ class conjugate_gradient(object):
         compared to the tolerance, and the convergence level if changed.
         The minimizer will exit in two states: QUIT if the maximum number of
         iterations is reached, or DONE if convergence is achieved. Returned
-        will be the latest `x` and a Boolean indicating convergence, which can
-        be ``True`` for all exit states.
+        will be the latest `x` and the latest convergence level, which can
+        evaluate ``True`` for all exit states.
 
         References
         ----------
@@ -613,14 +613,14 @@ class conjugate_gradient(object):
         --------
         >>> b = field(point_space(2), val=[1, 9])
         >>> A = diagonal_operator(b.domain, diag=[4, 3])
-        >>> x,converged = conjugate_gradient(A, b, note=True)(tol=1E-4, clevel=3)
+        >>> x,convergence = conjugate_gradient(A, b, note=True)(tol=1E-4, clevel=3)
         iteration : 00000001   alpha = 3.3E-01   beta = 1.3E-03   delta = 3.6E-02
         iteration : 00000002   alpha = 2.5E-01   beta = 7.6E-04   delta = 1.0E-03
         iteration : 00000003   alpha = 3.3E-01   beta = 2.5E-04   delta = 1.6E-05   convergence level : 1
         iteration : 00000004   alpha = 2.5E-01   beta = 1.8E-06   delta = 2.1E-08   convergence level : 2
         iteration : 00000005   alpha = 2.5E-01   beta = 2.2E-03   delta = 1.0E-09   convergence level : 3
         ... done.
-        >>> print converged
+        >>> bool(convergence)
         True
         >>> x.val # yields 1/4 and 9/3
         array([ 0.25,  3.  ])
@@ -711,8 +711,9 @@ class conjugate_gradient(object):
             -------
             x : field
                 Latest `x` of the minimization.
-            converged : bool
-                Indicates whether the minimization has converged or not.
+            convergence : integer
+                Latest convergence level indicating whether the minimization
+                has converged or not.
 
         """
         self.x = field(self.b.domain,val=x0,target=self.b.target)
@@ -754,7 +755,7 @@ class conjugate_gradient(object):
                 self.note.cprint("\n... quit.")
                 break
             if(gamma==0):
-                convergence = clevel
+                convergence = clevel+1
                 self.note.cprint("   convergence level : INF\n... done.")
                 break
             elif(np.absolute(delta)<tol):
@@ -774,7 +775,7 @@ class conjugate_gradient(object):
         if(self.spam is not None):
             self.spam(self.x,ii)
 
-        return self.x,bool(convergence)
+        return self.x,convergence
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -830,7 +831,7 @@ class conjugate_gradient(object):
         if(self.spam is not None):
             self.spam(self.x,ii)
 
-        return self.x,bool(convergence)
+        return self.x,convergence
 
 ##=============================================================================
 
@@ -881,8 +882,8 @@ class steepest_descent(object):
         the convergence level if changed. The minimizer will exit in three
         states: DEAD if no step width above 1E-13 is accepted, QUIT if the
         maximum number of iterations is reached, or DONE if convergence is
-        achieved. Returned will be the latest `x` and a Boolean indicating
-        convergence, which can be ``True`` for all exit states.
+        achieved. Returned will be the latest `x` and the latest convergence
+        level, which can evaluate ``True`` for all exit states.
 
         References
         ----------
@@ -897,7 +898,7 @@ class steepest_descent(object):
         ...     g = x # gradient
         ...     return E,g
         >>> x = field(point_space(2), val=[1, 3])
-        >>> x,converged = steepest_descent(egg, note=True)(x0=x, tol=1E-4, clevel=3)
+        >>> x,convergence = steepest_descent(egg, note=True)(x0=x, tol=1E-4, clevel=3)
         iteration : 00000001   alpha = 1.0E+00   delta = 6.5E-01
         iteration : 00000002   alpha = 2.0E+00   delta = 1.4E-01
         iteration : 00000003   alpha = 1.6E-01   delta = 2.1E-03
@@ -906,7 +907,7 @@ class steepest_descent(object):
         iteration : 00000006   alpha = 8.2E-05   delta = 4.4E-06   convergence level : 2
         iteration : 00000007   alpha = 6.6E-06   delta = 3.1E-06   convergence level : 3
         ... done.
-        >>> print converged
+        >>> bool(convergence)
         True
         >>> x.val # approximately zero
         array([ -6.87299426e-07  -2.06189828e-06])
@@ -985,8 +986,9 @@ class steepest_descent(object):
             -------
             x : field
                 Latest `x` of the minimization.
-            converged : bool
-                Indicates whether the minimization has converged or not.
+            convergence : integer
+                Latest convergence level indicating whether the minimization
+                has converged or not.
 
         """
         if(not isinstance(x0,field)):
@@ -1031,7 +1033,7 @@ class steepest_descent(object):
         if(self.spam is not None):
             self.spam(self.x,ii)
 
-        return self.x,bool(convergence)
+        return self.x,convergence
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
