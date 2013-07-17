@@ -130,7 +130,7 @@ class invertible_operator(operator):
         else:
             self.imp = bool(imp)
 
-        self.target = target
+        self.target = self.domain
 
         if(para is not None):
             self.para = para
