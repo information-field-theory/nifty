@@ -189,6 +189,8 @@ class invertible_operator(operator):
         ## apply operator
         if(self.imp):
             A = self._inverse_multiply
+        elif(id(self.inverse_times)==id(invertible_operator.inverse_times)): ## avoid infinite recursion
+            A = super(invertible_operator,self).inverse_times
         else:
             A = self.inverse_times
         x_,convergence = conjugate_gradient(A,x_,W=W,spam=spam,reset=reset,note=note)(x0=x0,tol=tol,clevel=clevel,limii=limii)
@@ -255,6 +257,8 @@ class invertible_operator(operator):
         ## apply operator
         if(self.imp):
             A = self._multiply
+        elif(id(self.times)==id(invertible_operator.times)): ## avoid infinite recursion
+            A = super(invertible_operator,self).times
         else:
             A = self.times
         x_,convergence = conjugate_gradient(A,x_,W=W,spam=spam,reset=reset,note=note)(x0=x0,tol=tol,clevel=clevel,limii=limii)
