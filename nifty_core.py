@@ -9620,13 +9620,14 @@ class projection_operator(operator):
 
             Parameters
             ----------
-            x : valid field
+            x : field
+                Valid input field.
             band : int, *optional*
-                Projection band whereon to project. (default: None)
+                Projection band whereon to project (default: None).
             bandsup: {integer, list/array of integers}, *optional*
                 List of projection bands whereon to project and which to sum
-                up. The `band` keyword is prefered over `bandsup`.
-                (default: None)
+                up. The `band` keyword is prefered over `bandsup`
+                (default: None).
 
             Returns
             -------

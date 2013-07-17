@@ -137,22 +137,22 @@ class invertible_operator(operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def times(self,x,force=False,W=None,spam=None,reset=None,note=False,x0=None,tol=1E-4,clevel=1,limii=None,**kwargs):
+    def _multiply(self,x,force=False,W=None,spam=None,reset=None,note=False,x0=None,tol=1E-4,clevel=1,limii=None,**kwargs):
         """
-            Applies the propagator to a given object.
+            Applies the invertible operator to a given field by invoking a
+            conjugate gradient.
 
             Parameters
             ----------
-            x : {scalar, list, array, field}
-                Scalars are interpreted as constant arrays, and an array will
-                be interpreted as a field on the domain of the operator.
+            x : field
+                Valid input field.
             force : bool
                 Indicates wheter to return a field instead of ``None`` is
                 forced incase the conjugate gradient fails.
 
             Returns
             -------
-            Ox : field
+            OIIx : field
                 Mapped field with suitable domain.
 
             See Also
@@ -184,32 +184,25 @@ class invertible_operator(operator):
                 Maximum number of iterations performed (default: 10 * b.dim()).
 
         """
-        ## prepare
-        x_ = self._briefing(x,self.domain,False)
-        ## apply operator
-        if(self.imp):
-            A = self._inverse_multiply
-        elif(id(self.inverse_times)==id(invertible_operator.inverse_times)): ## avoid infinite recursion
-            A = super(invertible_operator,self).inverse_times
-        else:
-            A = self.inverse_times
-        x_,convergence = conjugate_gradient(A,x_,W=W,spam=spam,reset=reset,note=note)(x0=x0,tol=tol,clevel=clevel,limii=limii)
-        ## evaluate
+        x_,convergence = conjugate_gradient(self.inverse_times,x,W=W,spam=spam,reset=reset,note=note)(x0=x0,tol=tol,clevel=clevel,limii=limii)
+        if(not self.imp): ## continiuos domain/target
+            x_.weight(power=-1,overwrite=True)
+        ## check convergence
         if(not convergence):
             if(not force):
                 return None
             about.warnings.cprint("WARNING: conjugate gradient failed.")
-        return self._debriefing(x,x_,self.target,False)
+        return x_
 
-    def inverse_times(self,x,force=False,W=None,spam=None,reset=None,note=False,x0=None,tol=1E-4,clevel=1,limii=None,**kwargs):
+    def _inverse_multiply(self,x,force=False,W=None,spam=None,reset=None,note=False,x0=None,tol=1E-4,clevel=1,limii=None,**kwargs):
         """
-            Applies the propagator to a given object.
+            Applies the inverse of the invertible operator to a given field by
+            invoking a conjugate gradient.
 
             Parameters
             ----------
-            x : {scalar, list, array, field}
-                Scalars are interpreted as constant arrays, and an array will
-                be interpreted as a field on the domain of the operator.
+            x : field
+                Valid input field.
             force : bool
                 Indicates wheter to return a field instead of ``None`` is
                 forced incase the conjugate gradient fails.
@@ -248,26 +241,15 @@ class invertible_operator(operator):
                 Maximum number of iterations performed (default: 10 * b.dim()).
 
         """
-        ## check whether self-inverse
-        if(self.sym)and(self.uni):
-            return self.times(x,**kwargs)
-
-        ## prepare
-        x_ = self._briefing(x,self.target,True)
-        ## apply operator
-        if(self.imp):
-            A = self._multiply
-        elif(id(self.times)==id(invertible_operator.times)): ## avoid infinite recursion
-            A = super(invertible_operator,self).times
-        else:
-            A = self.times
-        x_,convergence = conjugate_gradient(A,x_,W=W,spam=spam,reset=reset,note=note)(x0=x0,tol=tol,clevel=clevel,limii=limii)
-        ## evaluate
+        x_,convergence = conjugate_gradient(self.times,x,W=W,spam=spam,reset=reset,note=note)(x0=x0,tol=tol,clevel=clevel,limii=limii)
+        if(not self.imp): ## continiuos domain/target
+            x_.weight(power=1,overwrite=True)
+        ## check convergence
         if(not convergence):
             if(not force):
                 return None
             about.warnings.cprint("WARNING: conjugate gradient failed.")
-        return self._debriefing(x,x_,self.domain,True)
+        return x_
 
 ##-----------------------------------------------------------------------------
 
@@ -469,7 +451,8 @@ class propagator_operator(operator):
 
     def times(self,x,force=False,W=None,spam=None,reset=None,note=False,x0=None,tol=1E-4,clevel=1,limii=None,**kwargs):
         """
-            Applies the propagator to a given object.
+            Applies the propagator to a given object by invoking a
+            conjugate gradient.
 
             Parameters
             ----------
