@@ -717,7 +717,8 @@ class conjugate_gradient(object):
         if(limii is None):
             limii = 10*self.b.domain.dim(split=False)
 
-        d = r = self.b-self.A(self.x)
+        r = self.b-self.A(self.x)
+        d = field(self.b.domain,val=np.copy(r.val),target=self.b.target)
         gamma = r.dot(d)
         delta_ = np.absolute(gamma)**(-0.5)
 
