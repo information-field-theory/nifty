@@ -7954,7 +7954,7 @@ class operator(object):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def tr(self,domain=None,target=None,random="pm1",ncpu=2,nrun=8,nper=None,var=False,loop=False):
+    def tr(self,domain=None,target=None,random="pm1",ncpu=2,nrun=8,nper=None,var=False,loop=False,**kwargs):
         """
             Computes the trace of the operator
 
@@ -7998,9 +7998,9 @@ class operator(object):
         """
         if(domain is None):
             domain = self.domain
-        return trace_probing(self,function=self.times,domain=domain,target=target,random=random,ncpu=ncpu,nrun=nrun,nper=nper,var=var)(loop=loop)
+        return trace_probing(self,function=self.times,domain=domain,target=target,random=random,ncpu=ncpu,nrun=nrun,nper=nper,var=var,**kwargs)(loop=loop)
 
-    def inverse_tr(self,domain=None,target=None,random="pm1",ncpu=2,nrun=8,nper=None,var=False,loop=False):
+    def inverse_tr(self,domain=None,target=None,random="pm1",ncpu=2,nrun=8,nper=None,var=False,loop=False,**kwargs):
         """
             Computes the trace of the inverse operator
 
@@ -8044,11 +8044,11 @@ class operator(object):
         """
         if(domain is None):
             domain = self.target
-        return trace_probing(self,function=self.inverse_times,domain=domain,target=target,random=random,ncpu=ncpu,nrun=nrun,nper=nper,var=var)(loop=loop)
+        return trace_probing(self,function=self.inverse_times,domain=domain,target=target,random=random,ncpu=ncpu,nrun=nrun,nper=nper,var=var,**kwargs)(loop=loop)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def diag(self,bare=False,domain=None,target=None,random="pm1",ncpu=2,nrun=8,nper=None,var=False,save=False,path="tmp",prefix="",loop=False):
+    def diag(self,bare=False,domain=None,target=None,random="pm1",ncpu=2,nrun=8,nper=None,var=False,save=False,path="tmp",prefix="",loop=False,**kwargs):
         """
             Computes the diagonal of the operator via probing.
 
@@ -8115,7 +8115,7 @@ class operator(object):
         """
         if(domain is None):
             domain = self.domain
-        diag = diagonal_probing(self,function=self.times,domain=domain,target=target,random=random,ncpu=ncpu,nrun=nrun,nper=nper,var=var,save=save,path=path,prefix=prefix)(loop=loop)
+        diag = diagonal_probing(self,function=self.times,domain=domain,target=target,random=random,ncpu=ncpu,nrun=nrun,nper=nper,var=var,save=save,path=path,prefix=prefix,**kwargs)(loop=loop)
         ## weight if ...
         if(not domain.discrete)and(bare):
             if(isinstance(diag,tuple)): ## diag == (diag,variance)
@@ -8125,7 +8125,7 @@ class operator(object):
         else:
             return diag
 
-    def inverse_diag(self,bare=False,domain=None,target=None,random="pm1",ncpu=2,nrun=8,nper=None,var=False,save=False,path="tmp",prefix="",loop=False):
+    def inverse_diag(self,bare=False,domain=None,target=None,random="pm1",ncpu=2,nrun=8,nper=None,var=False,save=False,path="tmp",prefix="",loop=False,**kwargs):
         """
             Computes the diagonal of the inverse operator via probing.
 
@@ -8192,7 +8192,7 @@ class operator(object):
         """
         if(domain is None):
             domain = self.target
-        diag = diagonal_probing(self,function=self.inverse_times,domain=domain,target=target,random=random,ncpu=ncpu,nrun=nrun,nper=nper,var=var,save=save,path=path,prefix=prefix)(loop=loop)
+        diag = diagonal_probing(self,function=self.inverse_times,domain=domain,target=target,random=random,ncpu=ncpu,nrun=nrun,nper=nper,var=var,save=save,path=path,prefix=prefix,**kwargs)(loop=loop)
         ## weight if ...
         if(not domain.discrete)and(bare):
             if(isinstance(diag,tuple)): ## diag == (diag,variance)
@@ -10361,9 +10361,11 @@ class probing(object):
         var : bool
             whether the variance will be additionally returned, when the
             instance is called
+        quargs : dict
+            Keyword arguments passed to `function` in each call.
 
     """
-    def __init__(self,op=None,function=None,domain=None,target=None,random="pm1",ncpu=2,nrun=8,nper=None,var=False):
+    def __init__(self,op=None,function=None,domain=None,target=None,random="pm1",ncpu=2,nrun=8,nper=None,var=False,**quargs):
         """
         initializes a probing instance
 
@@ -10465,6 +10467,8 @@ class probing(object):
 
         self.var = bool(var)
 
+        self.quargs = quargs
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def configure(self,**kwargs):
@@ -10539,7 +10543,7 @@ class probing(object):
                 depends on the function.
 
         """
-        f = self.function(probe)
+        f = self.function(probe,**self.quargs)
         if(isinstance(f,field)):
             return f.val
         else:
@@ -10646,7 +10650,7 @@ class probing(object):
     def __call__(self,loop=False,**kwargs):
         """
 
-            starts the probing process.
+            Starts the probing process.
             All keyword arguments that can be given to `configure` can also be
             given to `__call__` and have the same effect.
 
@@ -10774,9 +10778,11 @@ class trace_probing(probing):
         var : bool
             whether the variance will be additionally returned, when the
             instance is called
+        quargs : dict
+            Keyword arguments passed to `function` in each call.
 
     """
-    def __init__(self,op,function=None,domain=None,target=None,random="pm1",ncpu=2,nrun=8,nper=None,var=False):
+    def __init__(self,op,function=None,domain=None,target=None,random="pm1",ncpu=2,nrun=8,nper=None,var=False,**quargs):
         """
         initializes a trace probing instance
 
@@ -10874,6 +10880,8 @@ class trace_probing(probing):
 
         self.var = bool(var)
 
+        self.quargs = quargs
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def probing(self,idnum,probe):
@@ -10892,7 +10900,7 @@ class trace_probing(probing):
             result : float
                     the result of `probe.dot(function(probe))`
         """
-        f = self.function(probe)
+        f = self.function(probe,**self.quargs)
         if(f is None):
             return None
         else:
@@ -11020,9 +11028,11 @@ class diagonal_probing(probing):
         save : {string, None}
             the path and prefix for saved probe files. None in the case where
             the probing results are stored in the RAM.
+        quargs : dict
+            Keyword arguments passed to `function` in each call.
 
     """
-    def __init__(self,op,function=None,domain=None,target=None,random="pm1",ncpu=2,nrun=8,nper=None,var=False,save=False,path="tmp",prefix=""):
+    def __init__(self,op,function=None,domain=None,target=None,random="pm1",ncpu=2,nrun=8,nper=None,var=False,save=False,path="tmp",prefix="",**quargs):
         """
         initializes a diagonal probing instance
 
@@ -11141,6 +11151,8 @@ class diagonal_probing(probing):
         else:
             self.save = None
 
+        self.quargs = quargs
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def configure(self,**kwargs):
@@ -11231,7 +11243,7 @@ class diagonal_probing(probing):
             result : ndarray
                     the result of `probe*(function(probe))`
         """
-        f = self.function(probe)
+        f = self.function(probe,**self.quargs)
         if(f is None):
             return None
         else:
