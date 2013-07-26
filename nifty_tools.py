@@ -185,13 +185,14 @@ class invertible_operator(operator):
 
         """
         x_,convergence = conjugate_gradient(self.inverse_times,x,W=W,spam=spam,reset=reset,note=note)(x0=x0,tol=tol,clevel=clevel,limii=limii)
-        if(not self.imp): ## continiuos domain/target
-            x_.weight(power=-1,overwrite=True)
         ## check convergence
         if(not convergence):
-            if(not force):
+            if(not force)or(x_ is None):
                 return None
             about.warnings.cprint("WARNING: conjugate gradient failed.")
+        ## weight if ...
+        if(not self.imp): ## continiuos domain/target
+            x_.weight(power=-1,overwrite=True)
         return x_
 
     def _inverse_multiply(self,x,force=False,W=None,spam=None,reset=None,note=False,x0=None,tol=1E-4,clevel=1,limii=None,**kwargs):
@@ -242,13 +243,14 @@ class invertible_operator(operator):
 
         """
         x_,convergence = conjugate_gradient(self.times,x,W=W,spam=spam,reset=reset,note=note)(x0=x0,tol=tol,clevel=clevel,limii=limii)
-        if(not self.imp): ## continiuos domain/target
-            x_.weight(power=1,overwrite=True)
         ## check convergence
         if(not convergence):
-            if(not force):
+            if(not force)or(x_ is None):
                 return None
             about.warnings.cprint("WARNING: conjugate gradient failed.")
+        ## weight if ...
+        if(not self.imp): ## continiuos domain/target
+            x_.weight(power=1,overwrite=True)
         return x_
 
 ##-----------------------------------------------------------------------------
@@ -578,6 +580,10 @@ class conjugate_gradient(object):
         note : bool, *optional*
             Indicates whether notes are printed or not (default: False).
 
+        See Also
+        --------
+        scipy.sparse.linalg.cg
+
         Notes
         -----
         After initialization by `__init__`, the minimizer is started by calling
@@ -585,10 +591,11 @@ class conjugate_gradient(object):
         if enabled, will state the iteration number, current step widths
         `alpha` and `beta`, the current relative residual `delta` that is
         compared to the tolerance, and the convergence level if changed.
-        The minimizer will exit in two states: QUIT if the maximum number of
-        iterations is reached, or DONE if convergence is achieved. Returned
-        will be the latest `x` and the latest convergence level, which can
-        evaluate ``True`` for all exit states.
+        The minimizer will exit in three states: DEAD if alpha becomes
+        infinite, QUIT if the maximum number of iterations is reached, or DONE
+        if convergence is achieved. Returned will be the latest `x` and the
+        latest convergence level, which can evaluate ``True`` for the exit
+        states QUIT and DONE.
 
         References
         ----------
@@ -714,12 +721,17 @@ class conjugate_gradient(object):
 
     def _calc_without(self,tol=1E-4,clevel=1,limii=None): ## > runs cg without preconditioner
 
+        clevel = int(clevel)
         if(limii is None):
             limii = 10*self.b.domain.dim(split=False)
+        else:
+            limii = int(limii)
 
         r = self.b-self.A(self.x)
         d = field(self.b.domain,val=np.copy(r.val),target=self.b.target)
         gamma = r.dot(d)
+        if(gamma==0):
+            return self.x,clevel+1
         delta_ = np.absolute(gamma)**(-0.5)
 
         convergence = 0
@@ -727,6 +739,9 @@ class conjugate_gradient(object):
         while(True):
             q = self.A(d)
             alpha = gamma/d.dot(q) ## positive definite
+            if(not np.isfinite(alpha)):
+                self.note.cprint("\niteration : %08u   alpha = NAN\n... dead."%ii)
+                return self.x,0
             self.x += alpha*d
             if(ii%self.reset==0)or(np.signbit(np.real(alpha))):
                 r = self.b-self.A(self.x)
@@ -769,8 +784,11 @@ class conjugate_gradient(object):
 
     def _calc_with(self,tol=1E-4,clevel=1,limii=None): ## > runs cg with preconditioner
 
+        clevel = int(clevel)
         if(limii is None):
             limii = 10*self.b.domain.dim(split=False)
+        else:
+            limii = int(limii)
 
         r = self.b-self.A(self.x)
         d = self.W(r)
@@ -782,6 +800,9 @@ class conjugate_gradient(object):
         while(True):
             q = self.A(d)
             alpha = gamma/d.dot(q) ## positive definite
+            if(not np.isfinite(alpha)):
+                self.note.cprint("\niteration : %08u   alpha = NAN\n... dead."%ii)
+                return self.x,0
             self.x += alpha*d ## update
             if(ii%self.reset==0)or(np.signbit(np.real(alpha))):
                 r = self.b-self.A(self.x)
@@ -860,6 +881,11 @@ class steepest_descent(object):
             (default: (1E-4,0.9)).
         note : bool, *optional*
             Indicates whether notes are printed or not (default: False).
+
+        See Also
+        --------
+        scipy.optimize.fmin_cg, scipy.optimize.fmin_ncg,
+        scipy.optimize.fmin_l_bfgs_b
 
         Notes
         -----
@@ -982,6 +1008,10 @@ class steepest_descent(object):
         if(not isinstance(x0,field)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.x = x0
+
+        clevel = int(clevel)
+        limii = int(limii)
+
         E,g = self.eggs(self.x) ## energy and gradient
         norm = g.norm() ## gradient norm
 

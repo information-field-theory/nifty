@@ -484,7 +484,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.5.0"
+        self._version = "0.5.5"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -730,9 +730,9 @@ class random(object):
                         spec = domain.enforce_power(kwargs.get("spec",1),size=len(kindex),kindex=kindex,codomain=codomain)
                         kpack = [codomain.power_indices.get("pindex"),kindex]
                 else:
-                    kindex = domain.power_indixes.get("kindex")
+                    kindex = domain.power_indices.get("kindex")
                     spec = domain.enforce_power(kwargs.get("spec",1),size=len(kindex),kindex=kindex)
-                    kpack = [domain.power_indixes.get("pindex"),kindex]
+                    kpack = [domain.power_indices.get("pindex"),kindex]
             return [key,spec,kpack]
 
         elif(key=="uni"):
@@ -1126,7 +1126,7 @@ class space(object):
             Indexing with the unindexing array undoes the indexing with the
             indexing array; i.e., ``power == power[pindex].flatten()[pundex]``.
 
-            See also
+            See Also
             --------
             get_power_index
 
@@ -1161,7 +1161,7 @@ class space(object):
             -------
             None
 
-            See also
+            See Also
             --------
             get_power_indices
 
@@ -1213,7 +1213,7 @@ class space(object):
             Indexing with the unindexing array undoes the indexing with the
             indexing array; i.e., ``power == power[pindex].flatten()[pundex]``.
 
-            See also
+            See Also
             --------
             set_power_indices
 
@@ -1489,13 +1489,17 @@ class space(object):
 
             Returns
             -------
-            dot : float
+            dot : scalar
                 Inner product of the two arrays.
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         y = self.enforce_shape(np.array(y,dtype=self.datatype))
         ## inner product
-        return np.dot(np.conjugate(x),y,out=None)
+        dot = np.dot(np.conjugate(x),y,out=None)
+        if(np.isreal(dot)):
+            return np.real(dot)
+        else:
+            return dot
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2130,6 +2134,8 @@ class point_space(space):
         if(bool(kwargs.get("save",False))):
             fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
             pl.close(fig)
+        else:
+            fig.canvas.draw()
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2530,7 +2536,7 @@ class rg_space(space):
             -------
             None
 
-            See also
+            See Also
             --------
             get_power_indices
 
@@ -2894,13 +2900,17 @@ class rg_space(space):
 
             Returns
             -------
-            dot : float
+            dot : scalar
                 Inner product of the two arrays.
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         y = self.enforce_shape(np.array(y,dtype=self.datatype))
         ## inner product
-        return np.dot(np.conjugate(x.flatten(order='C')),y.flatten(order='C'),out=None)
+        dot = np.dot(np.conjugate(x.flatten(order='C')),y.flatten(order='C'),out=None)
+        if(np.isreal(dot)):
+            return np.real(dot)
+        else:
+            return dot
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3311,6 +3321,8 @@ class rg_space(space):
         if(bool(kwargs.get("save",False))):
             fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
             pl.close(fig)
+        else:
+            fig.canvas.draw()
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3613,7 +3625,7 @@ class lm_space(space):
             -------
             None
 
-            See also
+            See Also
             --------
             get_power_indices
 
@@ -3895,12 +3907,11 @@ class lm_space(space):
 
             Returns
             -------
-            dot : float
+            dot : scalar
                 Inner product of the two arrays.
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         y = self.enforce_shape(np.array(y,dtype=self.datatype))
-
         ## inner product
         if(self.datatype==np.complex64):
             return gl.dotlm_f(x,y,lmax=self.para[0],mmax=self.para[1])
@@ -4167,6 +4178,8 @@ class lm_space(space):
         if(bool(kwargs.get("save",False))):
             fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
             pl.close(fig)
+        else:
+            fig.canvas.draw()
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -4836,6 +4849,8 @@ class gl_space(space):
         if(bool(kwargs.get("save",False))):
             fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
             pl.close(fig)
+        else:
+            fig.canvas.draw()
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -5432,6 +5447,8 @@ class hp_space(space):
         if(bool(kwargs.get("save",False))):
             fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
             pl.close(fig)
+        else:
+            fig.canvas.draw()
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -5900,13 +5917,17 @@ class nested_space(space):
 
             Returns
             -------
-            dot : float
+            dot : scalar
                 Inner product of the two arrays.
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         y = self.enforce_shape(np.array(y,dtype=self.datatype))
         ## inner product
-        return np.sum(np.conjugate(x)*y,axis=None,dtype=None,out=None)
+        dot = np.sum(np.conjugate(x)*y,axis=None,dtype=None,out=None)
+        if(np.isreal(dot)):
+            return np.real(dot)
+        else:
+            return dot
 
     def calc_pseudo_dot(self,x,y,**kwargs):
         """
@@ -7074,7 +7095,7 @@ def cos(x):
         cosx : {scalar, array, field}
             Cosine of `x` to the specified base.
 
-        See also
+        See Also
         --------
         sin
         tan
@@ -7105,7 +7126,7 @@ def sin(x):
         sinx : {scalar, array, field}
             Sine of `x` to the specified base.
 
-        See also
+        See Also
         --------
         cos
         tan
@@ -7137,7 +7158,7 @@ def cosh(x):
         coshx : {scalar, array, field}
             cosh of `x` to the specified base.
 
-        See also
+        See Also
         --------
         sinh
         tanh
@@ -7169,7 +7190,7 @@ def sinh(x):
         sinhx : {scalar, array, field}
             sinh of `x` to the specified base.
 
-        See also
+        See Also
         --------
         cosh
         tanh
@@ -7201,7 +7222,7 @@ def tan(x):
         tanx : {scalar, array, field}
             Tangent of `x` to the specified base.
 
-        See also
+        See Also
         --------
         cos
         sin
@@ -7233,7 +7254,7 @@ def tanh(x):
         tanhx : {scalar, array, field}
             tanh of `x` to the specified base.
 
-        See also
+        See Also
         --------
         cosh
         sinh
@@ -7264,7 +7285,7 @@ def arccos(x):
         arccosx : {scalar, array, field}
             arccos of `x` to the specified base.
 
-        See also
+        See Also
         --------
         arcsin
         arctan
@@ -7296,7 +7317,7 @@ def arcsin(x):
         arcsinx : {scalar, array, field}
             Logarithm of `x` to the specified base.
 
-        See also
+        See Also
         --------
         arccos
         arctan
@@ -7328,7 +7349,7 @@ def arccosh(x):
         arccoshx : {scalar, array, field}
             arccos of `x` to the specified base.
 
-        See also
+        See Also
         --------
         arcsinh
         arctanh
@@ -7359,7 +7380,7 @@ def arcsinh(x):
         arcsinhx : {scalar, array, field}
             arcsinh of `x` to the specified base.
 
-        See also
+        See Also
         --------
         arccosh
         arctanh
@@ -7390,7 +7411,7 @@ def arctan(x):
         arctanx : {scalar, array, field}
             arctan of `x` to the specified base.
 
-        See also
+        See Also
         --------
         arccos
         arcsin
@@ -7421,7 +7442,7 @@ def arctanh(x):
         arctanhx : {scalar, array, field}
             arctanh of `x` to the specified base.
 
-        See also
+        See Also
         --------
         arccosh
         arcsinh
@@ -7479,7 +7500,7 @@ def exp(x):
         expx : {scalar, array, field}
             Exponential of `x` to the specified base.
 
-        See also
+        See Also
         --------
         log
 
@@ -7511,7 +7532,7 @@ def log(x,base=None):
         logx : {scalar, array, field}
             Logarithm of `x` to the specified base.
 
-        See also
+        See Also
         --------
         exp
 
@@ -8116,8 +8137,11 @@ class operator(object):
         if(domain is None):
             domain = self.domain
         diag = diagonal_probing(self,function=self.times,domain=domain,target=target,random=random,ncpu=ncpu,nrun=nrun,nper=nper,var=var,save=save,path=path,prefix=prefix,**kwargs)(loop=loop)
+        if(diag is None):
+            about.warnings.cprint("WARNING: 'NoneType' forwarded.")
+            return None
         ## weight if ...
-        if(not domain.discrete)and(bare):
+        elif(not domain.discrete)and(bare):
             if(isinstance(diag,tuple)): ## diag == (diag,variance)
                 return domain.calc_weight(diag[0],power=-1),domain.calc_weight(diag[1],power=-1)
             else:
@@ -8193,8 +8217,11 @@ class operator(object):
         if(domain is None):
             domain = self.target
         diag = diagonal_probing(self,function=self.inverse_times,domain=domain,target=target,random=random,ncpu=ncpu,nrun=nrun,nper=nper,var=var,save=save,path=path,prefix=prefix,**kwargs)(loop=loop)
+        if(diag is None):
+            about.warnings.cprint("WARNING: 'NoneType' forwarded.")
+            return None
         ## weight if ...
-        if(not domain.discrete)and(bare):
+        elif(not domain.discrete)and(bare):
             if(isinstance(diag,tuple)): ## diag == (diag,variance)
                 return domain.calc_weight(diag[0],power=-1),domain.calc_weight(diag[1],power=-1)
             else:
@@ -8290,7 +8317,10 @@ class operator(object):
         """
         if(domain is None):
             domain = self.domain
-        return field(domain,val=self.diag(bare=bare,domain=domain,target=target,var=False,**kwargs),target=target)
+        diag = self.diag(bare=bare,domain=domain,target=target,var=False,**kwargs)
+        if(diag is None):
+            return None
+        return field(domain,val=diag,target=target)
 
     def inverse_hat(self,bare=False,domain=None,target=None,**kwargs):
         """
@@ -8354,7 +8384,10 @@ class operator(object):
         """
         if(domain is None):
             domain = self.target
-        return field(domain,val=self.inverse_diag(bare=bare,domain=domain,target=target,var=False,**kwargs),target=target)
+        diag = self.inverse_diag(bare=bare,domain=domain,target=target,var=False,**kwargs)
+        if(diag is None):
+            return None
+        return field(domain,val=diag,target=target)
 
     def hathat(self,domain=None,**kwargs):
         """
@@ -8413,7 +8446,10 @@ class operator(object):
         """
         if(domain is None):
             domain = self.domain
-        return diagonal_operator(domain=domain,diag=self.diag(bare=False,domain=domain,var=False,**kwargs),bare=False)
+        diag = self.diag(bare=False,domain=domain,var=False,**kwargs)
+        if(diag is None):
+            return None
+        return diagonal_operator(domain=domain,diag=diag,bare=False)
 
     def inverse_hathat(self,domain=None,**kwargs):
         """
@@ -8473,7 +8509,10 @@ class operator(object):
         """
         if(domain is None):
             domain = self.target
-        return diagonal_operator(domain=domain,diag=self.inverse_diag(bare=False,domain=domain,var=False,**kwargs),bare=False)
+        diag = self.inverse_diag(bare=False,domain=domain,var=False,**kwargs)
+        if(diag is None):
+            return None
+        return diagonal_operator(domain=domain,diag=diag,bare=False)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -9740,6 +9779,8 @@ class projection_operator(operator):
         if(isinstance(x,operator)):
             ## compute non-bare diagonal of the operator x
             x = x.diag(bare=False,domain=self.domain,target=x.domain,var=False,**kwargs)
+            if(x is None):
+                raise TypeError(about._error.cstring("ERROR: 'NoneType' encountered."))
 
         elif(isinstance(x,field)):
             ## check domain
@@ -10573,6 +10614,7 @@ class probing(object):
 
         """
         if(len(results)==0):
+            about.warnings.cprint("WARNING: probing failed.")
             return None
         elif(self.var):
             return np.mean(np.array(results),axis=0,dtype=None,out=None),np.var(np.array(results),axis=0,dtype=None,out=None,ddof=0)/(len(results)-1)
@@ -11279,6 +11321,7 @@ class diagonal_probing(probing):
         """
         num = len(results)
         if(num==0):
+            about.warnings.cprint("WARNING: probing failed.")
             return None
         elif(self.save is None):
             if(self.var):

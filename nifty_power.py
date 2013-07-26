@@ -401,7 +401,7 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
         derived, and the implications of a certain choise of the perception
         tuple (delta,epsilon) are discussed.
         The further incorporation of a smoothness prior as detailed in [#]_,
-        where the underlying formula(s), Eq.(27), of this implementation are
+        where the underlying formula(s), Eq.(26), of this implementation are
         derived and discussed in terms of their applicability.
 
         References
