@@ -753,7 +753,7 @@ class conjugate_gradient(object):
             d = r+beta*d
 
             delta = delta_*np.absolute(gamma)**0.5
-            self.note.cflush("\niteration : %08u   alpha = %3.1E   beta = %3.1E   delta = %3.1E"%(ii,alpha,beta,delta))
+            self.note.cflush("\niteration : %08u   alpha = %3.1E   beta = %3.1E   delta = %3.1E"%(ii,np.real(alpha),np.real(beta),np.real(delta)))
             if(ii==limii):
                 self.note.cprint("\n... quit.")
                 break
@@ -815,7 +815,7 @@ class conjugate_gradient(object):
             d = s+beta*d ## conjugated gradient
 
             delta = delta_*np.absolute(gamma)**0.5
-            self.note.cflush("\niteration : %08u   alpha = %3.1E   beta = %3.1E   delta = %3.1E"%(ii,alpha,beta,delta))
+            self.note.cflush("\niteration : %08u   alpha = %3.1E   beta = %3.1E   delta = %3.1E"%(ii,np.real(alpha),np.real(beta),np.real(delta)))
             if(ii==limii):
                 self.note.cprint("\n... quit.")
                 break

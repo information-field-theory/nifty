@@ -2909,6 +2909,11 @@ class rg_space(space):
         dot = np.dot(np.conjugate(x.flatten(order='C')),y.flatten(order='C'),out=None)
         if(np.isreal(dot)):
             return np.real(dot)
+        elif(self.para[(np.size(self.para)-1)//2]!=2):
+                ## check imaginary part
+                if(dot.imag>self.epsilon**2*dot.real):
+                    about.warnings.cprint("WARNING: discarding considerable imaginary part.")
+                return np.real(dot)
         else:
             return dot
 
@@ -8138,7 +8143,7 @@ class operator(object):
             domain = self.domain
         diag = diagonal_probing(self,function=self.times,domain=domain,target=target,random=random,ncpu=ncpu,nrun=nrun,nper=nper,var=var,save=save,path=path,prefix=prefix,**kwargs)(loop=loop)
         if(diag is None):
-            about.warnings.cprint("WARNING: 'NoneType' forwarded.")
+#            about.warnings.cprint("WARNING: forwarding 'NoneType'.")
             return None
         ## weight if ...
         elif(not domain.discrete)and(bare):
@@ -8218,7 +8223,7 @@ class operator(object):
             domain = self.target
         diag = diagonal_probing(self,function=self.inverse_times,domain=domain,target=target,random=random,ncpu=ncpu,nrun=nrun,nper=nper,var=var,save=save,path=path,prefix=prefix,**kwargs)(loop=loop)
         if(diag is None):
-            about.warnings.cprint("WARNING: 'NoneType' forwarded.")
+#            about.warnings.cprint("WARNING: forwarding 'NoneType'.")
             return None
         ## weight if ...
         elif(not domain.discrete)and(bare):
@@ -8319,6 +8324,7 @@ class operator(object):
             domain = self.domain
         diag = self.diag(bare=bare,domain=domain,target=target,var=False,**kwargs)
         if(diag is None):
+            about.warnings.cprint("WARNING: forwarding 'NoneType'.")
             return None
         return field(domain,val=diag,target=target)
 
@@ -8386,6 +8392,7 @@ class operator(object):
             domain = self.target
         diag = self.inverse_diag(bare=bare,domain=domain,target=target,var=False,**kwargs)
         if(diag is None):
+            about.warnings.cprint("WARNING: forwarding 'NoneType'.")
             return None
         return field(domain,val=diag,target=target)
 
@@ -8448,6 +8455,7 @@ class operator(object):
             domain = self.domain
         diag = self.diag(bare=False,domain=domain,var=False,**kwargs)
         if(diag is None):
+            about.warnings.cprint("WARNING: forwarding 'NoneType'.")
             return None
         return diagonal_operator(domain=domain,diag=diag,bare=False)
 
@@ -8511,6 +8519,7 @@ class operator(object):
             domain = self.target
         diag = self.inverse_diag(bare=False,domain=domain,var=False,**kwargs)
         if(diag is None):
+            about.warnings.cprint("WARNING: forwarding 'NoneType'.")
             return None
         return diagonal_operator(domain=domain,diag=diag,bare=False)
 
