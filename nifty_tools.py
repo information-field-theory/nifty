@@ -253,6 +253,11 @@ class invertible_operator(operator):
             x_.weight(power=1,overwrite=True)
         return x_
 
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def __repr__(self):
+        return "<nifty.invertible_operator>"
+
 ##-----------------------------------------------------------------------------
 
 ##-----------------------------------------------------------------------------
@@ -540,6 +545,11 @@ class propagator_operator(operator):
         ## evaluate
         return self._debriefing(x,x_,in_codomain)
 
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def __repr__(self):
+        return "<nifty.propagator_operator>"
+
 ##-----------------------------------------------------------------------------
 
 ##=============================================================================
@@ -720,7 +730,6 @@ class conjugate_gradient(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _calc_without(self,tol=1E-4,clevel=1,limii=None): ## > runs cg without preconditioner
-
         clevel = int(clevel)
         if(limii is None):
             limii = 10*self.b.domain.dim(split=False)
@@ -743,7 +752,10 @@ class conjugate_gradient(object):
                 self.note.cprint("\niteration : %08u   alpha = NAN\n... dead."%ii)
                 return self.x,0
             self.x += alpha*d
-            if(ii%self.reset==0)or(np.signbit(np.real(alpha))):
+            if(np.signbit(np.real(alpha))):
+                about.warnings.cprint("WARNING: positive definiteness of A violated.")
+                r = self.b-self.A(self.x)
+            elif(ii%self.reset==0):
                 r = self.b-self.A(self.x)
             else:
                 r -= alpha*q
@@ -757,7 +769,7 @@ class conjugate_gradient(object):
             if(ii==limii):
                 self.note.cprint("\n... quit.")
                 break
-            if(gamma==0):
+            elif(gamma==0):
                 convergence = clevel+1
                 self.note.cprint("   convergence level : INF\n... done.")
                 break
@@ -793,6 +805,8 @@ class conjugate_gradient(object):
         r = self.b-self.A(self.x)
         d = self.W(r)
         gamma = r.dot(d)
+        if(gamma==0):
+            return self.x,clevel+1
         delta_ = np.absolute(gamma)**(-0.5)
 
         convergence = 0
@@ -804,7 +818,10 @@ class conjugate_gradient(object):
                 self.note.cprint("\niteration : %08u   alpha = NAN\n... dead."%ii)
                 return self.x,0
             self.x += alpha*d ## update
-            if(ii%self.reset==0)or(np.signbit(np.real(alpha))):
+            if(np.signbit(np.real(alpha))):
+                about.warnings.cprint("WARNING: positive definiteness of A violated.")
+                r = self.b-self.A(self.x)
+            elif(ii%self.reset==0):
                 r = self.b-self.A(self.x)
             else:
                 r -= alpha*q
@@ -819,8 +836,8 @@ class conjugate_gradient(object):
             if(ii==limii):
                 self.note.cprint("\n... quit.")
                 break
-            if(gamma==0):
-                convergence = clevel
+            elif(gamma==0):
+                convergence = clevel+1
                 self.note.cprint("   convergence level : INF\n... done.")
                 break
             elif(np.absolute(delta)<tol):
@@ -841,6 +858,11 @@ class conjugate_gradient(object):
             self.spam(self.x,ii)
 
         return self.x,convergence
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def __repr__(self):
+        return "<nifty.conjugate_gradient>"
 
 ##=============================================================================
 
@@ -1038,6 +1060,7 @@ class steepest_descent(object):
                 convergence += 1
                 self.note.cflush("   convergence level : %u"%convergence)
                 if(convergence==clevel):
+                    convergence += int(ii==clevel)
                     self.note.cprint("\n... done.")
                     break
             else:
@@ -1056,7 +1079,6 @@ class steepest_descent(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _get_alpha(self,E,g,norm,alpha): ## > determines the new alpha
-
         while(True):
             ## Wolfe conditions
             wolfe,x_,E_,g_,a = self._check_wolfe(E,g,norm,alpha)
@@ -1071,7 +1093,6 @@ class steepest_descent(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _check_wolfe(self,E,g,norm,alpha): ## > checks the Wolfe conditions
-
         x_ = self._get_x(g,norm,alpha)
         pg = norm
         E_,g_ = self.eggs(x_)
@@ -1085,7 +1106,6 @@ class steepest_descent(object):
         return True,x_,E_,g_,self.a[2]
 
 #    def _check_strong_wolfe(self,E,g,norm,alpha): ## > checks the strong Wolfe conditions
-#
 #        x_ = self._get_x(g,norm,alpha)
 #        pg = norm
 #        E_,g_ = self.eggs(x_)
@@ -1101,8 +1121,12 @@ class steepest_descent(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _get_x(self,g,norm,alpha): ## > updates x
-
         return self.x-g*(alpha/norm)
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def __repr__(self):
+        return "<nifty.steepest_descent>"
 
 ##=============================================================================
 

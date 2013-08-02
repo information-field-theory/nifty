@@ -484,7 +484,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.5.5"
+        self._version = "0.5.7"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -2911,7 +2911,7 @@ class rg_space(space):
             return np.real(dot)
         elif(self.para[(np.size(self.para)-1)//2]!=2):
                 ## check imaginary part
-                if(dot.imag>self.epsilon**2*dot.real):
+                if(np.absolute(dot.imag)>self.epsilon**2*np.absolute(dot.real)):
                     about.warnings.cprint("WARNING: discarding considerable imaginary part.")
                 return np.real(dot)
         else:
