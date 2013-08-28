@@ -1497,7 +1497,7 @@ class space(object):
         ## inner product
         dot = np.dot(np.conjugate(x),y,out=None)
         if(np.isreal(dot)):
-            return np.real(dot)
+            return np.asscalar(np.real(dot))
         else:
             return dot
 
@@ -2186,7 +2186,7 @@ class rg_space(space):
         Only even numbers of grid points per axis are supported.
         The basis transformations between position `x` and Fourier mode `k`
         rely on (inverse) fast Fourier transformations using the
-        :math:`exp(2 \pi i k^\dagger x)`-formulation.
+        :math:`exp(2 \pi i k^\dagger x / N)`-formulation.
 
         Attributes
         ----------
@@ -2908,12 +2908,12 @@ class rg_space(space):
         ## inner product
         dot = np.dot(np.conjugate(x.flatten(order='C')),y.flatten(order='C'),out=None)
         if(np.isreal(dot)):
-            return np.real(dot)
+            return np.asscalar(np.real(dot))
         elif(self.para[(np.size(self.para)-1)//2]!=2):
                 ## check imaginary part
                 if(np.absolute(dot.imag)>self.epsilon**2*np.absolute(dot.real)):
                     about.warnings.cprint("WARNING: discarding considerable imaginary part.")
-                return np.real(dot)
+                return np.asscalar(np.real(dot))
         else:
             return dot
 
@@ -5930,7 +5930,7 @@ class nested_space(space):
         ## inner product
         dot = np.sum(np.conjugate(x)*y,axis=None,dtype=None,out=None)
         if(np.isreal(dot)):
-            return np.real(dot)
+            return np.asscalar(np.real(dot))
         else:
             return dot
 
