@@ -484,7 +484,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.5.7"
+        self._version = "0.5.9"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -2186,7 +2186,7 @@ class rg_space(space):
         Only even numbers of grid points per axis are supported.
         The basis transformations between position `x` and Fourier mode `k`
         rely on (inverse) fast Fourier transformations using the
-        :math:`exp(2 \pi i k^\dagger x / N)`-formulation.
+        :math:`exp(2 \pi i k^\dagger x)`-formulation.
 
         Attributes
         ----------
@@ -7810,7 +7810,7 @@ class operator(object):
                 x_ = x.transform(target=domain,overwrite=False)
         ## weight if ...
         if(not self.imp)and(not domain.discrete)and(not inverse):
-                x_ = x_.weight(power=1,overwrite=False)
+            x_ = x_.weight(power=1,overwrite=False)
         return x_
 
     def _debriefing(self,x,x_,target,inverse): ## > evaluates x and x_ after `multiply`
@@ -10124,13 +10124,13 @@ class response_operator(operator):
         domain : space
             The space wherein valid arguments live.
         sym : bool
-            Indicates whether the operator is self-adjoint or not
+            Indicates whether the operator is self-adjoint or not.
         uni : bool
-            Indicates whether the operator is unitary or not
+            Indicates whether the operator is unitary or not.
         imp : bool
             Indicates whether the incorporation of volume weights in
             multiplications is already implemented in the `multiply`
-            instance methods or not
+            instance methods or not.
         target : space
             The space wherein the operator output lives
         sigma : float
@@ -10274,15 +10274,17 @@ class response_operator(operator):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _multiply(self,x,**kwargs): ## > applies the operator to a given field
-        ## weight
-        if(self.domain.discrete)and(self.den):
-            x_ = self.domain.calc_weight(x.val,power=1)
-        elif(not self.domain.discrete)and(not self.den):
-            x_ = self.domain.calc_weight(x.val,power=-1)
-        else:
-            x_ = x.val
+#        ## weight ## TODO: remove in future version
+#        if(self.domain.discrete)and(self.den):
+#            x_ = self.domain.calc_weight(x.val,power=1)
+#        elif(not self.domain.discrete)and(not self.den):
+#            x_ = self.domain.calc_weight(x.val,power=-1)
+#        else:
+#            x_ = x.val
+#        ## smooth
+#        x_ = self.domain.calc_smooth(x_.val,sigma=self.sigma)
         ## smooth
-        x_ = self.domain.calc_smooth(x_,sigma=self.sigma)
+        x_ = self.domain.calc_smooth(x.val,sigma=self.sigma)
         ## mask
         x_ = self.mask*x_
         ## assign
@@ -10296,12 +10298,51 @@ class response_operator(operator):
         x_ = self.mask*x_
         ## smooth
         x_ = self.domain.calc_smooth(x_,sigma=self.sigma)
-        ## weight
-        if(self.domain.discrete)and(self.den):
-            x_ = self.domain.calc_weight(x_,power=1)
-        elif(not self.domain.discrete)and(not self.den):
-            x_ = self.domain.calc_weight(x_,power=-1)
+#        ## weight ## TODO: remove in future version
+#        if(self.domain.discrete)and(self.den):
+#            x_ = self.domain.calc_weight(x_,power=1)
+#        elif(not self.domain.discrete)and(not self.den):
+#            x_ = self.domain.calc_weight(x_,power=-1)
         return x_
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def _briefing(self,x,domain,inverse): ## > prepares x for `multiply`
+        ## inspect x
+        if(not isinstance(x,field)):
+            x_ = field(domain,val=x,target=None)
+        else:
+            ## check x.domain
+            if(domain==x.domain):
+                x_ = x
+            ## transform
+            else:
+                x_ = x.transform(target=domain,overwrite=False)
+        ## weight if ...
+        if(not self.imp)and(not domain.discrete)and(not inverse)and(self.den): ## respect density
+            x_ = x_.weight(power=1,overwrite=False)
+        return x_
+
+    def _debriefing(self,x,x_,target,inverse): ## > evaluates x and x_ after `multiply`
+        if(x_ is None):
+            return None
+        else:
+            ## inspect x_
+            if(not isinstance(x_,field)):
+                x_ = field(target,val=x_,target=None)
+            elif(x_.domain!=target):
+                raise ValueError(about._errors.cstring("ERROR: invalid output domain."))
+            ## weight if ...
+            if(not self.imp)and(not target.discrete)and(not self.den^inverse): ## respect density
+                x_ = x_.weight(power=-1,overwrite=False)
+            ## inspect x
+            if(isinstance(x,field)):
+                ## repair ...
+                if(self.domain==self.target!=x.domain):
+                    x_ = x_.transform(target=x.domain,overwrite=False) ## ... domain
+                if(x_.domain==x.domain)and(x_.target!=x.target):
+                    x_.set_target(newtarget=x.target) ## ... codomain
+            return x_
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
