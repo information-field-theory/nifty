@@ -291,7 +291,7 @@ def _calc_inverse(tk,var,kindex,rho,b1,Amem): ## > computes the inverse Hessian 
     ## inversion
     return np.linalg.inv(T2+np.diag(b2,k=0)),b2,Amem
 
-def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None,rho=None,q=1E-42,alpha=1,perception=(1,0),smoothness=True,var=10,bare=True,**kwargs):
+def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None,rho=None,q=1E-42,alpha=1,perception=(1,0),smoothness=True,var=10,force=False,bare=True,**kwargs):
     """
         Infers the power spectrum.
 
@@ -338,6 +338,9 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
             (default: True).
         var : {scalar, list, array}, *optional*
             Variance of the assumed spectral smoothness prior (default: 10).
+        force : bool, *optional*, *experimental*
+            Indicates whether smoothness is to be enforces or not
+            (default: False).
         bare : bool, *optional*
             Indicates whether the power spectrum entries returned are "bare"
             or not (mandatory for the correct incorporation of volume weights)
@@ -505,6 +508,7 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
             numerator = weight_power(domain,numerator,power=-1,pindex=pindex,pundex=pundex) ## bare(!)
 
         ## smoothness prior
+        permill = 0
         divergence = 1
         while(divergence):
             pk = numerator/denominator1 ## bare(!)
@@ -524,7 +528,7 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
                     absdelta = np.abs(delta).max()
                     tk += min(1,0.1/absdelta)*delta # adaptive step width
                     pk *= np.exp(min(1,0.1/absdelta)*delta) # adaptive step width
-                var_ /= 1.1 # lowering the variance when converged
+                var_ /= 1.1+permill # lowering the variance when converged
                 if(var_<var):
                     if(breakinfo): # making sure there's one iteration with the correct variance
                         break
@@ -538,6 +542,14 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
                         break
                     else:
                         divergence += 1
+                        if(force):
+                            permill = 0.001
+                elif(force)and(var_/var_OLD>1.001):
+                        permill = 0
+                        pot = int(np.log10(var_))
+                        var = int(1+var_*10**-pot)*10**pot
+                        about.warnings.cprint("WARNING: smoothness variance increased ( var = "+str(var)+" ).")
+                        break
                 else:
                     var_OLD = var_
             if(breakinfo):

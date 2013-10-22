@@ -2422,7 +2422,7 @@ class rg_space(space):
             if(kindex is None):
                 ## quick kindex
                 if(self.fourier)and(not hasattr(self,"power_indices"))and(len(kwargs)==0):
-                    kindex = gp.nklength(gp.nkdict(self.para[:(np.size(self.para)-1)//2],self.vol,fourier=True))
+                    kindex = gp.nklength(gp.nkdict_fast(self.para[:(np.size(self.para)-1)//2],self.vol,fourier=True))
                 ## implicit kindex
                 else:
                     try:

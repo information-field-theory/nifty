@@ -65,7 +65,7 @@ def draw_vector_nd(axes,dgrid,ps,symtype=0,fourier=False,zerocentered=False,kpac
 
     """
     if(kpack is None):
-        kdict = np.fft.fftshift(nkdict(axes,dgrid,fourier))
+        kdict = np.fft.fftshift(nkdict_fast(axes,dgrid,fourier))
         klength = nklength(kdict)
     else:
         kdict = kpack[1][np.fft.ifftshift(kpack[0],axes=shiftaxes(zerocentered,st_to_zero_mode=False))]
@@ -164,7 +164,7 @@ def draw_vector_nd(axes,dgrid,ps,symtype=0,fourier=False,zerocentered=False,kpac
 #        foufield = field
 #    fieldabs = np.abs(foufield)**2
 #
-#    kdict = nkdict(axes,dgrid,fourier)
+#    kdict = nkdict_fast(axes,dgrid,fourier)
 #    klength = nklength(kdict)
 #
 #    ## power spectrum
@@ -228,7 +228,7 @@ def calc_ps_fast(field,axes,dgrid,zerocentered=False,fourier=False,pindex=None,k
     if(rho is None):
         if(pindex is None):
             ## kdict
-            kdict = nkdict(axes,dgrid,fourier)
+            kdict = nkdict_fast(axes,dgrid,fourier)
             ## klength
             if(kindex is None):
                 klength = nklength(kdict)
@@ -253,7 +253,7 @@ def calc_ps_fast(field,axes,dgrid,zerocentered=False,fourier=False,pindex=None,k
                 rho[pindex[ii]] += 1
     elif(pindex is None):
         ## kdict
-        kdict = nkdict(axes,dgrid,fourier)
+        kdict = nkdict_fast(axes,dgrid,fourier)
         ## klength
         if(kindex is None):
             klength = nklength(kdict)
@@ -317,9 +317,9 @@ def get_power_index(axes,dgrid,zerocentered,irred=False,fourier=True):
 
     ## kdict, klength
     if(np.any(zerocentered==False)):
-        kdict = np.fft.fftshift(nkdict(axes,dgrid,fourier),axes=shiftaxes(zerocentered,st_to_zero_mode=True))
+        kdict = np.fft.fftshift(nkdict_fast(axes,dgrid,fourier),axes=shiftaxes(zerocentered,st_to_zero_mode=True))
     else:
-        kdict = nkdict(axes,dgrid,fourier)
+        kdict = nkdict_fast(axes,dgrid,fourier)
     klength = nklength(kdict)
     ## output
     if(irred):
@@ -372,9 +372,9 @@ def get_power_indices(axes,dgrid,zerocentered,fourier=True):
 
     ## kdict, klength
     if(np.any(zerocentered==False)):
-        kdict = np.fft.fftshift(nkdict(axes,dgrid,fourier),axes=shiftaxes(zerocentered,st_to_zero_mode=True))
+        kdict = np.fft.fftshift(nkdict_fast(axes,dgrid,fourier),axes=shiftaxes(zerocentered,st_to_zero_mode=True))
     else:
-        kdict = nkdict(axes,dgrid,fourier)
+        kdict = nkdict_fast(axes,dgrid,fourier)
     klength = nklength(kdict)
     ## output
     ind = np.empty(axes,dtype=np.int)
@@ -587,13 +587,11 @@ def shiftaxes(zerocentered,st_to_zero_mode=False):
 
 
 def nkdict(axes,dgrid,fourier=True):
-
     """
         Calculates an n-dimensional array with its entries being the lengths of
         the k-vectors from the zero point of the Fourier grid.
 
     """
-
     if(fourier):
         dk = dgrid
     else:
@@ -603,6 +601,25 @@ def nkdict(axes,dgrid,fourier=True):
     for ii in np.ndindex(kdict.shape):
         kdict[ii] = np.sqrt(np.sum(((ii-axes//2)*dk)**2))
     return kdict
+
+
+def nkdict_fast(axes,dgrid,fourier=True):
+    """
+        Calculates an n-dimensional array with its entries being the lengths of
+        the k-vectors from the zero point of the Fourier grid.
+
+    """
+    if(fourier):
+        dk = dgrid
+    else:
+        dk = np.array([1/dgrid[i]/axes[i] for i in range(len(axes))])
+
+    temp_vecs = np.array(np.where(np.ones(axes)),dtype='float').reshape(np.append(len(axes),axes))
+    temp_vecs = np.rollaxis(temp_vecs,0,len(temp_vecs.shape))
+    temp_vecs -= axes//2
+    temp_vecs *= dk
+    temp_vecs *= temp_vecs
+    return np.sqrt(np.sum((temp_vecs),axis=-1))
 
 
 def nklength(kdict):
