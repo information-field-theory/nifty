@@ -33,8 +33,6 @@
 """
 from __future__ import division
 from nifty import *
-from nifty.nifty_cmaps import *
-from nifty.nifty_power import *
 from scipy.sparse.linalg import LinearOperator as lo
 from scipy.sparse.linalg import cg
 

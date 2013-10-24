@@ -28,11 +28,11 @@
     ..     /__/ /__/ /__/ /__/    \___/  \___   /  power
     ..                                  /______/
 
-    NIFTy offers a number of automatized routines for handling
+    NIFTY offers a number of automatized routines for handling
     power spectra. It is possible to draw a field from a random distribution
     with a certain autocorrelation or, equivalently, with a certain
     power spectrum in its conjugate space (see :py:func:`field.random`). In
-    NIFTy, it is usually assumed that such a field follows statistical
+    NIFTY, it is usually assumed that such a field follows statistical
     homogeneity and isotropy. Fields which are only statistically homogeneous
     can also be created using the diagonal operator routine.
 
@@ -43,7 +43,7 @@
 from __future__ import division
 from scipy.interpolate import interp1d as ip ## conflicts with sphinx's autodoc
 #import numpy as np
-from nifty.nifty_core import *
+from nifty_core import *
 import smoothing as gs
 
 
@@ -291,7 +291,7 @@ def _calc_inverse(tk,var,kindex,rho,b1,Amem): ## > computes the inverse Hessian 
     ## inversion
     return np.linalg.inv(T2+np.diag(b2,k=0)),b2,Amem
 
-def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None,rho=None,q=1E-42,alpha=1,perception=(1,0),smoothness=True,var=10,bare=True,**kwargs):
+def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None,rho=None,q=1E-42,alpha=1,perception=(1,0),smoothness=True,var=10,force=False,bare=True,**kwargs):
     """
         Infers the power spectrum.
 
@@ -338,6 +338,9 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
             (default: True).
         var : {scalar, list, array}, *optional*
             Variance of the assumed spectral smoothness prior (default: 10).
+        force : bool, *optional*, *experimental*
+            Indicates whether smoothness is to be enforces or not
+            (default: False).
         bare : bool, *optional*
             Indicates whether the power spectrum entries returned are "bare"
             or not (mandatory for the correct incorporation of volume weights)
@@ -401,7 +404,7 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
         derived, and the implications of a certain choise of the perception
         tuple (delta,epsilon) are discussed.
         The further incorporation of a smoothness prior as detailed in [#]_,
-        where the underlying formula(s), Eq.(27), of this implementation are
+        where the underlying formula(s), Eq.(26), of this implementation are
         derived and discussed in terms of their applicability.
 
         References
@@ -505,6 +508,7 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
             numerator = weight_power(domain,numerator,power=-1,pindex=pindex,pundex=pundex) ## bare(!)
 
         ## smoothness prior
+        permill = 0
         divergence = 1
         while(divergence):
             pk = numerator/denominator1 ## bare(!)
@@ -524,7 +528,7 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
                     absdelta = np.abs(delta).max()
                     tk += min(1,0.1/absdelta)*delta # adaptive step width
                     pk *= np.exp(min(1,0.1/absdelta)*delta) # adaptive step width
-                var_ /= 1.1 # lowering the variance when converged
+                var_ /= 1.1+permill # lowering the variance when converged
                 if(var_<var):
                     if(breakinfo): # making sure there's one iteration with the correct variance
                         break
@@ -538,6 +542,14 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
                         break
                     else:
                         divergence += 1
+                        if(force):
+                            permill = 0.001
+                elif(force)and(var_/var_OLD>1.001):
+                        permill = 0
+                        pot = int(np.log10(var_))
+                        var = int(1+var_*10**-pot)*10**pot
+                        about.warnings.cprint("WARNING: smoothness variance increased ( var = "+str(var)+" ).")
+                        break
                 else:
                     var_OLD = var_
             if(breakinfo):

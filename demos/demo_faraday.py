@@ -39,7 +39,6 @@
 """
 from __future__ import division
 from nifty import *
-from nifty.nifty_cmaps import *
 
 
 about.warnings.off()
