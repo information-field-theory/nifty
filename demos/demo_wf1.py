@@ -33,8 +33,6 @@
 """
 from __future__ import division
 from nifty import *                                                   # version 0.6.0
-from nifty.nifty_tools import *
-
 
 
 # some signal space; e.g., a two-dimensional regular grid
@@ -57,14 +55,10 @@ n = N.get_random_field(domain=d_space)                                # generate
 
 d = R(s) + n                                                          # compute data
 
-
-
 j = R.adjoint_times(N.inverse_times(d))                               # define information source
-D = propagator_operator(S=S,N=N,R=R)                                  # define information propagator
+D = propagator_operator(S=S, N=N, R=R)                                # define information propagator
 
 m = D(j, tol=1E-4, note=True)                                         # reconstruct map
-
-
 
 s.plot(title="signal")                                                # plot signal
 d_ = field(x_space, val=d.val, target=k_space)

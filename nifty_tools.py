@@ -28,9 +28,12 @@
     ..     /__/ /__/ /__/ /__/    \___/  \___   /  tools
     ..                                  /______/
 
-    A nifty set of tools.
-
-    ## TODO: *DESCRIPTION*
+    This module extends NIFTY with a nifty set of tools including further
+    operators, namely the :py:class:`invertible_operator` and the
+    :py:class:`propagator_operator`, and minimization schemes, namely
+    :py:class:`steepest_descent` and :py:class:`conjugate_gradient`. Those
+    tools are supposed to support the user in solving information field
+    theoretical problems (almost) without numerical pain.
 
 """
 from __future__ import division
@@ -51,9 +54,10 @@ class invertible_operator(operator):
 
         NIFTY subclass for invertible, self-adjoint (linear) operators
 
-        The base NIFTY operator class is an abstract class from which other
-        specific operator subclasses, including those preimplemented in NIFTY
-        (e.g. the diagonal operator class) must be derived.
+        The invertible operator class is an abstract class for self-adjoint or
+        symmetric (linear) operators from which other more specific operator
+        subclassescan be derived. Such operators inherit an automated inversion
+        routine, namely conjugate gradient.
 
         Parameters
         ----------
@@ -76,9 +80,9 @@ class invertible_operator(operator):
 
         Notes
         -----
-        Operator classes derived from this one only need a `_multiply` or
-        `_inverse_multiply` instance method to perform the other. However, one
-        of them needs to be defined.
+        This class is not meant to be instantiated. Operator classes derived
+        from this one only need a `_multiply` or `_inverse_multiply` instance
+        method to perform the other. However, one of them needs to be defined.
 
         Attributes
         ----------
@@ -275,8 +279,8 @@ class propagator_operator(operator):
         NIFTY subclass for propagator operators (of a certain family)
 
         The propagator operators :math:`D` implemented here have an inverse
-        formulation like :math:`S^{-1} + M`, :math:`S^{-1} + N^{-1}`, or
-        :math:`S^{-1} + R^\dagger N^{-1} R` as appearing in Wiener filter
+        formulation like :math:`(S^{-1} + M)`, :math:`(S^{-1} + N^{-1})`, or
+        :math:`(S^{-1} + R^\dagger N^{-1} R)` as appearing in Wiener filter
         theory.
 
         Parameters
@@ -296,7 +300,7 @@ class propagator_operator(operator):
 
         Notes
         -----
-        The propagator will puzzle the operators `S` and `M` or `R`,`N` or
+        The propagator will puzzle the operators `S` and `M` or `R`, `N` or
         only `N` together in the predefined from, a domain is set
         automatically. The application of the inverse is done by invoking a
         conjugate gradient.
@@ -610,8 +614,8 @@ class conjugate_gradient(object):
         References
         ----------
         .. [#] J. R. Shewchuk, 1994, `"An Introduction to the Conjugate
-        Gradient Method Without the Agonizing Pain"
-        `<http://www.cs.cmu.edu/~quake-papers/painless-conjugate-gradient.pdf>`_
+            Gradient Method Without the Agonizing Pain"
+            <http://www.cs.cmu.edu/~quake-papers/painless-conjugate-gradient.pdf>`_
 
         Examples
         --------

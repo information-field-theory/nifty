@@ -33,8 +33,6 @@
 """
 from __future__ import division
 from nifty import *                                                   # version 0.6.0
-from nifty.nifty_tools import *
-
 
 
 # some signal space; e.g., a two-dimensional regular grid
@@ -57,10 +55,8 @@ n = N.get_random_field(domain=d_space)                                # generate
 
 d = R(s) + n                                                          # compute data
 
-
-
 j = R.adjoint_times(N.inverse_times(d))                               # define information source
-D = propagator_operator(S=S,N=N,R=R)                                  # define information propagator
+D = propagator_operator(S=S, N=N, R=R)                                # define information propagator
 
 
 def eggs(x):
@@ -68,16 +64,14 @@ def eggs(x):
         Calculation of the information Hamiltonian and its gradient.
 
     """
-    Dx = D.inverse_times(x)
-    H = 0.5 * Dx.dot(x) - j.dot(x)                                    # compute information Hamiltonian
-    g = Dx - j                                                        # compute its gradient
-    return H,g
+    DIx = D.inverse_times(x)
+    H = 0.5 * DIx.dot(x) - j.dot(x)                                    # compute information Hamiltonian
+    g = DIx - j                                                        # compute its gradient
+    return H, g
 
 
 m = field(x_space, target=k_space)                                    # reconstruct map
 m,convergence = steepest_descent(eggs=eggs, note=True)(m, tol=1E-4, clevel=3)
-
-
 
 s.plot(title="signal")                                                # plot signal
 d_ = field(x_space, val=d.val, target=k_space)

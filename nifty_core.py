@@ -486,7 +486,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.5.9"
+        self._version = "0.6.0"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -11703,17 +11703,17 @@ class probing(object):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def evaluate(self,sum_,num_,var_):
+    def evaluate(self,summa,num,var):
         """
             Evaluates the probing results.
 
             Parameters
             ----------
-            sum_ : numpy.array
+            summa : numpy.array
                 Sum of all probing results.
-            num_ : int
+            num : int
                 Number of successful probings (not returning ``None``).
-            var_ : numpy.array
+            var : numpy.array
                 Sum of all squared probing results
 
             Returns
@@ -11727,27 +11727,27 @@ class probing(object):
                 (`final`,`var`).
 
         """
-        if(num_<self.nrun):
-            about.infos.cflush(" ( %u probe(s) failed, effectiveness == %.1f%% )\n"%(self.nrun-num_,100*num_/self.nrun))
-            if(num_==0):
+        if(num<self.nrun):
+            about.infos.cflush(" ( %u probe(s) failed, effectiveness == %.1f%% )\n"%(self.nrun-num,100*num/self.nrun))
+            if(num==0):
                 about.warnings.cprint("WARNING: probing failed.")
                 return None
         else:
             about.infos.cflush("\n")
 
-        if(sum_.size==1):
-            sum_ = sum_.flatten(order='C')[0]
-            var_ = var_.flatten(order='C')[0]
-        if(np.iscomplexobj(sum_))and(np.all(np.imag(sum_)==0)):
-            sum_ = np.real(sum_)
+        if(summa.size==1):
+            summa = summa.flatten(order='C')[0]
+            var = var.flatten(order='C')[0]
+        if(np.iscomplexobj(summa))and(np.all(np.imag(summa)==0)):
+            summa = np.real(summa)
 
-        final = sum_*(1/num_)
+        final = summa*(1/num)
         if(self.var):
-            if(num_==1):
+            if(num==1):
                 about.warnings.cprint("WARNING: infinite variance.")
                 return final,None
             else:
-                var = var_*(1/(num_*(num_-1)))-np.real(np.conjugate(final)*final)*(1/(num_-1))
+                var = var*(1/(num*(num-1)))-np.real(np.conjugate(final)*final)*(1/(num-1))
                 return final,var
         else:
             return final
@@ -11858,7 +11858,7 @@ class probing(object):
         ## evaluate
         return self.evaluate(_sum,_num,_var)
 
-    def __call__(self,loop=False,**kwargs): ## FIXME: doc
+    def __call__(self,loop=False,**kwargs):
         """
 
             Starts the probing process.
@@ -12129,17 +12129,17 @@ class trace_probing(probing):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def evaluate(self,sum_,num_,var_):
+    def evaluate(self,summa,num,var):
         """
             Evaluates the probing results.
 
             Parameters
             ----------
-            sum_ : scalar
+            summa : scalar
                 Sum of all probing results.
-            num_ : int
+            num : int
                 Number of successful probings (not returning ``None``).
-            var_ : scalar
+            var : scalar
                 Sum of all squared probing results
 
             Returns
@@ -12153,24 +12153,24 @@ class trace_probing(probing):
                 (`final`,`var`).
 
         """
-        if(num_<self.nrun):
-            about.infos.cflush(" ( %u probe(s) failed, effectiveness == %.1f%% )\n"%(self.nrun-num_,100*num_/self.nrun))
-            if(num_==0):
+        if(num<self.nrun):
+            about.infos.cflush(" ( %u probe(s) failed, effectiveness == %.1f%% )\n"%(self.nrun-num,100*num/self.nrun))
+            if(num==0):
                 about.warnings.cprint("WARNING: probing failed.")
                 return None
         else:
             about.infos.cflush("\n")
 
         if(self.domain.datatype in [np.complex64,np.complex128]):
-            sum_ = np.real(sum_)
+            summa = np.real(summa)
 
-        final = sum_/num_
+        final = summa/num
         if(self.var):
-            if(num_==1):
+            if(num==1):
                 about.warnings.cprint("WARNING: infinite variance.")
                 return final,None
             else:
-                var = var_/(num_*(num_-1))-np.real(np.conjugate(final)*final)/(num_-1)
+                var = var/(num*(num-1))-np.real(np.conjugate(final)*final)/(num-1)
                 return final,var
         else:
             return final

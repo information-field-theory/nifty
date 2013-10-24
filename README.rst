@@ -63,6 +63,7 @@ apply to fields.
         vector
     *   ``response_operator`` - exemplary responses that include a convolution,
         masking and projection
+    *   ``propagator_operator`` - information propagator in Wiener filter theory
     *   (and more)
 
 * (and more)
@@ -96,7 +97,7 @@ Requirements
 Download
 ........
 
-The latest release is tagged **v0.4.2** and is available as a source package
+The latest release is tagged **v0.6.0** and is available as a source package
 at `<https://github.com/mselig/nifty/tags>`_. The current version can be
 obtained by cloning the repository::
 
@@ -122,7 +123,7 @@ Please, acknowledge the use of NIFTY in your publication(s) by using a phrase
 such as the following:
 
     *"Some of the results in this publication have been derived using the NIFTY
-    [Selig et al., 2013] package."*
+    package [Selig et al., 2013]."*
 
 References
 ..........

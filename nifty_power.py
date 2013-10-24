@@ -28,11 +28,11 @@
     ..     /__/ /__/ /__/ /__/    \___/  \___   /  power
     ..                                  /______/
 
-    NIFTy offers a number of automatized routines for handling
+    NIFTY offers a number of automatized routines for handling
     power spectra. It is possible to draw a field from a random distribution
     with a certain autocorrelation or, equivalently, with a certain
     power spectrum in its conjugate space (see :py:func:`field.random`). In
-    NIFTy, it is usually assumed that such a field follows statistical
+    NIFTY, it is usually assumed that such a field follows statistical
     homogeneity and isotropy. Fields which are only statistically homogeneous
     can also be created using the diagonal operator routine.
 
