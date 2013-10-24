@@ -32,5 +32,7 @@ setup(name="nifty",
       package_dir={"nifty": ""},
       package_data={"nifty": ["demos/demo_excaliwir.py",
                               "demos/demo_faraday.py",
-                              "demos/demo_faraday_map.npy"]},
+                              "demos/demo_faraday_map.npy",
+                              "demos/demo_wf1.py",
+                              "demos/demo_wf2.py"]},
       data_files=[(os.path.expanduser('~') + "/.nifty", ["nifty_config"])])
