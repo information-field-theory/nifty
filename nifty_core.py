@@ -486,7 +486,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.6.0"
+        self._version = "0.6.2"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -7705,7 +7705,7 @@ class operator(object):
 
         if(target is None)or(self.sym)or(self.uni):
             target = self.domain
-        if(not isinstance(target,space)):
+        elif(not isinstance(target,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.target = target
 
@@ -7731,7 +7731,7 @@ class operator(object):
 
             Returns
             -------
-            nrow : int
+            ncol : int
                 number of columns (equal to the dimension of the domain)
         """
         return self.domain.dim(split=False)
@@ -7918,7 +7918,6 @@ class operator(object):
         x_ = self._inverse_multiply(x_,**kwargs)
         ## evaluate
         return self._debriefing(x,x_,self.domain,True)
-
 
     def adjoint_inverse_times(self,x,**kwargs):
         """
