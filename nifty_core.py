@@ -486,7 +486,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.6.2"
+        self._version = "0.6.5"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -3279,12 +3279,17 @@ class rg_space(space):
 
             elif(naxes==2):
                 if(np.iscomplexobj(x)):
-                    about.infos.cprint("INFO: absolute values, real and imaginary part plotted.")
+                    about.infos.cprint("INFO: absolute values and phases are plotted.")
                     if(title):
                         title += " "
                     self.get_plot(np.absolute(x),title=title+"(absolute)",vmin=vmin,vmax=vmax,power=False,unit=unit,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
-                    self.get_plot(np.real(x),title=title+"(real part)",vmin=vmin,vmax=vmax,power=False,unit=unit,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
-                    self.get_plot(np.imag(x),title=title+"(imaginary part)",vmin=vmin,vmax=vmax,power=False,unit=unit,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
+#                    self.get_plot(np.real(x),title=title+"(real part)",vmin=vmin,vmax=vmax,power=False,unit=unit,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
+#                    self.get_plot(np.imag(x),title=title+"(imaginary part)",vmin=vmin,vmax=vmax,power=False,unit=unit,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
+                    if(unit):
+                        unit = "rad"
+                    if(cmap is None):
+                        cmap = pl.cm.hsv_r
+                    self.get_plot(np.angle(x,deg=False),title=title+"(phase)",vmin=0,vmax=6.28319,power=False,unit=unit,norm=None,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs) ## vmax == 2 pi
                 else:
                     if(vmin is None):
                         vmin = np.min(x,axis=None,out=None)
@@ -4122,9 +4127,9 @@ class lm_space(space):
                     ax0.legend()
 
             ax0.set_xlim(xaxes[1],xaxes[-1])
-            ax0.set_xlabel(r"$l$")
+            ax0.set_xlabel(r"$\ell$")
             ax0.set_ylim(vmin,vmax)
-            ax0.set_ylabel(r"$l(2l+1) C_l$")
+            ax0.set_ylabel(r"$\ell(2\ell+1) C_\ell$")
             ax0.set_title(title)
 
         else:
@@ -4133,8 +4138,11 @@ class lm_space(space):
                 if(title):
                     title += " "
                 self.get_plot(np.absolute(x),title=title+"(absolute)",vmin=vmin,vmax=vmax,power=False,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
-                self.get_plot(np.real(x),title=title+"(real part)",vmin=vmin,vmax=vmax,power=False,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
-                self.get_plot(np.imag(x),title=title+"(imaginary part)",vmin=vmin,vmax=vmax,power=False,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
+#                self.get_plot(np.real(x),title=title+"(real part)",vmin=vmin,vmax=vmax,power=False,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
+#                self.get_plot(np.imag(x),title=title+"(imaginary part)",vmin=vmin,vmax=vmax,power=False,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
+                if(cmap is None):
+                    cmap = pl.cm.hsv_r
+                self.get_plot(np.angle(x,deg=False),title=title+"(phase)",vmin=0,vmax=6.28319,power=False,norm=None,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs) ## vmax == 2 pi
             else:
                 if(vmin is None):
                     vmin = np.min(x,axis=None,out=None)
@@ -4165,7 +4173,7 @@ class lm_space(space):
                 sub = ax0.pcolormesh(xaxes,yaxes,np.ma.masked_where(np.isnan(xmesh),xmesh),cmap=cmap,norm=n_,vmin=vmin,vmax=vmax,clim=(vmin,vmax))
                 ax0.set_xlim(xaxes[0],xaxes[-1])
                 ax0.set_xticks([0],minor=False)
-                ax0.set_xlabel(r"$l$")
+                ax0.set_xlabel(r"$\ell$")
                 ax0.set_ylim(yaxes[0],yaxes[-1])
                 ax0.set_yticks([0],minor=False)
                 ax0.set_ylabel(r"$m$")
@@ -7698,16 +7706,16 @@ class operator(object):
         self.sym = bool(sym)
         self.uni = bool(uni)
 
-        if(self.domain.discrete):
-            self.imp = True
-        else:
-            self.imp = bool(imp)
-
         if(target is None)or(self.sym)or(self.uni):
             target = self.domain
         elif(not isinstance(target,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.target = target
+
+        if(self.domain.discrete)and(self.target.discrete):
+            self.imp = True
+        else:
+            self.imp = bool(imp)
 
         if(para is not None):
             self.para = para
@@ -9023,6 +9031,39 @@ class diagonal_operator(operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+    def det(self):
+        """
+            Computes the determinant of the matrix.
+
+            Returns
+            -------
+            det : float
+                The determinant
+
+        """
+        if(self.domain.dim(split=False)<self.domain.dof()): ## hidden degrees of freedom
+            return np.exp(self.domain.calc_dot(np.ones(self.domain.dim(split=True),dtype=self.domain.datatype,order='C'),np.log(self.val)))
+        else:
+            return np.prod(self.val,axis=None,dtype=None,out=None)
+
+    def inverse_det(self):
+        """
+            Computes the determinant of the inverse operator.
+
+            Returns
+            -------
+            det : float
+                The determinant
+
+        """
+        det = self.det()
+        if(det<>0):
+            return 1/det
+        else:
+            raise ValueError(about._errors.cstring("ERROR: singular operator."))
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
     def get_random_field(self,domain=None,target=None,**kwargs):
         """
             Generates a Gaussian random field with variance equal to the
@@ -10275,21 +10316,13 @@ class response_operator(operator):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _multiply(self,x,**kwargs): ## > applies the operator to a given field
-#        ## weight ## TODO: remove in future version
-#        if(self.domain.discrete)and(self.den):
-#            x_ = self.domain.calc_weight(x.val,power=1)
-#        elif(not self.domain.discrete)and(not self.den):
-#            x_ = self.domain.calc_weight(x.val,power=-1)
-#        else:
-#            x_ = x.val
-#        ## smooth
-#        x_ = self.domain.calc_smooth(x_.val,sigma=self.sigma)
         ## smooth
         x_ = self.domain.calc_smooth(x.val,sigma=self.sigma)
         ## mask
         x_ = self.mask*x_
         ## assign
-        return x_[self.assign.tolist()]
+        #return x_[self.assign.tolist()]
+        return field(self.target,val=x_[self.assign.tolist()],target=kwargs.get("target",None))
 
     def _adjoint_multiply(self,x,**kwargs): ## > applies the adjoint operator to a given field
         x_ = np.zeros(self.domain.dim(split=True),dtype=self.domain.datatype,order='C')
@@ -10299,12 +10332,8 @@ class response_operator(operator):
         x_ = self.mask*x_
         ## smooth
         x_ = self.domain.calc_smooth(x_,sigma=self.sigma)
-#        ## weight ## TODO: remove in future version
-#        if(self.domain.discrete)and(self.den):
-#            x_ = self.domain.calc_weight(x_,power=1)
-#        elif(not self.domain.discrete)and(not self.den):
-#            x_ = self.domain.calc_weight(x_,power=-1)
-        return x_
+        #return x_
+        return field(self.domain,val=x_,target=kwargs.get("target",None))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -10351,8 +10380,6 @@ class response_operator(operator):
         return "<nifty.response_operator>"
 
 ##-----------------------------------------------------------------------------
-
-## IDEA: explicit_operator
 
 
 
@@ -12064,15 +12091,14 @@ class trace_probing(probing):
             else:
                 domain = op.domain
         else:
-            if(function in [op.inverse_times,op.adjoint_times]):
-                if(not op.target.check_codomain(domain)): ## restrictive
-                    raise ValueError(about._errors.cstring("ERROR: incompatible domains."))
-                if(target is None)or(not isinstance(target,space)):
+            if(not op.domain.check_codomain(domain)): ## restrictive
+                raise ValueError(about._errors.cstring("ERROR: incompatible domains."))
+            if(not op.target.check_codomain(domain)): ## restrictive
+                raise ValueError(about._errors.cstring("ERROR: incompatible domains."))
+            if(target is None)or(not isinstance(target,space)):
+                if(function in [op.inverse_times,op.adjoint_times]):
                     target = op.target
-            else:
-                if(not op.domain.check_codomain(domain)): ## restrictive
-                    raise ValueError(about._errors.cstring("ERROR: incompatible domains."))
-                if(target is None)or(not isinstance(target,space)):
+                else:
                     target = op.domain
         self.domain = domain
 
@@ -12124,6 +12150,8 @@ class trace_probing(probing):
         if(f is None):
             return None
         else:
+            if(f.domain!=self.domain):
+                f.transform(target=self.domain,overwrite=True)
             return self.domain.calc_dot(probe.val,f.val) ## discrete inner product
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -12184,7 +12212,7 @@ class trace_probing(probing):
             os.kill()
         else:
             if(result is not None):
-                if(np.iscomplexobj(result)):
+                if(isinstance(_share.sum,tuple)):
                     _share.sum[0].acquire(block=True,timeout=None)
                     _share.sum[0].value += np.real(result)
                     _share.sum[0].release()
@@ -12454,15 +12482,14 @@ class diagonal_probing(probing):
             else:
                 domain = op.domain
         else:
-            if(function in [op.inverse_times,op.adjoint_times]):
-                if(not op.target.check_codomain(domain)): ## restrictive
-                    raise ValueError(about._errors.cstring("ERROR: incompatible domains."))
-                if(target is None)or(not isinstance(target,space)):
+            if(not op.domain.check_codomain(domain)): ## restrictive
+                raise ValueError(about._errors.cstring("ERROR: incompatible domains."))
+            if(not op.target.check_codomain(domain)): ## restrictive
+                raise ValueError(about._errors.cstring("ERROR: incompatible domains."))
+            if(target is None)or(not isinstance(target,space)):
+                if(function in [op.inverse_times,op.adjoint_times]):
                     target = op.target
-            else:
-                if(not op.domain.check_codomain(domain)): ## restrictive
-                    raise ValueError(about._errors.cstring("ERROR: incompatible domains."))
-                if(target is None)or(not isinstance(target,space)):
+                else:
                     target = op.domain
         self.domain = domain
 
@@ -12594,6 +12621,8 @@ class diagonal_probing(probing):
         if(f is None):
             return None
         else:
+            if(f.domain!=self.domain):
+                f.transform(target=self.domain,overwrite=True)
             result = np.conjugate(probe.val)*f.val
             if(self.save is not None):
                 np.save(self.save+"%08u"%idnum,result)
@@ -12609,7 +12638,7 @@ class diagonal_probing(probing):
             os.kill()
         else:
             if(result is not None):
-                if(np.iscomplexobj(result)):
+                if(isinstance(_share.sum,tuple)):
                     _share.sum[0].acquire(block=True,timeout=None)
                     _share.sum[0][:] += np.real(result)
                     _share.sum[0].release()
