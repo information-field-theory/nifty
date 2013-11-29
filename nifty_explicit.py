@@ -47,7 +47,7 @@ class explicit_operator(operator):
         ..    _______  __   __    ______   /  /    __   _______   __  /   _/
         ..  /   __  / \  \/  /  /   _   | /  /   /  / /   ____/ /  / /  /
         .. /  /____/  /     /  /  /_/  / /  /_  /  / /  /____  /  / /  /_
-        .. \______/  /__/\__\ /   ____/  \___/ /__/  \______/ /__/  \___/  operator
+        .. \______/  /__/\__\ /   ____/  \___/ /__/  \______/ /__/  \___/  operator class
         ..                   /__/
 
         TODO: documentation
@@ -1339,7 +1339,7 @@ class explicit_operator(operator):
                 kwargs["norm"] = None
             if(not kwargs.has_key("cmap")):
                 kwargs["cmap"] = pl.cm.hsv_r
-            self.get_plot(np.angle(self.val,deg=False),title=title+"(phase)",vmin=0,vmax=6.28319,**kwargs) ## vmax == 2 pi
+            self.get_plot(np.angle(self.val,deg=False),title=title+"(phase)",vmin=-3.1416,vmax=3.1416,**kwargs) ## values in [-pi,pi]
         else:
             self.get_plot(np.real(self.val),**kwargs)
 
@@ -1352,21 +1352,473 @@ class explicit_operator(operator):
 
 ##-----------------------------------------------------------------------------
 
-## IDEA: explicit_probing
 
 
 
 
+##-----------------------------------------------------------------------------
 
+class _share(object):
 
+    __init__ = None
 
+    @staticmethod
+    def _init_share(_mat,_num):
+        _share.mat = _mat
+        _share.num = _num
 
+##-----------------------------------------------------------------------------
 
+##-----------------------------------------------------------------------------
 
+class explicit_probing(probing):
+    """
+        ..
+        ..
+        ..                                    __     __             __   __
+        ..                                  /  /   /__/           /__/ /  /_
+        ..    _______  __   __    ______   /  /    __   _______   __  /   _/
+        ..  /   __  / \  \/  /  /   _   | /  /   /  / /   ____/ /  / /  /
+        .. /  /____/  /     /  /  /_/  / /  /_  /  / /  /____  /  / /  /_
+        .. \______/  /__/\__\ /   ____/  \___/ /__/  \______/ /__/  \___/  probing class
+        ..                   /__/
 
+        TODO: documentation
 
+    """
+#        NIFTY class for probing (using multiprocessing)
+#
+#        This is the base NIFTY probing class from which other probing classes
+#        (e.g. diagonal probing) are derived.
+#
+#        When called, a probing class instance evaluates an operator or a
+#        function using random fields, whose components are random variables
+#        with mean 0 and variance 1. When an instance is called it returns the
+#        mean value of f(probe), where probe is a random field with mean 0 and
+#        variance 1. The mean is calculated as 1/N Sum[ f(probe_i) ].
+#
+#        Parameters
+#        ----------
+#        op : operator
+#            The operator specified by `op` is the operator to be probed.
+#            If no operator is given, then probing will be done by applying
+#            `function` to the probes. (default: None)
+#        function : function, *optional*
+#            If no operator has been specified as `op`, then specification of
+#            `function` is non optional. This is the function, that is applied
+#            to the probes. (default: `op.times`)
+#        domain : space, *optional*
+#            If no operator has been specified as `op`, then specification of
+#            `domain` is non optional. This is the space that the probes live
+#            in. (default: `op.domain`)
+#        target : domain, *optional*
+#            `target` is the codomain of `domain`
+#            (default: `op.domain.get_codomain()`)
+#        ncpu : int, *optional*
+#            the number of cpus to be used from parallel probing. (default: 2)
+#        nrun : int, *optional*
+#            the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
+#            set to `ncpu**2`. (default: 8)
+#        nper : int, *optional*
+#            this number specifies how many probes will be evaluated by one
+#            worker. Afterwards a new worker will be created to evaluate a chunk
+#            of `nper` probes.
+#            If for example `nper=nrun/ncpu`, then every worker will be created
+#            for every cpu. This can lead to the case, that all workers but one
+#            are already finished, but have to wait for the last worker that
+#            might still have a considerable amount of evaluations left. This is
+#            obviously not very effective.
+#            If on the other hand `nper=1`, then for each evaluation a worker will
+#            be created. In this case all cpus will work until nrun probes have
+#            been evaluated.
+#            It is recommended to leave `nper` as the default value. (default: 8)
+#
+#        See Also
+#        --------
+#        diagonal_probing : A probing class to get the diagonal of an operator
+#        trace_probing : A probing class to get the trace of an operator
+#
+#        Attributes
+#        ----------
+#        function : function
+#            the function, that is applied to the probes
+#        domain : space
+#            the space, where the probes live in
+#        target : space
+#            the codomain of `domain`
+#        ncpu : int
+#            the number of cpus used for probing
+#        nrun : int
+#            the number of probes to be evaluated, when the instance is called
+#        nper : int
+#            number of probes, that will be evaluated by one worker
+#        quargs : dict
+#            Keyword arguments passed to `function` in each call.
+#
+#    """
+    def __init__(self,op=None,function=None,domain=None,codomain=None,target=None,ncpu=2,nper=None,**quargs):
+        """
+            TODO: documentation
 
+        """
+#        initializes a probing instance
+#
+#        Parameters
+#        ----------
+#        op : operator
+#            The operator specified by `op` is the operator to be probed.
+#            If no operator is given, then probing will be done by applying
+#            `function` to the probes. (default: None)
+#        function : function, *optional*
+#            If no operator has been specified as `op`, then specification of
+#            `function` is non optional. This is the function, that is applied
+#            to the probes. (default: `op.times`)
+#        domain : space, *optional*
+#            If no operator has been specified as `op`, then specification of
+#            `domain` is non optional. This is the space that the probes live
+#            in. (default: `op.domain`)
+#        target : domain, *optional*
+#            `target` is the codomain of `domain`
+#            (default: `op.domain.get_codomain()`)
+#        ncpu : int, *optional*
+#            the number of cpus to be used from parallel probing. (default: 2)
+#        nrun : int, *optional*
+#            the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
+#            set to `ncpu**2`. (default: 8)
+#        nper : int, *optional*
+#            this number specifies how many probes will be evaluated by one
+#            worker. Afterwards a new worker will be created to evaluate a chunk
+#            of `nper` probes.
+#            If for example `nper=nrun/ncpu`, then every worker will be created
+#            for every cpu. This can lead to the case, that all workers but one
+#            are already finished, but have to wait for the last worker that
+#            might still have a considerable amount of evaluations left. This is
+#            obviously not very effective.
+#            If on the other hand `nper=1`, then for each evaluation a worker will
+#            be created. In this case all cpus will work until nrun probes have
+#            been evaluated.
+#            It is recommended to leave `nper` as the default value. (default: 8)
+#
+#        """
+        if(op is None):
+            ## check whether callable
+            if(function is None)or(not hasattr(function,"__call__")):
+                raise TypeError(about._errors.cstring("ERROR: invalid input."))
+            ## check given domain
+            if(domain is None):
+                raise TypeError(about._errors.cstring("ERROR: insufficient input."))
+            elif(not isinstance(domain,space)):
+                raise TypeError(about._errors.cstring("ERROR: invalid input domain."))
+            ## check given codomain
+            if(codomain is None):
+                raise TypeError(about._errors.cstring("ERROR: insufficient input."))
+            elif(not isinstance(codomain,space)):
+                raise TypeError(about._errors.cstring("ERROR: invalid input codomain."))
+        else:
+            if(not isinstance(op,operator)):
+                raise TypeError(about._errors.cstring("ERROR: invalid input."))
+            ## check whether callable
+            if(function is None)or(not hasattr(function,"__call__")):
+                function = op.times
+            elif(op==function):
+                function = op.times
+            ## check whether correctly bound
+            if(op!=function.im_self):
+                raise NameError(about._errors.cstring("ERROR: invalid input function."))
+            ## check given domain
+            if(domain is None)or(not isinstance(domain,space)):
+                if(function in [op.inverse_times,op.adjoint_times]):
+                    domain = op.target
+                else:
+                    domain = op.domain
+            else:
+                if(function in [op.inverse_times,op.adjoint_times]):
+                    op.target.check_codomain(domain) ## a bit pointless
+                else:
+                    op.domain.check_codomain(domain) ## a bit pointless
+            ## check given codomain
+            if(codomain is None)or(not isinstance(codomain,space)):
+                if(function in [op.inverse_times,op.adjoint_times]):
+                    codomain = op.domain
+                else:
+                    codomain = op.target
+            else:
+                if(function in [op.inverse_times,op.adjoint_times]):
+                    if(not op.domain.check_codomain(domain))and(op.domain.dim(split=False)!=codomain.dim(split=False)):
+                        raise NameError(about._errors.cstring("ERROR: invalid input codomain."))
+                else:
+                    if(not op.target.check_codomain(domain))and(op.target.dim(split=False)!=codomain.dim(split=False)):
+                        raise NameError(about._errors.cstring("ERROR: invalid input codomain."))
 
+        self.function = function
+        self.domain = domain
+        self.codomain = codomain
 
+        if(target is None):
+            self.target = domain.get_codomain()
+        else:
+            ## check codomain
+            self.domain.check_codomain(target) ## a bit pointless
+            self.target = target
 
+        ## check shape
+        if(self.domain.dim(split=False)*self.codomain.dim(split=False)>1048576):
+            about.warnings.cprint("WARNING: matrix size > 2 ** 20.")
+
+        self.ncpu = int(max(1,ncpu))
+        self.nrun = self.domain.dim(split=False)
+        if(nper is None):
+            self.nper = None
+        else:
+            self.nper = int(max(1,min(self.nrun//self.ncpu,nper)))
+
+        self.quargs = quargs
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def configure(self,**kwargs):
+        """
+            Changes the performance attributes of the instance.
+
+            Parameters
+            ----------
+            ncpu : int, *optional*
+                Number of CPUs used in parallel.
+            nper : int, *optional*
+                Number of probes evaluated by one worker.
+
+        """
+        if("ncpu" in kwargs):
+            self.ncpu = int(max(1,kwargs.get("ncpu")))
+        if("nper" in kwargs):
+            if(kwargs.get("nper") is None):
+                self.nper = None
+            else:
+                self.nper = int(max(1,min(self.nrun//self.ncpu,kwargs.get("nper"))))
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def gen_probe(self,index,value):
+        """
+            Generates a probe.
+
+            For explicit probing, each probe is a weighted canonical base.
+
+            Parameters
+            ----------
+            index : int
+                Index where to put the value.
+            value : scalar
+                Weighted 1.
+
+            Returns
+            -------
+            probe : field
+                Weighted canonical base.
+
+        """
+        probe = field(self.domain,val=None,target=self.target)
+        probe[index] = value
+        return probe
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def probing(self,idnum,probe):
+        """
+            TODO: documentation
+
+        """
+#        """
+#            Computes a single probing result given one probe
+#
+#            Parameters
+#            ----------
+#            probe : field
+#                the field on which `function` will be applied
+#            idnum : int
+#                    the identification number of the probing
+#
+#            Returns
+#            -------
+#            result : array-like
+#                the result of applying `function` to `probe`. The exact type
+#                depends on the function.
+#
+#        """
+        f = self.function(probe,**self.quargs) ## field
+        if(f is None):
+            return None
+        elif(isinstance(f,field)):
+            if(f.domain!=self.codomain):
+                try:
+                    f.transform(target=self.codomain,overwrite=True)
+                except(ValueError): ## unsupported transformation
+                    pass ## checkless version of f.cast_domain(self.codomain,newtarget=None,force=True)
+            return f.val.flatten(order='C')
+        else:
+            return f.flatten(order='C')
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def evaluate(self,matrix,num):
+        """
+            Evaluates the probing results.
+
+            Parameters
+            ----------
+            matrix : numpy.array
+                Matrix representation of the probed linear operator.
+            num : int
+                Number of successful probings (not returning ``None``).
+
+            Returns
+            -------
+            result : explicit_operator
+                The probed linear operator as explicit operator instance.
+
+        """
+        if(num<self.nrun):
+            about.infos.cflush(" ( %u probe(s) failed, effectiveness == %.1f%% )\n"%(self.nrun-num,100*num/self.nrun))
+            if(num==0):
+                about.warnings.cprint("WARNING: probing failed.")
+                return None
+        else:
+            about.infos.cflush("\n")
+
+        return explicit_operator(self.domain,matrix,bare=True,sym=None,uni=None,target=self.codomain)
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def _single_probing(self,zipped): ## > performs one probing operation
+        ## generate probe
+        probe = self.gen_probe(*zipped)
+        ## do the actual probing
+        return self.probing(zipped[0],probe)
+
+    def _serial_probing(self,zipped): ## > performs the probing operation serially
+        try:
+            result = self._single_probing(zipped)
+        except:
+            ## kill pool
+            os.kill()
+        else:
+            if(result is not None):
+                result = np.array(result).flatten(order='C')
+                rindex = zipped[0]*self.codomain.dim(split=False)
+                if(isinstance(_share.mat,tuple)):
+                    _share.mat[0].acquire(block=True,timeout=None)
+                    _share.mat[0][rindex:rindex+self.codomain.dim(split=False)] = np.real(result)
+                    _share.mat[0].release()
+                    _share.mat[1].acquire(block=True,timeout=None)
+                    _share.mat[1][rindex:rindex+self.codomain.dim(split=False)] = np.imag(result)
+                    _share.mat[1].release()
+                else:
+                    _share.mat.acquire(block=True,timeout=None)
+                    _share.mat[rindex:rindex+self.codomain.dim(split=False)] = result
+                    _share.mat.release()
+                _share.num.acquire(block=True,timeout=None)
+                _share.num.value += 1
+                _share.num.release()
+                self._progress(_share.num.value)
+
+    def _parallel_probing(self): ## > performs the probing operations in parallel
+        ## define weighted canonical base
+        base = self.domain.calc_weight(self.domain.enforce_values(1,extend=True),power=-1).flatten(order='C')
+        ## define shared objects
+        if(self.codomain.datatype in [np.complex64,np.complex128]):
+            _mat = (ma('d',np.empty(self.nrun*self.codomain.dim(split=False),dtype=np.float64,order='C'),lock=True),ma('d',np.empty(self.nrun*self.codomain.dim(split=False),dtype=np.float64,order='C'),lock=True)) ## tuple(real,imag)
+        else:
+            _mat = ma('d',np.empty(self.nrun*self.codomain.dim(split=False),dtype=np.float64,order='C'),lock=True)
+        _num = mv('I',0,lock=True)
+        ## build pool
+        if(about.infos.status):
+            so.write(about.infos.cstring("INFO: multiprocessing "+(' ')*10))
+            so.flush()
+        pool = mp(processes=self.ncpu,initializer=_share._init_share,initargs=(_mat,_num),maxtasksperchild=self.nper)
+        try:
+            ## pooling
+            pool.map_async(self._serial_probing,zip(np.arange(self.nrun,dtype=np.int),base),chunksize=None,callback=None).get(timeout=None)
+            ## close and join pool
+            about.infos.cflush(" done.")
+            pool.close()
+            pool.join()
+        except:
+            ## terminate and join pool
+            pool.terminate()
+            pool.join()
+            raise Exception(about._errors.cstring("ERROR: unknown. NOTE: pool terminated.")) ## traceback by looping
+        ## evaluate
+        if(self.domain.datatype in [np.complex64,np.complex128]):
+            _mat = (np.array(_mat[0][:])+np.array(_mat[1][:])*1j).reshape((self.nrun,self.codomain.dim(split=False))) ## comlpex array
+        else:
+            _mat = np.array(_mat[:]).reshape((self.nrun,self.codomain.dim(split=False)))
+        return self.evaluate(_mat,_num.value)
+
+    def _nonparallel_probing(self): ## > performs the probing operations one after another
+        ## define weighted canonical base
+        base = self.domain.calc_weight(self.domain.enforce_values(1,extend=True),power=-1).flatten(order='C')
+        ## looping
+        if(about.infos.status):
+            so.write(about.infos.cstring("INFO: looping "+(' ')*10))
+            so.flush()
+        _mat = np.empty((self.nrun,self.codomain.dim(split=False)),dtype=self.codomain.datatype,order='C')
+        _num = 0
+        for ii in xrange(self.nrun):
+            result = self._single_probing((ii,base[ii])) ## zipped tuple
+            if(result is None):
+                _mat[ii] = np.zeros(self.codomain.dim(split=False),dtype=self.codomain.datatype)
+            else:
+                _mat[ii] = np.array(result,dtype=self.codomain.datatype)
+                _num += 1
+                self._progress(_num)
+        about.infos.cflush(" done.")
+        ## evaluate
+        return self.evaluate(_mat,_num)
+
+    def __call__(self,loop=False,**kwargs):
+        """
+            Start the explicit probing procedure.
+
+            Parameters
+            ----------
+            loop : bool, *optional*
+                Whether to evaluate the probing in one loop or by
+                multiprocessing (default: False).
+
+            Returns
+            -------
+            result : explicit_operator
+                The probed linear operator as explicit operator instance.
+
+            Other Parameters
+            ----------------
+            ncpu : int, *optional*
+                Number of CPUs used in parallel.
+            nper : int, *optional*
+                Number of probes evaluated by one worker.
+
+        """
+        self.configure(**kwargs)
+        if(not about.multiprocessing.status)or(loop):
+            return self._nonparallel_probing()
+        else:
+            return self._parallel_probing()
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def __repr__(self):
+        return "<nifty.explicit_probing>"
+
+##-----------------------------------------------------------------------------
+
+##-----------------------------------------------------------------------------
+
+def explicify(operator,loop=False,**kwargs):
+    """
+        TODO: documentation
+
+    """
+    return explicit_probing(op=operator,**kwargs)(loop=loop)
+
+##-----------------------------------------------------------------------------
 
