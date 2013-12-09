@@ -55,7 +55,7 @@ class explicit_operator(operator):
     """
     epsilon = 1E-12 ## absolute precision for comparisons to identity
 
-    def __init__(self,domain,matrix,bare=True,sym=None,uni=None,target=None):
+    def __init__(self,domain,matrix=None,bare=True,sym=None,uni=None,target=None): ## FIXME: None
         """
             TODO: documentation
 
@@ -63,28 +63,38 @@ class explicit_operator(operator):
         ## check domain
         if(not isinstance(domain,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
-        elif(np.size(matrix,axis=None)%domain.dim(split=False)!=0):
-            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(matrix,axis=None))+" <> "+str(domain.dim(split=False))+" )."))
         self.domain = domain
 
-        ## check shape
-        val = np.array(matrix).reshape((-1,self.domain.dim(split=False)))
+        ## check matrix and target
+        if(matrix is None):
+            if(target is None):
+                val = np.zeros((self.domain.dim(split=False),self.domain.dim(split=False)),dtype=np.int,order='C')
+                target = self.domain
+            else:
+                if(not isinstance(target,space)):
+                    raise TypeError(about._errors.cstring("ERROR: invalid input."))
+                elif(target!=self.domain):
+                    sym = False
+                    uni = False
+                val = np.zeros((target.dim(split=False),self.domain.dim(split=False)),dtype=np.int,order='C')
+        elif(np.size(matrix,axis=None)%self.domain.dim(split=False)==0):
+            val = np.array(matrix).reshape((-1,self.domain.dim(split=False)))
+            if(target is not None):
+                if(not isinstance(target,space)):
+                    raise TypeError(about._errors.cstring("ERROR: invalid input."))
+                elif(val.shape[0]!=target.dim(split=False)):
+                    raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(val.shape[0])+" <> "+str(target.dim(split=False))+" )."))
+                elif(target!=self.domain):
+                    sym = False
+                    uni = False
+            elif(val.shape[0]==val.shape[1]):
+                target = self.domain
+            else:
+                raise TypeError(about._errors.cstring("ERROR: insufficient input."))
+        else:
+            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(matrix,axis=None))+" <> "+str(self.domain.dim(split=False))+" )."))
         if(val.size>1048576):
             about.infos.cprint("INFO: matrix size > 2 ** 20.")
-
-        ## check target
-        if(target is not None):
-            if(not isinstance(target,space)):
-                raise TypeError(about._errors.cstring("ERROR: invalid input."))
-            elif(val.shape[0]!=target.dim(split=False)):
-                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(val.shape[0])+" <> "+str(target.dim(split=False))+" )."))
-            elif(target!=self.domain):
-                sym = False
-                uni = False
-        elif(val.shape[0]==val.shape[1]):
-            target = self.domain
-        else:
-            raise TypeError(about._errors.cstring("ERROR: insufficient input."))
         self.target = target
 
         ## check datatype
@@ -105,30 +115,6 @@ class explicit_operator(operator):
             self.val = np.real(val).astype(datatype)
         else:
             self.val = val.astype(datatype)
-
-
-
-
-
-
-
-#        if(np.iscomplexobj(val)):
-#            if(np.all(np.imag(val)==0)):
-#                val = np.real(val).astype(min(val.dtype,self.domain.vol.dtype,self.target.vol.dtype))
-#            else:
-#                val = val.astype(min(val.dtype,self.domain.datatype,self.target.datatype))
-#        else:
-#            val = val.astype(min(val.dtype,self.domain.vol.dtype,self.target.vol.dtype))
-#        ## weight if ... (given `domain` and `target`)
-#        if(isinstance(bare,tuple)):
-#            if(len(bare)!=2):
-#                raise ValueError(about._errors.cstring("ERROR: invalid input."))
-#            else:
-#                val = self._calc_weight_rows(val,-bool(bare[0]))
-#                val = self._calc_weight_cols(val,-bool(bare[1]))
-#        elif(not bare):
-#            val = self._calc_weight_rows(val,-1)
-#        self.val = val
 
         ## check hidden degrees of freedom
         self._hidden = np.array([self.domain.dim(split=False)<self.domain.dof(),self.target.dim(split=False)<self.target.dof()],dtype=np.bool)
@@ -175,29 +161,35 @@ class explicit_operator(operator):
             TODO: documentation
 
         """
-        ## check shape
-        val = np.array(newmatrix).reshape((-1,self.domain.dim(split=False)))
-        if(val.size>1048576):
-            about.warnings.cprint("WARNING: matrix size > 2 ** 20.")
+        ## check matrix
+        if(np.size(newmatrix,axis=None)==self.domain.dim(split=False)*self.target.dim(split=False)):
+            val = np.array(newmatrix).reshape((self.target.dim(split=False),self.domain.dim(split=False)))
+            if(self.target!=self.domain):
+                sym = False
+                uni = False
+            if(val.size>1048576):
+                about.infos.cprint("INFO: matrix size > 2 ** 20.")
+        else:
+            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(matrix,axis=None))+" <> "+str(self.nrow())+" x "+str(self.ncol())+" )."))
 
         ## check datatype
-        if(np.iscomplexobj(val)):
-            if(np.all(np.imag(val)==0)):
-                val = np.real(val).astype(min(val.dtype,self.domain.vol.dtype,self.target.vol.dtype))
-            else:
-                val = val.astype(min(val.dtype,self.domain.datatype,self.target.datatype))
+        if(np.any(np.iscomplex(val))):
+            datatype,purelyreal = max(min(val.dtype,self.domain.datatype),min(val.dtype,self.target.datatype)),False
         else:
-            val = val.astype(min(val.dtype,self.domain.vol.dtype,self.target.vol.dtype))
+            datatype,purelyreal = max(min(val.dtype,self.domain.vol.dtype),min(val.dtype,self.target.vol.dtype)),True
         ## weight if ... (given `domain` and `target`)
         if(isinstance(bare,tuple)):
             if(len(bare)!=2):
                 raise ValueError(about._errors.cstring("ERROR: invalid input."))
             else:
-                val = self._calc_weight_rows(val,power=-bool(bare[0]))
-                val = self._calc_weight_cols(val,power=-bool(bare[1]))
+                val = self._calc_weight_rows(val,-bool(bare[0]))
+                val = self._calc_weight_cols(val,-bool(bare[1]))
         elif(not bare):
             val = self._calc_weight_rows(val,-1)
-        self.val = val
+        if(purelyreal):
+            self.val = np.real(val).astype(datatype)
+        else:
+            self.val = val.astype(datatype)
 
         ## check flags
         self.sym,self.uni = self._check_flags(sym=sym,uni=uni)
