@@ -774,7 +774,7 @@ class random(object):
         """
         size = np.prod(shape,axis=0,dtype=np.int,out=None)
 
-        if(datatype in [np.complex64,np.complex128]):
+        if(issubclass(datatype,np.complexfloating)):
             x = np.array([1+0j,0+1j,-1+0j,0-1j],dtype=datatype)[np.random.randint(4,high=None,size=size)]
         else:
             x = 2*np.random.randint(2,high=None,size=size)-1
@@ -816,7 +816,7 @@ class random(object):
         """
         size = np.prod(shape,axis=0,dtype=np.int,out=None)
 
-        if(datatype in [np.complex64,np.complex128]):
+        if(issubclass(datatype,np.complexfloating)):
             x = np.empty(size,dtype=datatype,order='C')
             x.real = np.random.normal(loc=0,scale=np.sqrt(0.5),size=size)
             x.imag = np.random.normal(loc=0,scale=np.sqrt(0.5),size=size)
@@ -1941,7 +1941,7 @@ class point_space(space):
                 Number of degrees of freedom of the space.
         """
         ## dof ~ dim
-        if(self.datatype in [np.complex64,np.complex128]):
+        if(issubclass(self.datatype,np.complexfloating)):
             return 2*self.para[0]
         else:
             return self.para[0]
@@ -10609,7 +10609,7 @@ class probing(object):
 
         ## check codomain
         if(target is None):
-            target = domain.get_codomain()
+            target = self.domain.get_codomain()
         else:
             self.domain.check_codomain(target) ## a bit pointless
         self.target = target
@@ -11087,7 +11087,7 @@ class trace_probing(probing):
 
         ## check codomain
         if(target is None):
-            target = domain.get_codomain()
+            target = self.domain.get_codomain()
         else:
             self.domain.check_codomain(target) ## a bit pointless
         self.target = target
@@ -11171,7 +11171,7 @@ class trace_probing(probing):
         else:
             about.infos.cflush("\n")
 
-        if(self.domain.datatype in [np.complex64,np.complex128]):
+        if(issubclass(self.domain.datatype,np.complexfloating)):
             summa = np.real(summa)
 
         final = summa/num
@@ -11219,7 +11219,7 @@ class trace_probing(probing):
         ## define random seed
         seed = np.random.randint(10**8,high=None,size=self.nrun)
         ## define shared objects
-        if(self.domain.datatype in [np.complex64,np.complex128]):
+        if(issubclass(self.domain.datatype,np.complexfloating)):
             _sum = (mv('d',0,lock=True),mv('d',0,lock=True)) ## tuple(real,imag)
         else:
             _sum = mv('d',0,lock=True)
@@ -11246,7 +11246,7 @@ class trace_probing(probing):
             pool.join()
             raise Exception(about._errors.cstring("ERROR: unknown. NOTE: pool terminated.")) ## traceback by looping
         ## evaluate
-        if(self.domain.datatype in [np.complex64,np.complex128]):
+        if(issubclass(self.domain.datatype,np.complexfloating)):
             _sum = np.complex(_sum[0].value,_sum[1].value)
         else:
             _sum = _sum.value
@@ -11478,7 +11478,7 @@ class diagonal_probing(probing):
 
         ## check codomain
         if(target is None):
-            target = domain.get_codomain()
+            target = self.domain.get_codomain()
         else:
             self.domain.check_codomain(target) ## a bit pointless
         self.target = target
@@ -11646,7 +11646,7 @@ class diagonal_probing(probing):
         ## define random seed
         seed = np.random.randint(10**8,high=None,size=self.nrun)
         ## define shared objects
-        if(self.domain.datatype in [np.complex64,np.complex128]):
+        if(issubclass(self.domain.datatype,np.complexfloating)):
             _sum = (ma('d',np.zeros(self.domain.dim(split=False),dtype=np.float64,order='C'),lock=True),ma('d',np.zeros(self.domain.dim(split=False),dtype=np.float64,order='C'),lock=True)) ## tuple(real,imag)
         else:
             _sum = ma('d',np.zeros(self.domain.dim(split=False),dtype=np.float64,order='C'),lock=True)
@@ -11673,7 +11673,7 @@ class diagonal_probing(probing):
             pool.join()
             raise Exception(about._errors.cstring("ERROR: unknown. NOTE: pool terminated.")) ## traceback by looping
         ## evaluate
-        if(self.domain.datatype in [np.complex64,np.complex128]):
+        if(issubclass(self.domain.datatype,np.complexfloating)):
             _sum = (np.array(_sum[0][:])+np.array(_sum[1][:])*1j).reshape(self.domain.dim(split=True)) ## comlpex array
         else:
             _sum = np.array(_sum[:]).reshape(self.domain.dim(split=True))
