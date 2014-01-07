@@ -2443,7 +2443,7 @@ class rg_space(space):
             try:
                 spec = np.array(spec(kindex),dtype=self.datatype)
             except:
-                TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
+                raise TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
             spec = np.array([spec],dtype=self.datatype)
         else:
@@ -3554,7 +3554,7 @@ class lm_space(space):
             try:
                 spec = np.array(spec(np.arange(self.para[0]+1,dtype=np.int)),dtype=self.datatype)
             except:
-                TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
+                raise TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
             spec = np.array([spec],dtype=self.datatype)
         else:
@@ -4394,7 +4394,7 @@ class gl_space(space):
             try:
                 spec = np.array(spec(np.arange(self.para[0],dtype=np.int)),dtype=self.datatype)
             except:
-                TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
+                raise TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
             spec = np.array([spec],dtype=self.datatype)
         else:
@@ -5037,7 +5037,7 @@ class hp_space(space):
             try:
                 spec = np.array(spec(np.arange(3*self.para[0],dtype=np.int)),dtype=self.datatype)
             except:
-                TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
+                raise TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
             spec = np.array([spec],dtype=self.datatype)
         else:
