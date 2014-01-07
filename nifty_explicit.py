@@ -905,15 +905,15 @@ class explicit_operator(operator):
             if(isinstance(X,explicit_operator)):
                 if(self.target!=X.target):
                     raise ValueError(about._errors.cstring("ERROR: inequal codomains."))
-                self.val += X.val
+                X = X.val
             elif(isinstance(X,diagonal_operator)):
                 if(self.target.dim(split=False)!=X.target.dim(split=False))or(not self.target.check_codomain(X.target)):
                     raise ValueError(about._errors.cstring("ERROR: incompatible codomains."))
-                self.val += np.diag(X.diag(bare=True,domain=None),k=0) ## domain == X.domain
+                X = np.diag(X.diag(bare=True,domain=None),k=0) ## domain == X.domain
             elif(isinstance(X,vecvec_operator)):
                 if(self.target!=X.target):
                     raise ValueError(about._errors.cstring("ERROR: inequal codomains."))
-                self.val += np.tensordot(X.val,X.val,axes=0)
+                X = np.tensordot(X.val,X.val,axes=0)
             else:
                 raise TypeError(about._errors.cstring("ERROR: unsupported or incompatible operator."))
         elif(np.size(X)==1):
@@ -921,8 +921,7 @@ class explicit_operator(operator):
                 raise ValueError(about._errors.cstring("ERROR: identity ill-defined for "+str(self.nrow())+" x "+str(self.ncol())+" matrices."))
             self.uni = None
             X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
-            X = self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
-            self.val += np.diag(X,k=0)
+            X = np.diag(self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype))),k=0)
         elif(np.size(X)==np.size(self.val)):
             self.sym = None
             self.uni = None
@@ -930,9 +929,13 @@ class explicit_operator(operator):
             if(np.all(np.isreal(X))):
                 X = np.real(X)
             X = X.astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
-            self.val += X
         else:
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(X))+" <> "+str(self.nrow())+" x "+str(self.ncol())+" )."))
+
+        ## add
+        if(X.dtype>self.val.dtype):
+            about.warnings.cprint("WARNING: datatype reset.")
+        self.val += X
 
         ## check flags
         self.sym,self.uni = self._check_flags(sym=self.sym,uni=self.uni)
@@ -1030,15 +1033,15 @@ class explicit_operator(operator):
             if(isinstance(X,explicit_operator)):
                 if(self.target!=X.target):
                     raise ValueError(about._errors.cstring("ERROR: inequal codomains."))
-                self.val -= X.val
+                X = X.val
             elif(isinstance(X,diagonal_operator)):
                 if(self.target.dim(split=False)!=X.target.dim(split=False))or(not self.target.check_codomain(X.target)):
                     raise ValueError(about._errors.cstring("ERROR: incompatible codomains."))
-                self.val -= np.diag(X.diag(bare=True,domain=None),k=0) ## domain == X.domain
+                X = np.diag(X.diag(bare=True,domain=None),k=0) ## domain == X.domain
             elif(isinstance(X,vecvec_operator)):
                 if(self.target!=X.target):
                     raise ValueError(about._errors.cstring("ERROR: inequal codomains."))
-                self.val -= np.tensordot(X.val,X.val,axes=0)
+                X = np.tensordot(X.val,X.val,axes=0)
             else:
                 raise TypeError(about._errors.cstring("ERROR: unsupported or incompatible operator."))
         elif(np.size(X)==1):
@@ -1046,8 +1049,7 @@ class explicit_operator(operator):
                 raise ValueError(about._errors.cstring("ERROR: identity ill-defined for "+str(self.nrow())+" x "+str(self.ncol())+" matrices."))
             self.uni = None
             X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
-            X = self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
-            self.val -= np.diag(X,k=0)
+            X = np.diag(self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype))),k=0)
         elif(np.size(X)==np.size(self.val)):
             self.sym = None
             self.uni = None
@@ -1055,9 +1057,13 @@ class explicit_operator(operator):
             if(np.all(np.isreal(X))):
                 X = np.real(X)
             X = X.astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
-            self.val -= X
         else:
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(X))+" <> "+str(self.nrow())+" x "+str(self.ncol())+" )."))
+
+        ## subtract
+        if(X.dtype>self.val.dtype):
+            about.warnings.cprint("WARNING: datatype reset.")
+        self.val -= X
 
         ## check flags
         self.sym,self.uni = self._check_flags(sym=self.sym,uni=self.uni)
@@ -1179,6 +1185,8 @@ class explicit_operator(operator):
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(X))+" <> "+str(self.nrow())+" x "+str(self.nrow())+" )."))
 
         ## multiply
+        if(X.dtype>self.val.dtype):
+            about.warnings.cprint("WARNING: datatype reset.")
         self.val = self._calc_mul(X,0)
 
         ## check flags
