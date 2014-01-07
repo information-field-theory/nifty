@@ -879,16 +879,16 @@ class explicit_operator(operator):
                 raise ValueError(about._errors.cstring("ERROR: identity ill-defined for "+str(self.nrow())+" x "+str(self.ncol())+" matrices."))
             sym = self.sym
             uni = None
-            X = self.domain.calc_weight(X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C'),power=-1).astype(self.val.dtype)
+            X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
+            X = self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
             matrix = self.val+np.diag(X,k=0)
         elif(np.size(X)==np.size(self.val)):
             sym = None
             uni = None
             X = np.array(X).reshape(self.val.shape)
             if(np.all(np.isreal(X))):
-                X = np.real(X).astype(min(self.domain.vol.dtype,self.target.vol.dtype))
-            else:
-                X = X.astype(min(self.domain.datatype,self.target.datatype))
+                X = np.real(X)
+            X = X.astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
             matrix = self.val+X
         else:
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(X))+" <> "+str(self.nrow())+" x "+str(self.ncol())+" )."))
@@ -920,16 +920,16 @@ class explicit_operator(operator):
             if(self.nrow()!=self.ncol()):
                 raise ValueError(about._errors.cstring("ERROR: identity ill-defined for "+str(self.nrow())+" x "+str(self.ncol())+" matrices."))
             self.uni = None
-            X = self.domain.calc_weight(X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C'),power=-1).astype(self.val.dtype)
+            X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
+            X = self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
             self.val += np.diag(X,k=0)
         elif(np.size(X)==np.size(self.val)):
             self.sym = None
             self.uni = None
             X = np.array(X).reshape(self.val.shape)
             if(np.all(np.isreal(X))):
-                X = np.real(X).astype(min(self.domain.vol.dtype,self.target.vol.dtype))
-            else:
-                X = X.astype(min(self.domain.datatype,self.target.datatype))
+                X = np.real(X)
+            X = X.astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
             self.val += X
         else:
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(X))+" <> "+str(self.nrow())+" x "+str(self.ncol())+" )."))
@@ -966,16 +966,16 @@ class explicit_operator(operator):
                 raise ValueError(about._errors.cstring("ERROR: identity ill-defined for "+str(self.nrow())+" x "+str(self.ncol())+" matrices."))
             sym = self.sym
             uni = None
-            X = self.domain.calc_weight(X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C'),power=-1).astype(self.val.dtype)
+            X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
+            X = self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
             matrix = self.val-np.diag(X,k=0)
         elif(np.size(X)==np.size(self.val)):
             sym = None
             uni = None
             X = np.array(X).reshape(self.val.shape)
             if(np.all(np.isreal(X))):
-                X = np.real(X).astype(min(self.domain.vol.dtype,self.target.vol.dtype))
-            else:
-                X = X.astype(min(self.domain.datatype,self.target.datatype))
+                X = np.real(X)
+            X = X.astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
             matrix = self.val-X
         else:
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(X))+" <> "+str(self.nrow())+" x "+str(self.ncol())+" )."))
@@ -1006,16 +1006,16 @@ class explicit_operator(operator):
                 raise ValueError(about._errors.cstring("ERROR: identity ill-defined for "+str(self.nrow())+" x "+str(self.ncol())+" matrices."))
             sym = self.sym
             uni = None
-            X = self.domain.calc_weight(X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C'),power=-1).astype(self.val.dtype)
+            X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
+            X = self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
             matrix = np.diag(X,k=0)-self.val
         elif(np.size(X)==np.size(self.val)):
             sym = None
             uni = None
             X = np.array(X).reshape(self.val.shape)
             if(np.all(np.isreal(X))):
-                X = np.real(X).astype(min(self.domain.vol.dtype,self.target.vol.dtype))
-            else:
-                X = X.astype(min(self.domain.datatype,self.target.datatype))
+                X = np.real(X)
+            X = X.astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
             matrix = X-self.val
         else:
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(X))+" <> "+str(self.nrow())+" x "+str(self.ncol())+" )."))
@@ -1045,16 +1045,16 @@ class explicit_operator(operator):
             if(self.nrow()!=self.ncol()):
                 raise ValueError(about._errors.cstring("ERROR: identity ill-defined for "+str(self.nrow())+" x "+str(self.ncol())+" matrices."))
             self.uni = None
-            X = self.domain.calc_weight(X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C'),power=-1).astype(self.val.dtype)
+            X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
+            X = self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
             self.val -= np.diag(X,k=0)
         elif(np.size(X)==np.size(self.val)):
             self.sym = None
             self.uni = None
             X = np.array(X).reshape(self.val.shape)
             if(np.all(np.isreal(X))):
-                X = np.real(X).astype(min(self.domain.vol.dtype,self.target.vol.dtype))
-            else:
-                X = X.astype(min(self.domain.datatype,self.target.datatype))
+                X = np.real(X)
+            X = X.astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
             self.val -= X
         else:
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(X))+" <> "+str(self.nrow())+" x "+str(self.ncol())+" )."))
@@ -1099,16 +1099,16 @@ class explicit_operator(operator):
             newdomain = self.domain
             sym = None
             uni = None
-            X = np.diag(self.domain.calc_weight(X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C'),power=-1).astype(self.val.dtype),k=0)
+            X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
+            X = np.diag(self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype))),k=0)
         elif(np.size(X)==self.val.shape[1]**2):
             newdomain = self.domain
             sym = None
             uni = None
             X = np.array(X).reshape((self.val.shape[1],self.val.shape[1]))
             if(np.all(np.isreal(X))):
-                X = np.real(X).astype(min(self.domain.vol.dtype,self.target.vol.dtype))
-            else:
-                X = X.astype(min(self.domain.datatype,self.target.datatype))
+                X = np.real(X)
+            X = X.astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
         else:
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(X))+" <> "+str(self.nrow())+" x "+str(self.nrow())+" )."))
         return explicit_operator(newdomain,self._calc_mul(X,0),bare=True,sym=sym,uni=uni,target=self.target)
@@ -1132,16 +1132,16 @@ class explicit_operator(operator):
             newtarget = self.target
             sym = None
             uni = None
-            X = np.diag(self.domain.calc_weight(X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C'),power=-1).astype(self.val.dtype),k=0)
+            X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
+            X = np.diag(self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype))),k=0)
         elif(np.size(X)==self.val.shape[0]**2):
             newtarget = self.target
             sym = None
             uni = None
             X = np.array(X).reshape((self.val.shape[0],self.val.shape[0]))
             if(np.all(np.isreal(X))):
-                X = np.real(X).astype(min(self.domain.vol.dtype,self.target.vol.dtype))
-            else:
-                X = X.astype(min(self.domain.datatype,self.target.datatype))
+                X = np.real(X)
+            X = X.astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
         else:
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(X))+" <> "+str(self.ncol())+" x "+str(self.ncol())+" )."))
 
@@ -1166,15 +1166,15 @@ class explicit_operator(operator):
         elif(np.size(X)==1):
             self.sym = None
             self.uni = None
-            X = np.diag(self.domain.calc_weight(X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C'),power=-1).astype(self.val.dtype),k=0)
+            X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
+            X = np.diag(self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype))),k=0)
         elif(np.size(X)==self.val.shape[1]**2):
             self.sym = None
             self.uni = None
             X = np.array(X).reshape((self.val.shape[1],self.val.shape[1]))
             if(np.all(np.isreal(X))):
-                X = np.real(X).astype(min(self.domain.vol.dtype,self.target.vol.dtype))
-            else:
-                X = X.astype(min(self.domain.datatype,self.target.datatype))
+                X = np.real(X)
+            X = X.astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
         else:
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(X))+" <> "+str(self.nrow())+" x "+str(self.nrow())+" )."))
 
@@ -1779,9 +1779,10 @@ class explicit_probing(probing):
             raise Exception(about._errors.cstring("ERROR: unknown. NOTE: pool terminated.")) ## traceback by looping
         ## evaluate
         if(issubclass(self.codomain.datatype,np.complexfloating)):
-            _mat = (np.array(_mat[0][:])+np.array(_mat[1][:])*1j).reshape((self.nrun,self.codomain.dim(split=False))) ## comlpex array
+            _mat = (np.array(_mat[0][:])+np.array(_mat[1][:])*1j) ## comlpex array
         else:
-            _mat = np.array(_mat[:]).reshape((self.nrun,self.codomain.dim(split=False)))
+            _mat = np.array(_mat[:])
+        _mat = _mat.reshape((self.nrun,self.codomain.dim(split=False))).T
         return self.evaluate(_mat,_num.value)
 
     def _nonparallel_probing(self): ## > performs the probing operations one after another
@@ -1803,7 +1804,7 @@ class explicit_probing(probing):
                 self._progress(_num)
         about.infos.cflush(" done.")
         ## evaluate
-        return self.evaluate(_mat,_num)
+        return self.evaluate(_mat.T,_num)
 
     def __call__(self,loop=False,**kwargs):
         """
