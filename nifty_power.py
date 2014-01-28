@@ -339,7 +339,7 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
         var : {scalar, list, array}, *optional*
             Variance of the assumed spectral smoothness prior (default: 10).
         force : bool, *optional*, *experimental*
-            Indicates whether smoothness is to be enforces or not
+            Indicates whether smoothness is to be enforced or not
             (default: False).
         bare : bool, *optional*
             Indicates whether the power spectrum entries returned are "bare"

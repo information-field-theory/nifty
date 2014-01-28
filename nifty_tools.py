@@ -260,7 +260,7 @@ class invertible_operator(operator):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.invertible_operator>"
+        return "<nifty_tools.invertible_operator>"
 
 ##-----------------------------------------------------------------------------
 
@@ -417,10 +417,10 @@ class propagator_operator(operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def _standard_M_times_1(self,x): ## applies > R_adjoint N_inverse R assuming N is diagonal
+    def _standard_M_times_1(self,x,**kwargs): ## applies > R_adjoint N_inverse R assuming N is diagonal
         return self.RN[0].adjoint_times(self.RN[1]._inverse_multiply(self.RN[0].times(x))) ## N.imp = True
 
-    def _standard_M_times_2(self,x): ## applies > R_adjoint N_inverse R
+    def _standard_M_times_2(self,x,**kwargs): ## applies > R_adjoint N_inverse R
         return self.RN[0].adjoint_times(self.RN[1].inverse_times(self.RN[0].times(x)))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -552,7 +552,7 @@ class propagator_operator(operator):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.propagator_operator>"
+        return "<nifty_tools.propagator_operator>"
 
 ##-----------------------------------------------------------------------------
 
@@ -866,7 +866,7 @@ class conjugate_gradient(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.conjugate_gradient>"
+        return "<nifty_tools.conjugate_gradient>"
 
 ##=============================================================================
 
@@ -1130,7 +1130,7 @@ class steepest_descent(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.steepest_descent>"
+        return "<nifty_tools.steepest_descent>"
 
 ##=============================================================================
 

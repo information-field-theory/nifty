@@ -1150,7 +1150,6 @@ class explicit_operator(operator):
             X = X.astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
         else:
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(X))+" <> "+str(self.ncol())+" x "+str(self.ncol())+" )."))
-
         return explicit_operator(self.domain,self._calc_mul(X,1),bare=True,sym=sym,uni=uni,target=newtarget)
 
     def __imul__(self,X): ## __imul__ : self *= X
@@ -1386,7 +1385,7 @@ class explicit_operator(operator):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.explicit_operator>"
+        return "<nifty_explicit.explicit_operator>"
 
 ##-----------------------------------------------------------------------------
 
@@ -1846,7 +1845,7 @@ class explicit_probing(probing):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.explicit_probing>"
+        return "<nifty_explicit.explicit_probing>"
 
 ##-----------------------------------------------------------------------------
 

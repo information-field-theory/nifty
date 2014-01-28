@@ -893,7 +893,7 @@ class random(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.random>"
+        return "<nifty_core.random>"
 
 ##-----------------------------------------------------------------------------
 
@@ -1693,10 +1693,10 @@ class space(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.space>"
+        return "<nifty_core.space>"
 
     def __str__(self):
-        return "nifty.space instance\n- para     = "+str(self.para)+"\n- datatype = numpy."+str(np.result_type(self.datatype))
+        return "nifty_core.space instance\n- para     = "+str(self.para)+"\n- datatype = numpy."+str(np.result_type(self.datatype))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2142,10 +2142,10 @@ class point_space(space):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.point_space>"
+        return "<nifty_core.point_space>"
 
     def __str__(self):
-        return "nifty.point_space instance\n- num      = "+str(self.para[0])+"\n- datatype = numpy."+str(np.result_type(self.datatype))
+        return "nifty_core.point_space instance\n- num      = "+str(self.para[0])+"\n- datatype = numpy."+str(np.result_type(self.datatype))
 
 ##-----------------------------------------------------------------------------
 
@@ -3340,14 +3340,14 @@ class rg_space(space):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.rg_space>"
+        return "<nifty_core.rg_space>"
 
     def __str__(self):
         naxes = (np.size(self.para)-1)//2
         num = self.para[:naxes][::-1].tolist()
         zerocenter = self.para[-naxes:][::-1].astype(np.bool).tolist()
         dist = self.vol[::-1].tolist()
-        return "nifty.rg_space instance\n- num        = "+str(num)+"\n- naxes      = "+str(naxes)+"\n- hermitian  = "+str(bool(self.para[naxes]<2))+"\n- purelyreal = "+str(bool(not self.para[naxes]))+"\n- zerocenter = "+str(zerocenter)+"\n- dist       = "+str(dist)+"\n- fourier    = "+str(self.fourier)
+        return "nifty_core.rg_space instance\n- num        = "+str(num)+"\n- naxes      = "+str(naxes)+"\n- hermitian  = "+str(bool(self.para[naxes]<2))+"\n- purelyreal = "+str(bool(not self.para[naxes]))+"\n- zerocenter = "+str(zerocenter)+"\n- dist       = "+str(dist)+"\n- fourier    = "+str(self.fourier)
 
 ##-----------------------------------------------------------------------------
 
@@ -4201,10 +4201,10 @@ class lm_space(space):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.lm_space>"
+        return "<nifty_core.lm_space>"
 
     def __str__(self):
-        return "nifty.lm_space instance\n- lmax     = "+str(self.para[0])+"\n- mmax     = "+str(self.para[1])+"\n- datatype = numpy."+str(np.result_type(self.datatype))
+        return "nifty_core.lm_space instance\n- lmax     = "+str(self.para[0])+"\n- mmax     = "+str(self.para[1])+"\n- datatype = numpy."+str(np.result_type(self.datatype))
 
 ##-----------------------------------------------------------------------------
 
@@ -4872,10 +4872,10 @@ class gl_space(space):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.gl_space>"
+        return "<nifty_core.gl_space>"
 
     def __str__(self):
-        return "nifty.gl_space instance\n- nlat     = "+str(self.para[0])+"\n- nlon     = "+str(self.para[1])+"\n- datatype = numpy."+str(np.result_type(self.datatype))
+        return "nifty_core.gl_space instance\n- nlat     = "+str(self.para[0])+"\n- nlon     = "+str(self.para[1])+"\n- datatype = numpy."+str(np.result_type(self.datatype))
 
 ##-----------------------------------------------------------------------------
 
@@ -5470,10 +5470,10 @@ class hp_space(space):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.hp_space>"
+        return "<nifty_core.hp_space>"
 
     def __str__(self):
-        return "nifty.hp_space instance\n- nside = "+str(self.para[0])
+        return "nifty_core.hp_space instance\n- nside = "+str(self.para[0])
 
 ##-----------------------------------------------------------------------------
 
@@ -6160,10 +6160,10 @@ class nested_space(space):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.nested_space>"
+        return "<nifty_core.nested_space>"
 
     def __str__(self):
-        return "nifty.nested_space instance\n- nest = "+str(self.nest)
+        return "nifty_core.nested_space instance\n- nest = "+str(self.nest)
 
 ##-----------------------------------------------------------------------------
 
@@ -6385,7 +6385,10 @@ class field(object):
                 New field values either as a constant or an arbitrary array.
 
         """
-        self.val = self.domain.enforce_values(newval,extend=True)
+        if(newval is None):
+            self.val = np.zeros(self.dim(split=True),dtype=self.domain.datatype,order='C')
+        else:
+            self.val = self.domain.enforce_values(newval,extend=True)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -6850,12 +6853,12 @@ class field(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.field>"
+        return "<nifty_core.field>"
 
     def __str__(self):
         minmax = [np.min(self.val,axis=None,out=None),np.max(self.val,axis=None,out=None)]
         medmean = [np.median(self.val,axis=None,out=None,overwrite_input=False),np.mean(self.val,axis=None,dtype=self.domain.datatype,out=None)]
-        return "nifty.field instance\n- domain      = "+repr(self.domain)+"\n- val         = [...]"+"\n  - min.,max. = "+str(minmax)+"\n  - med.,mean = "+str(medmean)+"\n- target      = "+repr(self.target)
+        return "nifty_core.field instance\n- domain      = "+repr(self.domain)+"\n- val         = [...]"+"\n  - min.,max. = "+str(minmax)+"\n  - med.,mean = "+str(medmean)+"\n- target      = "+repr(self.target)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -7527,6 +7530,7 @@ def exp(x):
         array([  2.20264658e+04,   2.68811714e+43])
         >>> exp(field(point_space(2), val=[10, 100])).val
         array([  2.20264658e+04,   2.68811714e+43])
+
     """
     if(isinstance(x,field)):
         return field(x.domain,val=np.exp(x.val),target=x.target)
@@ -8537,7 +8541,7 @@ class operator(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.operator>"
+        return "<nifty_core.operator>"
 
 ##=============================================================================
 
@@ -9125,7 +9129,7 @@ class diagonal_operator(operator):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.diagonal_operator>"
+        return "<nifty_core.diagonal_operator>"
 
 ##-----------------------------------------------------------------------------
 
@@ -9543,7 +9547,7 @@ class power_operator(diagonal_operator):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.power_operator>"
+        return "<nifty_core.power_operator>"
 
 ##-----------------------------------------------------------------------------
 
@@ -9882,7 +9886,7 @@ class projection_operator(operator):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.projection_operator>"
+        return "<nifty_core.projection_operator>"
 
 ##-----------------------------------------------------------------------------
 
@@ -10142,7 +10146,7 @@ class vecvec_operator(operator):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.vecvec_operator>"
+        return "<nifty_core.vecvec_operator>"
 
 ##-----------------------------------------------------------------------------
 
@@ -10341,7 +10345,7 @@ class response_operator(operator):
         ## smooth
         x_ = self.domain.calc_smooth(x.val,sigma=self.sigma)
         ## mask
-        x_ = self.mask*x_
+        x_ *= self.mask
         ## assign
         #return x_[self.assign.tolist()]
         return field(self.target,val=x_[self.assign.tolist()],target=kwargs.get("target",None))
@@ -10351,7 +10355,7 @@ class response_operator(operator):
         ## assign (transposed)
         x_[self.assign.tolist()] += x.val.flatten(order='C')
         ## mask
-        x_ = self.mask*x_
+        x_ *= self.mask
         ## smooth
         x_ = self.domain.calc_smooth(x_,sigma=self.sigma)
         #return x_
@@ -10399,7 +10403,7 @@ class response_operator(operator):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.response_operator>"
+        return "<nifty_core.response_operator>"
 
 ##-----------------------------------------------------------------------------
 
@@ -10898,7 +10902,7 @@ class probing(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.probing>"
+        return "<nifty_core.probing>"
 
 ##=============================================================================
 
@@ -11257,7 +11261,7 @@ class trace_probing(probing):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.trace_probing>"
+        return "<nifty_core.trace_probing>"
 
 ##-----------------------------------------------------------------------------
 
@@ -11684,7 +11688,7 @@ class diagonal_probing(probing):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
-        return "<nifty.diagonal_probing>"
+        return "<nifty_core.diagonal_probing>"
 
 ##-----------------------------------------------------------------------------
 
