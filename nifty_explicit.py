@@ -1358,14 +1358,16 @@ class explicit_operator(operator):
         interactive = pl.isinteractive()
         pl.matplotlib.interactive(not bool(kwargs.get("save",False)))
 
-        if(np.any(np.iscomplex(self.val))):
+        X = self.get_matrix(bare=kwargs.get("bare",True))
+
+        if(np.any(np.iscomplex(X))):
             about.infos.cprint("INFO: absolute values and phases are plotted.")
             if(kwargs.has_key("title")):
                 title = kwargs.get("title")+" "
                 kwargs.__delitem__("title")
             else:
                 title = ""
-            self.get_plot(np.absolute(self.val),title=title+"(absolute)",**kwargs)
+            self.get_plot(np.absolute(X),title=title+"(absolute)",**kwargs)
             if(kwargs.has_key("vmin")):
                 kwargs.__delitem__("vmin")
             if(kwargs.has_key("vmin")):
@@ -1376,9 +1378,9 @@ class explicit_operator(operator):
                 kwargs["norm"] = None
             if(not kwargs.has_key("cmap")):
                 kwargs["cmap"] = pl.cm.hsv_r
-            self.get_plot(np.angle(self.val,deg=False),title=title+"(phase)",vmin=-3.1416,vmax=3.1416,**kwargs) ## values in [-pi,pi]
+            self.get_plot(np.angle(X,deg=False),title=title+"(phase)",vmin=-3.1416,vmax=3.1416,**kwargs) ## values in [-pi,pi]
         else:
-            self.get_plot(np.real(self.val),**kwargs)
+            self.get_plot(np.real(X),**kwargs)
 
         pl.matplotlib.interactive(interactive)
 

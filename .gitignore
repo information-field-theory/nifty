@@ -18,3 +18,4 @@ demos/*
 !demos/demo_excaliwir.py
 !demos/demo_wf1.py
 !demos/demo_wf2.py
+!demos/demo_wf3.py
