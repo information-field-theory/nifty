@@ -50,14 +50,113 @@ class explicit_operator(operator):
         .. \______/  /__/\__\ /   ____/  \___/ /__/  \______/ /__/  \___/  operator class
         ..                   /__/
 
-        TODO: documentation
+        NIFTY subclass for explicit linear operators.
+
+        This class essentially supports linear operators with explicit matrix
+        representation in the NIFTY framework. Note that this class is not
+        suited for handling huge dimensionalities.
+
+        Parameters
+        ----------
+        domain : space
+            The space wherein valid arguments live.
+        matrix : {list, array}
+            The matrix representation of the operator, ideally shaped in 2D
+            according to dimensionality of target and domain (default: None).
+        bare : {bool, 2-tuple}, *optional*
+            Whether the matrix entries are `bare` or not
+            (mandatory for the correct incorporation of volume weights)
+            (default: True)
+        sym : bool, *optional*
+            Indicates whether the operator is self-adjoint or not
+            (default: False).
+        uni : bool, *optional*
+            Indicates whether the operator is unitary or not (default: False).
+        target : space, *optional*
+            The space wherein the operator output lives (default: domain).
+
+        See Also
+        --------
+        explicify : A function that returns an explicit oparator given an
+            implicit one.
+
+        Notes
+        -----
+        The ambiguity of `bare` or non-bare diagonal entries is based
+        on the choice of a matrix representation of the operator in
+        question. The naive choice of absorbing the volume weights
+        into the matrix leads to a matrix-vector calculus with the
+        non-bare entries which seems intuitive, though. The choice of
+        keeping matrix entries and volume weights separate deals with the
+        bare entries that allow for correct interpretation of the matrix
+        entries; e.g., as variance in case of an covariance operator.
+
+        Attributes
+        ----------
+        domain : space
+            The space wherein valid arguments live.
+        val : array
+            An array containing the `bare` matrix entries.
+        sym : bool
+            Indicates whether the operator is self-adjoint or not
+        uni : bool
+            Indicates whether the operator is unitary or not
+        imp : bool
+            Indicates whether the incorporation of volume weights in
+            multiplications is already implemented in the `multiply`
+            instance methods or not.
+        target : space
+            The space wherein the operator output lives.
+        _hidden : array
+            An array specifying hidden degrees of freedom in domain and target.
+        _inv : array
+            An array containing the inverse matrix; set when needed.
 
     """
     epsilon = 1E-12 ## absolute precision for comparisons to identity
 
-    def __init__(self,domain,matrix=None,bare=True,sym=None,uni=None,target=None): ## FIXME: None
+    def __init__(self,domain,matrix=None,bare=True,sym=None,uni=None,target=None):
         """
-            TODO: documentation
+            Initializes the explicit operator and sets the standard operator
+            properties as well as `values`.
+
+            Parameters
+            ----------
+            domain : space
+                The space wherein valid arguments live.
+            matrix : {list, array}
+                The matrix representation of the operator, ideally shaped in 2D
+                according to dimensionality of target and domain (default: None).
+            bare : {bool, 2-tuple}, *optional*
+                Whether the matrix entries are `bare` or not
+                (mandatory for the correct incorporation of volume weights)
+                (default: True).
+            sym : bool, *optional*
+                Indicates whether the operator is self-adjoint or not
+                (default: False).
+            uni : bool, *optional*
+                Indicates whether the operator is unitary or not (default: False).
+            target : space, *optional*
+                The space wherein the operator output lives (default: domain).
+
+            Notes
+            -----
+            The ambiguity of `bare` or non-bare diagonal entries is based
+            on the choice of a matrix representation of the operator in
+            question. The naive choice of absorbing the volume weights
+            into the matrix leads to a matrix-vector calculus with the
+            non-bare entries which seems intuitive, though. The choice of
+            keeping matrix entries and volume weights separate deals with the
+            bare entries that allow for correct interpretation of the matrix
+            entries; e.g., as variance in case of an covariance operator.
+
+            Raises
+            ------
+            TypeError
+                If invalid input is given.
+            ValueError
+                If dimensions of `domain`, `target`, and `matrix` mismatch;
+                or if `bare` is invalid.
 
         """
         ## check domain
@@ -158,7 +257,24 @@ class explicit_operator(operator):
 
     def cast_domain(self,newdomain):
         """
-            TODO: documentation
+            Casts the domain of the operator.
+
+            Parameters
+            ----------
+            newdomain : space
+                New space wherein valid argument lives.
+
+            Returns
+            -------
+            None
+
+            Raises
+            ------
+            TypeError
+                If `newdomain` is no instance of the nifty_core.space class
+            ValueError
+                If `newdomain` does not match the (unsplit) dimensionality of
+                the current domain.
 
         """
         if(not isinstance(newdomain,space)):
@@ -169,7 +285,24 @@ class explicit_operator(operator):
 
     def cast_target(self,newtarget):
         """
-            TODO: documentation
+            Casts the target of the operator.
+
+            Parameters
+            ----------
+            newtarget : space
+                New space wherein the operator output lives.
+
+            Returns
+            -------
+            None
+
+            Raises
+            ------
+            TypeError
+                If `newtarget` is no instance of the nifty_core.space class
+            ValueError
+                If `newtarget` does not match the (unsplit) dimensionality of
+                the current target.
 
         """
         if(not isinstance(newtarget,space)):
@@ -178,19 +311,69 @@ class explicit_operator(operator):
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(newtarget.dim(split=False))+" <> "+str(self.target.dim(split=False))+" )."))
         self.target = newtarget
 
-    def cast_spaces(self,newdomain,newtarget):
+    def cast_spaces(self,newdomain=None,newtarget=None):
         """
-            TODO: documentation
+            Casts the domain and/or the target of the operator.
+
+            Parameters
+            ----------
+            newdomain : space, *optional*
+                New space wherein valid argument lives (default: None).
+            newtarget : space, *optional*
+                New space wherein the operator output lives (default: None).
+
+            Returns
+            -------
+            None
 
         """
-        self.cast_domain(newdomain)
-        self.cast_target(newtarget)
+        if(newdomain is not None):
+            self.cast_domain(newdomain)
+        if(newtarget is not None):
+            self.cast_target(newtarget)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def set_matrix(self,newmatrix,bare=True,sym=None,uni=None):
         """
-            TODO: documentation
+            Resets the entire matrix.
+
+            Parameters
+            ----------
+            matrix : {list, array}
+                New matrix representation of the operator, ideally shaped in 2D
+                according to dimensionality of target and domain (default: None).
+            bare : {bool, 2-tuple}, *optional*
+                Whether the new matrix entries are `bare` or not
+                (mandatory for the correct incorporation of volume weights)
+                (default: True).
+            sym : bool, *optional*
+                Indicates whether the new operator is self-adjoint or not
+                (default: False).
+            uni : bool, *optional*
+                Indicates whether the new operator is unitary or not
+                (default: False).
+
+            Notes
+            -----
+            The ambiguity of `bare` or non-bare diagonal entries is based
+            on the choice of a matrix representation of the operator in
+            question. The naive choice of absorbing the volume weights
+            into the matrix leads to a matrix-vector calculus with the
+            non-bare entries which seems intuitive, though. The choice of
+            keeping matrix entries and volume weights separate deals with the
+            bare entries that allow for correct interpretation of the matrix
+            entries; e.g., as variance in case of an covariance operator.
+
+            Returns
+            -------
+            None
+
+            Raises
+            ------
+            ValueError
+                If matrix' dimensions mismatch;
+                or if `bare` is invalid.
 
         """
         ## check matrix
@@ -231,7 +414,35 @@ class explicit_operator(operator):
 
     def get_matrix(self,bare=True):
         """
-            TODO: documentation
+            Returns the entire matrix.
+
+            Parameters
+            ----------
+            bare : {bool, 2-tuple}, *optional*
+                Whether the returned matrix entries are `bare` or not
+                (default: True).
+
+            Notes
+            -----
+            The ambiguity of `bare` or non-bare diagonal entries is based
+            on the choice of a matrix representation of the operator in
+            question. The naive choice of absorbing the volume weights
+            into the matrix leads to a matrix-vector calculus with the
+            non-bare entries which seems intuitive, though. The choice of
+            keeping matrix entries and volume weights separate deals with the
+            bare entries that allow for correct interpretation of the matrix
+            entries; e.g., as variance in case of an covariance operator.
+
+            Returns
+            -------
+            matrix : numpy.array
+                The matrix representation of the operator, shaped in 2D
+                according to dimensionality of target and domain.
+
+            Raises
+            ------
+            ValueError
+                If `bare` is invalid.
 
         """
         if(bare==True)or(self.imp):
@@ -267,7 +478,25 @@ class explicit_operator(operator):
 
     def weight(self,rowpower=0,colpower=0,overwrite=False):
         """
-            TODO: documentation
+            Returns the entire matrix, weighted with the volume factors to a
+            given power. The matrix entries will optionally be overwritten.
+
+            Parameters
+            ----------
+            rowpower : scalar, *optional*
+                Specifies the power of the volume factors applied to the rows
+                of the matrix (default: 0).
+            rowpower : scalar, *optional*
+                Specifies the power of the volume factors applied to the columns
+                of the matrix (default: 0).
+            overwrite : bool, *optional*
+                Whether to overwrite the matrix or not (default: False).
+
+            Returns
+            -------
+            field : field, *optional*
+                If overwrite is ``False``, the weighted matrix is returned;
+                otherwise, nothing is returned.
 
         """
         if(overwrite):
@@ -436,36 +665,44 @@ class explicit_operator(operator):
             Parameters
             ----------
             domain : space, *optional*
-                space wherein the probes live (default: self.domain)
+                Space wherein the probes live (default: self.domain).
             target : space, *optional*
-                space wherein the transform of the probes live
-                (default: None, applies target of the domain)
+                Space wherein the transform of the probes live (default: None).
             random : string, *optional*
-                Specifies the pseudo random number generator. Valid
-                options are "pm1" for a random vector of +/-1, or "gau"
-                for a random vector with entries drawn from a Gaussian
-                distribution with zero mean and unit variance.
-                (default: "pm1")
-            ncpu : int, *optional*
-                number of used CPUs to use. (default: 2)
-            nrun : int, *optional*
-                total number of probes (default: 8)
-            nper : int, *optional*
-                number of tasks performed by one process (default: 1)
+                Specifies the pseudo random number generator (default: "pm1");
+                supported distributions are:
+
+                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
+                - "gau" (normal distribution with zero-mean and a given standard deviation or variance)
+
+            ncpu : integer, *optional*
+                Number of used CPUs to use (default: 2).
+            nrun : integer, *optional*
+                Total number of probes (default: 8).
+            nper : integer, *optional*
+                Number of tasks performed by one process (default: 1).
             var : bool, *optional*
-                Indicates whether to additionally return the probing variance
-                or not (default: False).
+                Whether to additionally return the probing variance or not
+                (default: False).
             loop : bool, *optional*
-                Indicates whether or not to perform a loop i.e., to
-                parallelise (default: False)
+                Whether to perform a loop or to parallelise (default: False).
 
             Returns
             -------
             tr : float
-                Trace of the operator
+                Trace of the operator.
             delta : float, *optional*
-                Probing variance of the trace. Returned if `var` is True in
-                of probing case.
+                Probing variance of the trace; returned if `var` is ``True`` in
+                case of probing.
+
+            See Also
+            --------
+            trace_probing
+
+            Raises
+            ------
+            ValueError
+                If `domain` and `target` are unequal.
 
         """
         if(self.domain!=self.target):
@@ -487,36 +724,44 @@ class explicit_operator(operator):
             Parameters
             ----------
             domain : space, *optional*
-                space wherein the probes live (default: self.domain)
+                Space wherein the probes live (default: self.domain).
             target : space, *optional*
-                space wherein the transform of the probes live
-                (default: None, applies target of the domain)
+                Space wherein the transform of the probes live (default: None).
             random : string, *optional*
-                Specifies the pseudo random number generator. Valid
-                options are "pm1" for a random vector of +/-1, or "gau"
-                for a random vector with entries drawn from a Gaussian
-                distribution with zero mean and unit variance.
-                (default: "pm1")
-            ncpu : int, *optional*
-                number of used CPUs to use. (default: 2)
-            nrun : int, *optional*
-                total number of probes (default: 8)
-            nper : int, *optional*
-                number of tasks performed by one process (default: 1)
+                Specifies the pseudo random number generator (default: "pm1");
+                supported distributions are:
+
+                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
+                - "gau" (normal distribution with zero-mean and a given standard deviation or variance)
+
+            ncpu : integer, *optional*
+                Number of used CPUs to use (default: 2).
+            nrun : integer, *optional*
+                Total number of probes (default: 8).
+            nper : integer, *optional*
+                Number of tasks performed by one process (default: 1).
             var : bool, *optional*
-                Indicates whether to additionally return the probing variance
-                or not (default: False).
+                Whether to additionally return the probing variance or not
+                (default: False).
             loop : bool, *optional*
-                Indicates whether or not to perform a loop i.e., to
-                parallelise (default: False)
+                Whether to perform a loop or to parallelise (default: False).
 
             Returns
             -------
             tr : float
-                Trace of the inverse operator
+                Trace of the operator.
             delta : float, *optional*
-                Probing variance of the trace. Returned if `var` is True in
-                of probing case.
+                Probing variance of the trace; returned if `var` is ``True`` in
+                case of probing.
+
+            See Also
+            --------
+            trace_probing
+
+            Raises
+            ------
+            ValueError
+                If `domain` and `target` are unequal.
 
         """
         if(self.domain!=self.target):
@@ -540,47 +785,45 @@ class explicit_operator(operator):
             Parameters
             ----------
             bare : bool, *optional*
-                Indicatese whether the diagonal entries are `bare` or not
-                (mandatory for the correct incorporation of volume weights)
-                (default: False)
+                Whether the returned diagonal entries are `bare` or not
+                (default: True).
             domain : space, *optional*
-                space wherein the probes live (default: self.domain)
+                Space wherein the probes live (default: self.domain).
             target : space, *optional*
-                space wherein the transform of the probes live
-                (default: None, applies target of the domain)
+                Space wherein the transform of the probes live (default: None).
             random : string, *optional*
-                Specifies the pseudo random number generator. Valid
-                options are "pm1" for a random vector of +/-1, or "gau"
-                for a random vector with entries drawn from a Gaussian
-                distribution with zero mean and unit variance.
-                (default: "pm1")
-            ncpu : int, *optional*
-                number of used CPUs to use. (default: 2)
-            nrun : int, *optional*
-                total number of probes (default: 8)
-            nper : int, *optional*
-                number of tasks performed by one process (default: 1)
+                Specifies the pseudo random number generator (default: "pm1");
+                supported distributions are:
+
+                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
+                - "gau" (normal distribution with zero-mean and a given standard deviation or variance)
+
+            ncpu : integer, *optional*
+                Number of used CPUs to use (default: 2).
+            nrun : integer, *optional*
+                Total number of probes (default: 8).
+            nper : integer, *optional*
+                Number of tasks performed by one process (default: 1).
             var : bool, *optional*
-                Indicates whether to additionally return the probing variance
-                or not (default: False).
+                Whether to additionally return the probing variance or not
+                (default: False).
             save : bool, *optional*
-                whether all individual probing results are saved or not
-                (default: False)
+                Whether all individual probing results are saved or not
+                (default: False).
             path : string, *optional*
-                path wherein the results are saved (default: "tmp")
+                Path wherein the results are saved (default: "tmp").
             prefix : string, *optional*
-                prefix for all saved files (default: "")
+                Prefix for all saved files (default: "")
             loop : bool, *optional*
-                Indicates whether or not to perform a loop i.e., to
-                parallelise (default: False)
+                Whether to perform a loop or to parallelise (default: False).
 
             Returns
             -------
             diag : ndarray
-                The matrix diagonal
+                Diagonal of the operator.
             delta : float, *optional*
-                Probing variance of the trace. Returned if `var` is True in
-                of probing case.
+                Probing variance of the trace; returned if `var` is ``True`` in
+                case of probing.
 
             Notes
             -----
@@ -592,6 +835,15 @@ class explicit_operator(operator):
             keeping matrix entries and volume weights separate deals with the
             bare entries that allow for correct interpretation of the matrix
             entries; e.g., as variance in case of an covariance operator.
+
+            See Also
+            --------
+            diagonal_probing
+
+            Raises
+            ------
+            ValueError
+                If it is no square matrix.
 
         """
         if(self.val.shape[0]!=self.val.shape[1]):
@@ -627,51 +879,45 @@ class explicit_operator(operator):
             Parameters
             ----------
             bare : bool, *optional*
-                Indicatese whether the diagonal entries are `bare` or not
-                (mandatory for the correct incorporation of volume weights)
-                (default: False)
+                Whether the returned diagonal entries are `bare` or not
+                (default: True).
             domain : space, *optional*
-                space wherein the probes live (default: self.target)
+                Space wherein the probes live (default: self.domain).
             target : space, *optional*
-                space wherein the transform of the probes live
-                (default: None, applies target of the domain)
+                Space wherein the transform of the probes live (default: None).
             random : string, *optional*
-                Specifies the pseudo random number generator. Valid
-                options are "pm1" for a random vector of +/-1, or "gau"
-                for a random vector with entries drawn from a Gaussian
-                distribution with zero mean and unit variance.
-                (default: "pm1")
-            ncpu : int, *optional*
-                number of used CPUs to use. (default: 2)
-            nrun : int, *optional*
-                total number of probes (default: 8)
-            nper : int, *optional*
-                number of tasks performed by one process (default: 1)
+                Specifies the pseudo random number generator (default: "pm1");
+                supported distributions are:
+
+                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
+                - "gau" (normal distribution with zero-mean and a given standard deviation or variance)
+
+            ncpu : integer, *optional*
+                Number of used CPUs to use (default: 2).
+            nrun : integer, *optional*
+                Total number of probes (default: 8).
+            nper : integer, *optional*
+                Number of tasks performed by one process (default: 1).
             var : bool, *optional*
-                Indicates whether to additionally return the probing variance
-                or not (default: False).
+                Whether to additionally return the probing variance or not
+                (default: False).
             save : bool, *optional*
-                whether all individual probing results are saved or not
-                (default: False)
+                Whether all individual probing results are saved or not
+                (default: False).
             path : string, *optional*
-                path wherein the results are saved (default: "tmp")
+                Path wherein the results are saved (default: "tmp").
             prefix : string, *optional*
-                prefix for all saved files (default: "")
+                Prefix for all saved files (default: "")
             loop : bool, *optional*
-                Indicates whether or not to perform a loop i.e., to
-                parallelise (default: False)
+                Whether to perform a loop or to parallelise (default: False).
 
             Returns
             -------
             diag : ndarray
-                The diagonal of the inverse matrix
+                Diagonal of the inverse operator.
             delta : float, *optional*
-                Probing variance of the trace. Returned if `var` is True in
-                of probing case.
-
-            See Also
-            --------
-            probing : The class used to perform probing operations
+                Probing variance of the trace; returned if `var` is ``True`` in
+                case of probing.
 
             Notes
             -----
@@ -683,6 +929,15 @@ class explicit_operator(operator):
             keeping matrix entries and volume weights separate deals with the
             bare entries that allow for correct interpretation of the matrix
             entries; e.g., as variance in case of an covariance operator.
+
+            See Also
+            --------
+            diagonal_probing
+
+            Raises
+            ------
+            ValueError
+                If it is no square matrix.
 
         """
         if(self.val.shape[0]!=self.val.shape[1]):
@@ -717,12 +972,21 @@ class explicit_operator(operator):
 
     def det(self):
         """
-            Computes the determinant of the matrix.
+            Computes the determinant of the operator.
+
+            Parameters
+            ----------
+            None
 
             Returns
             -------
             det : float
-                The determinant
+                Determinant of the operator.
+
+            Raises
+            ------
+            ValueError
+                If `domain` and `target` are unequal.
 
         """
         if(self.domain!=self.target):
@@ -734,12 +998,21 @@ class explicit_operator(operator):
 
     def inverse_det(self):
         """
-            Computes the determinant of the inverse matrix.
+            Computes the determinant of the inverse operator.
+
+            Parameters
+            ----------
+            None
 
             Returns
             -------
             det : float
-                The determinant
+                Determinant of the inverse operator.
+
+            Raises
+            ------
+            ValueError
+                If it is a singular matrix.
 
         """
         det = self.det()
@@ -817,6 +1090,11 @@ class explicit_operator(operator):
             I : explicit_operator
                 The inverted matrix.
 
+            Raises
+            ------
+            ValueError
+                If it is no square matrix.
+
         """
         ## check whether square matrix
         if(self.nrow()!=self.ncol()):
@@ -833,6 +1111,16 @@ class explicit_operator(operator):
             AI : explicit_operator
                 The adjoint inverted matrix.
 
+            Notes
+            -----
+            For linear operators represented by square matrices, inversion and
+            adjungation and inversion commute.
+
+            Raises
+            ------
+            ValueError
+                If it is no square matrix.
+
         """
         return self.inverse_adjoint()
 
@@ -844,6 +1132,16 @@ class explicit_operator(operator):
             -------
             IA : explicit_operator
                 The inverted adjoint matrix.
+
+            Notes
+            -----
+            For linear operators represented by square matrices, inversion and
+            adjungation and inversion commute.
+
+            Raises
+            ------
+            ValueError
+                If it is no square matrix.
 
         """
         ## check whether square matrix
@@ -1250,7 +1548,8 @@ class explicit_operator(operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_plot(self,X,title="",vmin=None,vmax=None,unit="",norm=None,cmap=None,cbar=True,**kwargs):
+    @staticmethod
+    def get_plot(X,title="",vmin=None,vmax=None,unit="",norm=None,cmap=None,cbar=True,**kwargs):
         """
             Creates a plot of the matrix according to the given specifications.
 
@@ -1283,9 +1582,26 @@ class explicit_operator(operator):
                 Valid file name where the figure is to be stored, by default
                 the figure is not saved (default: False).
 
+            Notes
+            -----
+            This method is static and thus also plot a valid numpy.ndarray.
+
+            See Also
+            --------
+            explicit_operator.plot
+
+            Raises
+            ------
+            ValueError
+                If the matrix `X` is not two-dimensional;
+                or if the logarithmic normalisation encounters negative values.
+
         """
         if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
             about.warnings.cprint("WARNING: interactive mode off.")
+
+        if(len(X.shape)!=2):
+            raise ValueError(about._errors.cstring("ERROR: invalid matirx."))
 
         if(vmin is None):
             vmin = np.min(X,axis=None,out=None)
@@ -1326,9 +1642,15 @@ class explicit_operator(operator):
         else:
             fig.canvas.draw()
 
-    def plot(self,**kwargs):
+    def plot(self,bare=True,**kwargs):
         """
             Creates a plot of the matrix according to the given specifications.
+
+            Parameters
+            ----------
+            bare : {bool, 2-tuple}, *optional*
+                Whether the returned matrix entries are `bare` or not
+                (default: True).
 
             Returns
             -------
@@ -1354,11 +1676,26 @@ class explicit_operator(operator):
                 Valid file name where the figure is to be stored, by default
                 the figure is not saved (default: False).
 
+            Notes
+            -----
+            The ambiguity of `bare` or non-bare diagonal entries is based
+            on the choice of a matrix representation of the operator in
+            question. The naive choice of absorbing the volume weights
+            into the matrix leads to a matrix-vector calculus with the
+            non-bare entries which seems intuitive, though. The choice of
+            keeping matrix entries and volume weights separate deals with the
+            bare entries that allow for correct interpretation of the matrix
+            entries; e.g., as variance in case of an covariance operator.
+
+            See Also
+            --------
+            explicit_operator.get_plot
+
         """
         interactive = pl.isinteractive()
         pl.matplotlib.interactive(not bool(kwargs.get("save",False)))
 
-        X = self.get_matrix(bare=kwargs.get("bare",True))
+        X = self.get_matrix(bare=bare)
 
         if(np.any(np.iscomplex(X))):
             about.infos.cprint("INFO: absolute values and phases are plotted.")
@@ -1853,42 +2190,16 @@ class explicit_probing(probing):
 
 ##-----------------------------------------------------------------------------
 
-def explicify(operator,newdomain=None,newtarget=None,ncpu=2,nper=1,loop=False,**quargs):
+def explicify(op,newdomain=None,newtarget=None,ncpu=2,nper=1,loop=False,**quargs):
     """
         TODO: documentation
 
     """
-    return explicit_probing(op=operator,function=operator.times,domain=newdomain,codomain=newtarget,target=operator.domain,ncpu=ncpu,nper=nper,**quargs)(loop=loop)
+    if(not isinstance(op,operator)):
+        raise TypeError(about._errors.cstring("ERROR: invalid input."))
+    elif(newdomain is not None)and(newtarget is None)and(op.domain==op.target):
+        newtarget = newdomain
+    return explicit_probing(op=op,function=op.times,domain=newdomain,codomain=newtarget,target=op.domain,ncpu=ncpu,nper=nper,**quargs)(loop=loop)
 
 ##-----------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
