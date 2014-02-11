@@ -486,7 +486,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.6.8"
+        self._version = "0.7.0"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -8587,6 +8587,10 @@ class diagonal_operator(operator):
         bare entries that allow for correct interpretation of the matrix
         entries; e.g., as variance in case of an covariance operator.
 
+        The inverse applications of the diagonal operator feature a ``pseudo``
+        flag indicating if zero divison shall be ignored and return zero
+        instead of causing an error.
+
         Attributes
         ----------
         domain : space
@@ -9593,6 +9597,12 @@ class projection_operator(operator):
             (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
             Lower limit of the uniform distribution if ``random == "uni"``
             (default: 0).
+
+        Notes
+        -----
+        The application of the projection operator features a ``band`` keyword
+        specifying a single projection band (see examples) and a ``bandsup``
+        keyword specifying which projection bands to sum up.
 
         Examples
         --------

@@ -28,7 +28,13 @@
     .. /__/ /__/ /__/ /__/    \___/  \___   /  explicit
     ..                              /______/
 
-    TODO: documentation
+    This module extends NIFTY's versatility to the usage of explicit matrix
+    representations of linear operator by the :py:class:`explicit_operator`.
+    In order to access explicit operators, this module provides the
+    :py:class:`explicit_probing` class and the :py:func:`explicify` function.
+    Those objects are supposed to support the user in solving information field
+    theoretical problems in low (or moderate) dimensions, or in debugging
+    algorithms by studying operators in detail.
 
 """
 from __future__ import division
@@ -90,6 +96,35 @@ class explicit_operator(operator):
         keeping matrix entries and volume weights separate deals with the
         bare entries that allow for correct interpretation of the matrix
         entries; e.g., as variance in case of an covariance operator.
+
+        Examples
+        --------
+        >>> x_space = rg_space(2) # default `dist` == 0.5
+        >>> A = explicit_operator(x_space, matrix=[[2, 0], [1, 1]], bare=False)
+        >>> A.get_matrix(bare=False)
+        array([[2, 0],
+               [1, 1]])
+        >>> A.get_matrix(bare=True)
+        array([[4, 0],
+               [2, 2]])
+        >>> c = field(x_space, val=[3, 5])
+        >>> A(c).val
+        array([ 6.,  8.])
+        >>> A.inverse()
+        <nifty_explicit.explicit_operator>
+        >>> (A * A.inverse()).get_matrix(bare=False) # == identity
+        array([[ 1.,  0.],
+               [ 0.,  1.]])
+        >>> B = A + diagonal_operator(x_space, diag=2, bare=False)
+        >>> B.get_matrix(bare=False)
+        array([[ 4.,  0.],
+               [ 1.,  3.]])
+        >>> B(c).val
+        array([ 12.,  18.])
+        >>> B.tr()
+        7.0
+        >>> B.det()
+        12.000000000000005
 
         Attributes
         ----------
@@ -237,10 +272,10 @@ class explicit_operator(operator):
                 adj = np.conjugate(self.val.T)
                 sym = np.all(np.absolute(self.val-adj)<self.epsilon)
                 if(uni is None):
-                    uni = np.all(np.absolute(self._calc_mul(adj,0)-np.diag(1/self.target.get_meta_volume(total=False),k=0))<self.epsilon)
+                    uni = np.all(np.absolute(self._calc_mul(adj,0)-np.diag(1/self.target.get_meta_volume(total=False).flatten(order='C'),k=0))<self.epsilon)
             elif(uni is None):
                 adj = np.conjugate(self.val.T)
-                uni = np.all(np.absolute(self._calc_mul(adj,0)-np.diag(1/self.target.get_meta_volume(total=False),k=0))<self.epsilon)
+                uni = np.all(np.absolute(self._calc_mul(adj,0)-np.diag(1/self.target.get_meta_volume(total=False).flatten(order='C'),k=0))<self.epsilon)
             return bool(sym),bool(uni)
         else:
             return False,False
@@ -680,7 +715,7 @@ class explicit_operator(operator):
             nrun : integer, *optional*
                 Total number of probes (default: 8).
             nper : integer, *optional*
-                Number of tasks performed by one process (default: 1).
+                Number of tasks performed by one worker (default: 1).
             var : bool, *optional*
                 Whether to additionally return the probing variance or not
                 (default: False).
@@ -739,7 +774,7 @@ class explicit_operator(operator):
             nrun : integer, *optional*
                 Total number of probes (default: 8).
             nper : integer, *optional*
-                Number of tasks performed by one process (default: 1).
+                Number of tasks performed by one worker (default: 1).
             var : bool, *optional*
                 Whether to additionally return the probing variance or not
                 (default: False).
@@ -803,7 +838,7 @@ class explicit_operator(operator):
             nrun : integer, *optional*
                 Total number of probes (default: 8).
             nper : integer, *optional*
-                Number of tasks performed by one process (default: 1).
+                Number of tasks performed by one worker (default: 1).
             var : bool, *optional*
                 Whether to additionally return the probing variance or not
                 (default: False).
@@ -897,7 +932,7 @@ class explicit_operator(operator):
             nrun : integer, *optional*
                 Total number of probes (default: 8).
             nper : integer, *optional*
-                Number of tasks performed by one process (default: 1).
+                Number of tasks performed by one worker (default: 1).
             var : bool, *optional*
                 Whether to additionally return the probing variance or not
                 (default: False).
@@ -1759,123 +1794,108 @@ class explicit_probing(probing):
         .. \______/  /__/\__\ /   ____/  \___/ /__/  \______/ /__/  \___/  probing class
         ..                   /__/
 
-        TODO: documentation
+
+        NIFTY subclass for explicit probing (using multiprocessing)
+
+        Called after initialization, an explicit matrix representation of a
+        linear operator or function is sampled by applying (weighted) canonical
+        vectors in a specified basis.
+
+        Parameters
+        ----------
+        op : operator, *optional*
+            Operator to be probed; if not given, the probing will resort to
+            `function` (default: None).
+        function : function, *optional*
+            Function applied to the probes; either `op` or `function` must
+            be given (default: `op.times`).
+        domain : space, *optional*
+            Space wherein the probes live, defines the domain of the
+            explicified operator (default: `op.domain`).
+        codomain : space, *optional*
+            Space wherein the output of the explicified operator lives
+            (default: `op.target`).
+        target : space, *optional*
+            Space wherein the transform of the probes live (default: None).
+        ncpu : integer, *optional*
+            Number of used CPUs to use (default: 2).
+        nper : integer, *optional*
+            Number of tasks performed by one worker (default: 1).
+
+        See Also
+        --------
+        probing
+
+        Examples
+        --------
+        >>> v = field(point_space(3), val=[1, 2, 3])
+        >>> W = vecvec_operator(val=v)              # implicit operator
+        >>> W_ij = explicit_probing(Wim)(loop=True) # explicit operator
+        >>> W_ij.get_matrix()
+        array([[ 1.,  2.,  3.],
+               [ 2.,  4.,  6.],
+               [ 3.,  6.,  9.]])
+
+        Attributes
+        ----------
+        function : function
+            Function applied to the probes.
+        domain : space, *optional*
+            Space wherein the probes live, defines the domain of the
+            explicified operator.
+        codomain : space, *optional*
+            Space wherein the output of the explicified operator lives.
+        target : space
+            Space wherein the transform of the probes live.
+        ncpu : integer
+            Number of used CPUs to use.
+        nper : integer
+            Number of tasks performed by one worker.
+        quargs : dict
+            Keyword arguments passed to `function` in each call.
 
     """
-#        NIFTY class for probing (using multiprocessing)
-#
-#        This is the base NIFTY probing class from which other probing classes
-#        (e.g. diagonal probing) are derived.
-#
-#        When called, a probing class instance evaluates an operator or a
-#        function using random fields, whose components are random variables
-#        with mean 0 and variance 1. When an instance is called it returns the
-#        mean value of f(probe), where probe is a random field with mean 0 and
-#        variance 1. The mean is calculated as 1/N Sum[ f(probe_i) ].
-#
-#        Parameters
-#        ----------
-#        op : operator
-#            The operator specified by `op` is the operator to be probed.
-#            If no operator is given, then probing will be done by applying
-#            `function` to the probes. (default: None)
-#        function : function, *optional*
-#            If no operator has been specified as `op`, then specification of
-#            `function` is non optional. This is the function, that is applied
-#            to the probes. (default: `op.times`)
-#        domain : space, *optional*
-#            If no operator has been specified as `op`, then specification of
-#            `domain` is non optional. This is the space that the probes live
-#            in. (default: `op.domain`)
-#        target : domain, *optional*
-#            `target` is the codomain of `domain`
-#            (default: `op.domain.get_codomain()`)
-#        ncpu : int, *optional*
-#            the number of cpus to be used from parallel probing. (default: 2)
-#        nrun : int, *optional*
-#            the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
-#            set to `ncpu**2`. (default: 8)
-#        nper : int, *optional*
-#            this number specifies how many probes will be evaluated by one
-#            worker. Afterwards a new worker will be created to evaluate a chunk
-#            of `nper` probes.
-#            If for example `nper=nrun/ncpu`, then every worker will be created
-#            for every cpu. This can lead to the case, that all workers but one
-#            are already finished, but have to wait for the last worker that
-#            might still have a considerable amount of evaluations left. This is
-#            obviously not very effective.
-#            If on the other hand `nper=1`, then for each evaluation a worker will
-#            be created. In this case all cpus will work until nrun probes have
-#            been evaluated.
-#            It is recommended to leave `nper` as the default value. (default: 8)
-#
-#        See Also
-#        --------
-#        diagonal_probing : A probing class to get the diagonal of an operator
-#        trace_probing : A probing class to get the trace of an operator
-#
-#        Attributes
-#        ----------
-#        function : function
-#            the function, that is applied to the probes
-#        domain : space
-#            the space, where the probes live in
-#        target : space
-#            the codomain of `domain`
-#        ncpu : int
-#            the number of cpus used for probing
-#        nrun : int
-#            the number of probes to be evaluated, when the instance is called
-#        nper : int
-#            number of probes, that will be evaluated by one worker
-#        quargs : dict
-#            Keyword arguments passed to `function` in each call.
-#
-#    """
     def __init__(self,op=None,function=None,domain=None,codomain=None,target=None,ncpu=2,nper=1,**quargs):
         """
-            TODO: documentation
+            Initializes the explicit probing and sets the standard probing
+            attributes except for `random`, `nrun`, and `var`.
+
+            Parameters
+            ----------
+            op : operator, *optional*
+                Operator to be probed; if not given, the probing will resort to
+                `function` (default: None).
+            function : function, *optional*
+                Function applied to the probes; either `op` or `function` must
+                be given (default: `op.times`).
+            domain : space, *optional*
+                Space wherein the probes live, defines the domain of the
+                explicified operator (default: `op.domain`).
+            codomain : space, *optional*
+                Space wherein the output of the explicified operator lives
+                (default: `op.target`).
+            target : space, *optional*
+                Space wherein the transform of the probes live (default: None).
+            ncpu : integer, *optional*
+                Number of used CPUs to use (default: 2).
+            nper : integer, *optional*
+                Number of tasks performed by one worker (default: 1).
+
+            Other Parameters
+            ----------------
+            quargs : dict
+                Keyword arguments passed to `function` in each call.
+
+            Raises
+            ------
+            TypeError
+                If input is invalid or insufficient.
+            NameError
+                If `function` is not an attribute of `op`.
+            ValueError
+                If spaces are incompatible.
 
         """
-#        initializes a probing instance
-#
-#        Parameters
-#        ----------
-#        op : operator
-#            The operator specified by `op` is the operator to be probed.
-#            If no operator is given, then probing will be done by applying
-#            `function` to the probes. (default: None)
-#        function : function, *optional*
-#            If no operator has been specified as `op`, then specification of
-#            `function` is non optional. This is the function, that is applied
-#            to the probes. (default: `op.times`)
-#        domain : space, *optional*
-#            If no operator has been specified as `op`, then specification of
-#            `domain` is non optional. This is the space that the probes live
-#            in. (default: `op.domain`)
-#        target : domain, *optional*
-#            `target` is the codomain of `domain`
-#            (default: `op.domain.get_codomain()`)
-#        ncpu : int, *optional*
-#            the number of cpus to be used from parallel probing. (default: 2)
-#        nrun : int, *optional*
-#            the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
-#            set to `ncpu**2`. (default: 8)
-#        nper : int, *optional*
-#            this number specifies how many probes will be evaluated by one
-#            worker. Afterwards a new worker will be created to evaluate a chunk
-#            of `nper` probes.
-#            If for example `nper=nrun/ncpu`, then every worker will be created
-#            for every cpu. This can lead to the case, that all workers but one
-#            are already finished, but have to wait for the last worker that
-#            might still have a considerable amount of evaluations left. This is
-#            obviously not very effective.
-#            If on the other hand `nper=1`, then for each evaluation a worker will
-#            be created. In this case all cpus will work until nrun probes have
-#            been evaluated.
-#            It is recommended to leave `nper` as the default value. (default: 1)
-#
-#        """
         if(op is None):
             ## check whether callable
             if(function is None)or(not hasattr(function,"__call__")):
@@ -1921,10 +1941,10 @@ class explicit_probing(probing):
             else:
                 if(function in [op.inverse_times,op.adjoint_times]):
                     if(not op.domain.check_codomain(domain))and(op.domain.dim(split=False)!=codomain.dim(split=False)):
-                        raise NameError(about._errors.cstring("ERROR: invalid input codomain."))
+                        raise ValueError(about._errors.cstring("ERROR: incompatible input codomain."))
                 else:
                     if(not op.target.check_codomain(domain))and(op.target.dim(split=False)!=codomain.dim(split=False)):
-                        raise NameError(about._errors.cstring("ERROR: invalid input codomain."))
+                        raise ValueError(about._errors.cstring("ERROR: incompatible input codomain."))
 
         self.function = function
         self.domain = domain
@@ -1958,10 +1978,10 @@ class explicit_probing(probing):
 
             Parameters
             ----------
-            ncpu : int, *optional*
-                Number of CPUs used in parallel.
-            nper : int, *optional*
-                Number of probes evaluated by one worker.
+            ncpu : integer, *optional*
+                Number of used CPUs to use.
+            nper : integer, *optional*
+                Number of tasks performed by one worker.
 
         """
         if("ncpu" in kwargs):
@@ -1978,7 +1998,7 @@ class explicit_probing(probing):
         """
             Generates a probe.
 
-            For explicit probing, each probe is a weighted canonical base.
+            For explicit probing, each probe is a (weighted) canonical base.
 
             Parameters
             ----------
@@ -1994,33 +2014,29 @@ class explicit_probing(probing):
 
         """
         probe = field(self.domain,val=None,target=self.target)
-        probe[index] = value
+        probe[np.unravel_index(index,self.domain.dim(split=True),order='C')] = value
         return probe
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def probing(self,idnum,probe):
         """
-            TODO: documentation
+            Computes a single probing result meaning a single column of the
+            linear operators matrix representation.
+
+            Parameters
+            ----------
+            probe : field
+                Weighted canonical base on which `function` will be applied.
+            idnum : int
+                Identification number; obsolete.
+
+            Returns
+            -------
+            result : ndarray
+                Result of function evaluation (equaling a column of the matrix).
 
         """
-#        """
-#            Computes a single probing result given one probe
-#
-#            Parameters
-#            ----------
-#            probe : field
-#                the field on which `function` will be applied
-#            idnum : int
-#                    the identification number of the probing
-#
-#            Returns
-#            -------
-#            result : array-like
-#                the result of applying `function` to `probe`. The exact type
-#                depends on the function.
-#
-#        """
         f = self.function(probe,**self.quargs) ## field
         if(f is None):
             return None
@@ -2159,8 +2175,7 @@ class explicit_probing(probing):
             Parameters
             ----------
             loop : bool, *optional*
-                Whether to evaluate the probing in one loop or by
-                multiprocessing (default: False).
+                Whether to perform a loop or to parallelise (default: False).
 
             Returns
             -------
@@ -2169,10 +2184,12 @@ class explicit_probing(probing):
 
             Other Parameters
             ----------------
-            ncpu : int, *optional*
-                Number of CPUs used in parallel.
-            nper : int, *optional*
-                Number of probes evaluated by one worker.
+            ncpu : integer, *optional*
+                Number of used CPUs to use.
+            nper : integer, *optional*
+                Number of tasks performed by one worker.
+
+
 
         """
         self.configure(**kwargs)
@@ -2192,7 +2209,64 @@ class explicit_probing(probing):
 
 def explicify(op,newdomain=None,newtarget=None,ncpu=2,nper=1,loop=False,**quargs):
     """
-        TODO: documentation
+        Explicifys an (implicit) operator.
+
+        This function wraps the :py:class:`explicit_probing` class with a more
+        user-friendly interface.
+
+        Parameters
+        ----------
+        op : operator
+            Operator to be explicified.
+        newdomain : space, *optional*
+            Space wherein the probes live, defines the domain of the
+            explicified operator (default: `op.domain`).
+        newtarget : space, *optional*
+            Space wherein the output of the explicified operator lives
+            (default: `op.target`).
+        ncpu : integer, *optional*
+            Number of used CPUs to use (default: 2).
+        nper : integer, *optional*
+            Number of tasks performed by one worker (default: 1).
+
+        Returns
+        -------
+        EO : explicit_operator
+            The explicified linear operator as explicit operator instance.
+
+        Other Parameters
+        ----------------
+        quargs : dict
+            Keyword arguments passed to `function` in each call.
+
+        See Also
+        --------
+        explicit_probing
+
+        Examples
+        --------
+        >>> x_space = rg_space(4)
+        >>> k_space = x_space.get_codomain()
+        >>> S = power_operator(k_space, spec=[9, 3, 1])
+        >>> S.diag()          # implicit operator in k_space
+        array([ 1.,  3.,  9.,  3.])
+        >>> S_kq = explicify(S)
+        >>> S_kq.get_matrix() # explicit operator in k_space
+        array([[ 1.,  0.,  0.,  0.],
+               [ 0.,  3.,  0.,  0.],
+               [ 0.,  0.,  9.,  0.],
+               [ 0.,  0.,  0.,  3.]])
+        >>> S_xy = explicify(S, newdomain=x_space)
+        >>> S_xy.get_matrix() # explicit operator in x_space
+        array([[ 16.,   8.,   4.,   8.],
+               [  8.,  16.,   8.,   4.],
+               [  4.,   8.,  16.,   8.],
+               [  8.,   4.,   8.,  16.]])
+
+        Raises
+        ------
+        TypeError
+            If `op` is no operator instance.
 
     """
     if(not isinstance(op,operator)):

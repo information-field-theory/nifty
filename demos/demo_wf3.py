@@ -63,15 +63,15 @@ j = R.adjoint_times(N.inverse_times(d))                               # define i
 
 class M_operator(operator):
 
-    def _multiply(self,x):
-        N,R = self.para
+    def _multiply(self, x):
+        N, R = self.para
         return R.adjoint_times(N.inverse_times(R.times(x)))
 
 
 C = explicify(S, newdomain=x_space, newtarget=x_space)                # explicify S
-M = M_operator(x_space,sym=True,uni=False,imp=True,para=(N,R))
+M = M_operator(x_space, sym=True, uni=False, imp=True, para=(N, R))
 M = explicify(M)                                                      # explicify M
-D = (C.inverse()+M).inverse()                                         # define information propagator
+D = (C.inverse() + M).inverse()                                       # define information propagator
 
 m = D(j)                                                              # reconstruct map
 
