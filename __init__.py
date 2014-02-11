@@ -24,6 +24,7 @@ from nifty_core import *
 from nifty_cmaps import *
 from nifty_power import *
 from nifty_tools import *
+from nifty_explicit import *
 
 
 

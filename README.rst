@@ -64,6 +64,8 @@ apply to fields.
     *   ``response_operator`` - exemplary responses that include a convolution,
         masking and projection
     *   ``propagator_operator`` - information propagator in Wiener filter theory
+    *   ``explicit_operator`` - linear operators with an explicit matrix
+        representation
     *   (and more)
 
 * (and more)
@@ -97,7 +99,7 @@ Requirements
 Download
 ........
 
-The latest release is tagged **v0.6.0** and is available as a source package
+The latest release is tagged **v0.7.0** and is available as a source package
 at `<https://github.com/mselig/nifty/tags>`_. The current version can be
 obtained by cloning the repository::
 
@@ -139,6 +141,8 @@ Release Notes
 The NIFTY package is licensed under the
 `GPLv3 <http://www.gnu.org/licenses/gpl.html>`_ and is distributed *without any
 warranty*.
+
+----
 
 **NIFTY** project homepage: `<http://www.mpa-garching.mpg.de/ift/nifty/>`_
 

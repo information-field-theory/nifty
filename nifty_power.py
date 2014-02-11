@@ -41,7 +41,7 @@
 
 """
 from __future__ import division
-from scipy.interpolate import interp1d as ip ## conflicts with sphinx's autodoc
+from scipy.interpolate import interp1d as ip ## FIXME: conflicts with sphinx's autodoc
 #import numpy as np
 from nifty_core import *
 import smoothing as gs
@@ -339,7 +339,7 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
         var : {scalar, list, array}, *optional*
             Variance of the assumed spectral smoothness prior (default: 10).
         force : bool, *optional*, *experimental*
-            Indicates whether smoothness is to be enforces or not
+            Indicates whether smoothness is to be enforced or not
             (default: False).
         bare : bool, *optional*
             Indicates whether the power spectrum entries returned are "bare"

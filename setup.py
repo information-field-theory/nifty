@@ -23,7 +23,7 @@ from distutils.core import setup
 import os
 
 setup(name="nifty",
-      version="0.6.0",
+      version="0.7.0",
       description="Numerical Information Field Theory",
       author="Marco Selig",
       author_email="mselig@mpa-garching.mpg.de",
@@ -34,5 +34,6 @@ setup(name="nifty",
                               "demos/demo_faraday.py",
                               "demos/demo_faraday_map.npy",
                               "demos/demo_wf1.py",
-                              "demos/demo_wf2.py"]},
+                              "demos/demo_wf2.py",
+                              "demos/demo_wf3.py"]},
       data_files=[(os.path.expanduser('~') + "/.nifty", ["nifty_config"])])
