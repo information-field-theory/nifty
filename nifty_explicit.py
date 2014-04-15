@@ -227,8 +227,8 @@ class explicit_operator(operator):
                 raise TypeError(about._errors.cstring("ERROR: insufficient input."))
         else:
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(matrix,axis=None))+" <> "+str(self.domain.dim(split=False))+" )."))
-        if(val.size>1048576):
-            about.infos.cprint("INFO: matrix size > 2 ** 20.")
+#        if(val.size>1048576):
+#            about.infos.cprint("INFO: matrix size > 2 ** 20.")
         self.target = target
 
         ## check datatype
@@ -417,8 +417,8 @@ class explicit_operator(operator):
             if(self.target!=self.domain):
                 sym = False
                 uni = False
-            if(val.size>1048576):
-                about.infos.cprint("INFO: matrix size > 2 ** 20.")
+#            if(val.size>1048576):
+#                about.infos.cprint("INFO: matrix size > 2 ** 20.")
         else:
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(matrix,axis=None))+" <> "+str(self.nrow())+" x "+str(self.ncol())+" )."))
 
@@ -576,6 +576,42 @@ class explicit_operator(operator):
         else:
             x_ = np.dot(np.conjugate(self._inv.T),x.val.flatten(order='C'),out=None)
         return x_
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def _briefing(self,x,domain,inverse): ## > prepares x for `multiply`
+        ## inspect x
+        if(not isinstance(x,field)):
+            x_ = field(domain,val=x,target=None)
+        else:
+            ## check x.domain
+            if(domain==x.domain):
+                x_ = x
+            ## transform
+            else:
+                x_ = x.transform(target=domain,overwrite=False)
+        ## weight if ...
+        if(not self.imp)and(not domain.discrete):
+            x_ = x_.weight(power=1,overwrite=False)
+        return x_
+
+    def _debriefing(self,x,x_,target,inverse): ## > evaluates x and x_ after `multiply`
+        if(x_ is None):
+            return None
+        else:
+            ## inspect x_
+            if(not isinstance(x_,field)):
+                x_ = field(target,val=x_,target=None)
+            elif(x_.domain!=target):
+                raise ValueError(about._errors.cstring("ERROR: invalid output domain."))
+            ## inspect x
+            if(isinstance(x,field)):
+                ## repair ...
+                if(self.domain==self.target!=x.domain):
+                    x_ = x_.transform(target=x.domain,overwrite=False) ## ... domain
+                if(x_.domain==x.domain)and(x_.target!=x.target):
+                    x_.set_target(newtarget=x.target) ## ... codomain
+            return x_
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1090,7 +1126,7 @@ class explicit_operator(operator):
                 The transposed matrix.
 
         """
-        return explicit_operator(self.domain,self.val.T,bare=True,sym=self.sym,uni=self.uni,target=self.target)
+        return explicit_operator(self.target,self.val.T,bare=True,sym=self.sym,uni=self.uni,target=self.domain)
 
     def conjugate(self):
         """
@@ -1214,7 +1250,7 @@ class explicit_operator(operator):
             uni = None
             X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
             X = self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
-            matrix = self.val+np.diag(X,k=0)
+            matrix = self.val+np.diag(X.flatten(order='C'),k=0)
         elif(np.size(X)==np.size(self.val)):
             sym = None
             uni = None
@@ -1254,7 +1290,7 @@ class explicit_operator(operator):
                 raise ValueError(about._errors.cstring("ERROR: identity ill-defined for "+str(self.nrow())+" x "+str(self.ncol())+" matrices."))
             self.uni = None
             X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
-            X = np.diag(self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype))),k=0)
+            X = np.diag(self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype))).flatten(order='C'),k=0)
         elif(np.size(X)==np.size(self.val)):
             self.sym = None
             self.uni = None
@@ -1304,7 +1340,7 @@ class explicit_operator(operator):
             uni = None
             X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
             X = self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
-            matrix = self.val-np.diag(X,k=0)
+            matrix = self.val-np.diag(X.flatten(order='C'),k=0)
         elif(np.size(X)==np.size(self.val)):
             sym = None
             uni = None
@@ -1344,7 +1380,7 @@ class explicit_operator(operator):
             uni = None
             X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
             X = self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype)))
-            matrix = np.diag(X,k=0)-self.val
+            matrix = np.diag(X.flatten(order='C'),k=0)-self.val
         elif(np.size(X)==np.size(self.val)):
             sym = None
             uni = None
@@ -1382,7 +1418,7 @@ class explicit_operator(operator):
                 raise ValueError(about._errors.cstring("ERROR: identity ill-defined for "+str(self.nrow())+" x "+str(self.ncol())+" matrices."))
             self.uni = None
             X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
-            X = np.diag(self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype))),k=0)
+            X = np.diag(self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype))).flatten(order='C'),k=0)
         elif(np.size(X)==np.size(self.val)):
             self.sym = None
             self.uni = None
@@ -1439,7 +1475,7 @@ class explicit_operator(operator):
             sym = None
             uni = None
             X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
-            X = np.diag(self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype))),k=0)
+            X = np.diag(self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype))).flatten(order='C'),k=0)
         elif(np.size(X)==self.val.shape[1]**2):
             newdomain = self.domain
             sym = None
@@ -1472,7 +1508,7 @@ class explicit_operator(operator):
             sym = None
             uni = None
             X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
-            X = np.diag(self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype))),k=0)
+            X = np.diag(self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype))).flatten(order='C'),k=0)
         elif(np.size(X)==self.val.shape[0]**2):
             newtarget = self.target
             sym = None
@@ -1505,7 +1541,7 @@ class explicit_operator(operator):
             self.sym = None
             self.uni = None
             X = X*np.ones(self.domain.dim(split=False),dtype=np.int,order='C')
-            X = np.diag(self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype))),k=0)
+            X = np.diag(self.domain.calc_weight(X,power=-1).astype(max(min(X.dtype,self.domain.datatype),min(X.dtype,self.target.datatype))).flatten(order='C'),k=0)
         elif(np.size(X)==self.val.shape[1]**2):
             self.sym = None
             self.uni = None
@@ -2088,30 +2124,25 @@ class explicit_probing(probing):
         return self.probing(zipped[0],probe)
 
     def _serial_probing(self,zipped): ## > performs the probing operation serially
-        try:
-            result = self._single_probing(zipped)
-        except:
-            ## kill pool
-            os.kill()
-        else:
-            if(result is not None):
-                result = np.array(result).flatten(order='C')
-                rindex = zipped[0]*self.codomain.dim(split=False)
-                if(isinstance(_share.mat,tuple)):
-                    _share.mat[0].acquire(block=True,timeout=None)
-                    _share.mat[0][rindex:rindex+self.codomain.dim(split=False)] = np.real(result)
-                    _share.mat[0].release()
-                    _share.mat[1].acquire(block=True,timeout=None)
-                    _share.mat[1][rindex:rindex+self.codomain.dim(split=False)] = np.imag(result)
-                    _share.mat[1].release()
-                else:
-                    _share.mat.acquire(block=True,timeout=None)
-                    _share.mat[rindex:rindex+self.codomain.dim(split=False)] = result
-                    _share.mat.release()
-                _share.num.acquire(block=True,timeout=None)
-                _share.num.value += 1
-                _share.num.release()
-                self._progress(_share.num.value)
+        result = self._single_probing(zipped)
+        if(result is not None):
+            result = np.array(result).flatten(order='C')
+            rindex = zipped[0]*self.codomain.dim(split=False)
+            if(isinstance(_share.mat,tuple)):
+                _share.mat[0].acquire(block=True,timeout=None)
+                _share.mat[0][rindex:rindex+self.codomain.dim(split=False)] = np.real(result)
+                _share.mat[0].release()
+                _share.mat[1].acquire(block=True,timeout=None)
+                _share.mat[1][rindex:rindex+self.codomain.dim(split=False)] = np.imag(result)
+                _share.mat[1].release()
+            else:
+                _share.mat.acquire(block=True,timeout=None)
+                _share.mat[rindex:rindex+self.codomain.dim(split=False)] = result
+                _share.mat.release()
+            _share.num.acquire(block=True,timeout=None)
+            _share.num.value += 1
+            _share.num.release()
+            self._progress(_share.num.value)
 
     def _parallel_probing(self): ## > performs the probing operations in parallel
         ## define weighted canonical base
@@ -2134,11 +2165,13 @@ class explicit_probing(probing):
             about.infos.cflush(" done.")
             pool.close()
             pool.join()
-        except:
+        except BaseException as exception:
             ## terminate and join pool
+            about._errors.cprint("\nERROR: terminating pool.")
             pool.terminate()
             pool.join()
-            raise Exception(about._errors.cstring("ERROR: unknown. NOTE: pool terminated.")) ## traceback by looping
+            ## re-raise exception
+            raise exception ## traceback by looping
         ## evaluate
         if(issubclass(self.codomain.datatype,np.complexfloating)):
             _mat = (np.array(_mat[0][:])+np.array(_mat[1][:])*1j) ## comlpex array

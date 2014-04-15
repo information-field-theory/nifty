@@ -48,14 +48,21 @@
     spherical spaces, their harmonic counterparts, and product spaces
     constructed as combinations of those.
 
+    References
+    ----------
+    .. [#] Selig et al., "NIFTY -- Numerical Information Field Theory --
+        a versatile Python library for signal inference",
+        `A&A, vol. 554, id. A26 <http://dx.doi.org/10.1051/0004-6361/201321236>`_,
+        2013; `arXiv:1301.4499 <http://www.arxiv.org/abs/1301.4499>`_
+
     Class & Feature Overview
     ------------------------
     The NIFTY library features three main classes: **spaces** that represent
     certain grids, **fields** that are defined on spaces, and **operators**
     that apply to fields.
 
-    Overview of all (core) classes:
-
+    .. Overview of all (core) classes:
+    ..
     .. - switch
     .. - notification
     .. - _about
@@ -78,38 +85,59 @@
     ..     - trace_probing
     ..     - diagonal_probing
 
+    Overview of the main classes and functions:
+
     .. automodule:: nifty
 
-    :py:class:`space`
+    - :py:class:`space`
+        - :py:class:`point_space`
+        - :py:class:`rg_space`
+        - :py:class:`lm_space`
+        - :py:class:`gl_space`
+        - :py:class:`hp_space`
+        - :py:class:`nested_space`
+    - :py:class:`field`
+    - :py:class:`operator`
+        - :py:class:`diagonal_operator`
+            - :py:class:`power_operator`
+        - :py:class:`projection_operator`
+        - :py:class:`vecvec_operator`
+        - :py:class:`response_operator`
 
-    - :py:class:`point_space`
-    - :py:class:`rg_space`
-    - :py:class:`lm_space`
-    - :py:class:`gl_space`
-    - :py:class:`hp_space`
-    - :py:class:`nested_space`
+        .. currentmodule:: nifty.nifty_tools
 
-    :py:class:`field`
+        - :py:class:`invertible_operator`
+        - :py:class:`propagator_operator`
 
-    :py:class:`operator`
+        .. currentmodule:: nifty.nifty_explicit
 
-    - :py:class:`diagonal_operator`
-        - :py:class:`power_operator`
-    - :py:class:`projection_operator`
-    - :py:class:`vecvec_operator`
-    - :py:class:`response_operator`
+        - :py:class:`explicit_operator`
 
-    :py:class:`probing`
+    .. automodule:: nifty
 
-    - :py:class:`trace_probing`
-    - :py:class:`diagonal_probing`
+    - :py:class:`probing`
+        - :py:class:`trace_probing`
+        - :py:class:`diagonal_probing`
 
-    References
-    ----------
-    .. [#] Selig et al., "NIFTY -- Numerical Information Field Theory --
-        a versatile Python library for signal inference",
-        `A&A, vol. 554, id. A26 <http://dx.doi.org/10.1051/0004-6361/201321236>`_,
-        2013; `arXiv:1301.4499 <http://www.arxiv.org/abs/1301.4499>`_
+        .. currentmodule:: nifty.nifty_explicit
+
+        - :py:class:`explicit_probing`
+
+    .. currentmodule:: nifty.nifty_tools
+
+    - :py:class:`conjugate_gradient`
+    - :py:class:`steepest_descent`
+
+    .. currentmodule:: nifty.nifty_explicit
+
+    - :py:func:`explicify`
+
+    .. currentmodule:: nifty.nifty_power
+
+    - :py:func:`weight_power`,
+      :py:func:`smooth_power`,
+      :py:func:`infer_power`,
+      :py:func:`interpolate_power`
 
 """
 ## standard libraries
@@ -486,7 +514,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.7.0"
+        self._version = "0.7.6"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -1072,41 +1100,41 @@ class space(object):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-        """
-            **DEPRECATED** Provides the indexing array of the power spectrum.
-
-            Provides either an array giving for each component of a field the
-            corresponding index of a power spectrum (if ``irreducible==False``)
-            or two arrays containing the scales of the modes and the numbers of
-            modes with this scale (if ``irreducible==True``).
-
-            Parameters
-            ----------
-            irreducible : bool, *optional*
-                Whether to return two arrays containing the scales and
-                corresponding number of represented modes (if True) or the
-                indexing array (if False) (default: False).
-
-            Returns
-            -------
-            kindex : numpy.ndarray
-                Scale of each band, returned only if ``irreducible==True``.
-            rho : numpy.ndarray
-                Number of modes per scale represented in the discretization,
-                returned only if ``irreducible==True``.
-            pindex : numpy.ndarray
-                Indexing array giving the power spectrum index for each
-                represented mode, returned only if ``irreducible==False``.
-
-            Notes
-            -----
-            The indexing array is of the same shape as a field living in this
-            space and contains the indices of the associated bands.
-            kindex and rho are each one-dimensional arrays.
-        """
-        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_power_index'."))
+#    def get_power_index(self,irreducible=False): ## TODO: remove in future version
+#        """
+#            **DEPRECATED** Provides the indexing array of the power spectrum.
+#
+#            Provides either an array giving for each component of a field the
+#            corresponding index of a power spectrum (if ``irreducible==False``)
+#            or two arrays containing the scales of the modes and the numbers of
+#            modes with this scale (if ``irreducible==True``).
+#
+#            Parameters
+#            ----------
+#            irreducible : bool, *optional*
+#                Whether to return two arrays containing the scales and
+#                corresponding number of represented modes (if True) or the
+#                indexing array (if False) (default: False).
+#
+#            Returns
+#            -------
+#            kindex : numpy.ndarray
+#                Scale of each band, returned only if ``irreducible==True``.
+#            rho : numpy.ndarray
+#                Number of modes per scale represented in the discretization,
+#                returned only if ``irreducible==True``.
+#            pindex : numpy.ndarray
+#                Indexing array giving the power spectrum index for each
+#                represented mode, returned only if ``irreducible==False``.
+#
+#            Notes
+#            -----
+#            The indexing array is of the same shape as a field living in this
+#            space and contains the indices of the associated bands.
+#            kindex and rho are each one-dimensional arrays.
+#        """
+#        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
+#        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_power_index'."))
 
     def get_power_undex(self,pindex=None): ## TODO: remove in future version
         """
@@ -1957,13 +1985,13 @@ class point_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-        """
-            **DEPRECATED** Raises an error since the power spectrum is
-            ill-defined for point spaces.
-        """
-        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-        raise AttributeError(about._errors.cstring("ERROR: power spectra ill-defined for (unstructured) point spaces."))
+#    def get_power_index(self,irreducible=False): ## TODO: remove in future version
+#        """
+#            **DEPRECATED** Raises an error since the power spectrum is
+#            ill-defined for point spaces.
+#        """
+#        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
+#        raise AttributeError(about._errors.cstring("ERROR: power spectra ill-defined for (unstructured) point spaces."))
 
     def set_power_indices(self,**kwargs):
         """
@@ -2474,46 +2502,45 @@ class rg_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False):  ## TODO: remove in future version
-        """
-            **DEPRECATED** Provides the indexing array of the power spectrum.
+#    def get_power_index(self,irreducible=False):  ## TODO: remove in future version
+#        """
+#            **DEPRECATED** Provides the indexing array of the power spectrum.
+#
+#            Provides either an array giving for each component of a field the
+#            corresponding index of a power spectrum (if ``irreducible==False``)
+#            or two arrays containing the scales of the modes and the numbers of
+#            modes with this scale (if ``irreducible==True``).
+#
+#            Parameters
+#            ----------
+#            irreducible : bool, *optional*
+#                Whether to return two arrays containing the scales and
+#                corresponding number of represented modes (if True) or the
+#                indexing array (if False) (default: False).
+#
+#            Returns
+#            -------
+#            kindex : numpy.ndarray
+#                Scale of each band, returned only if ``irreducible==True``.
+#            rho : numpy.ndarray
+#                Number of modes per scale represented in the discretization,
+#                returned only if ``irreducible==True``.
+#            pindex : numpy.ndarray
+#                Indexing array giving the power spectrum index for each
+#                represented mode, returned only if ``irreducible==False``.
+#
+#            Notes
+#            -----
+#            The indexing array is of the same shape as a field living in this
+#            space and contains the indices of the associated bands.
+#            kindex and rho are each one-dimensional arrays.
+#        """
+#        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
+#        if(self.fourier):
+#            return gp.get_power_index(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),irred=irreducible,fourier=self.fourier) ## nontrivial
+#        else:
+#            raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
-            Provides either an array giving for each component of a field the
-            corresponding index of a power spectrum (if ``irreducible==False``)
-            or two arrays containing the scales of the modes and the numbers of
-            modes with this scale (if ``irreducible==True``).
-
-            Parameters
-            ----------
-            irreducible : bool, *optional*
-                Whether to return two arrays containing the scales and
-                corresponding number of represented modes (if True) or the
-                indexing array (if False) (default: False).
-
-            Returns
-            -------
-            kindex : numpy.ndarray
-                Scale of each band, returned only if ``irreducible==True``.
-            rho : numpy.ndarray
-                Number of modes per scale represented in the discretization,
-                returned only if ``irreducible==True``.
-            pindex : numpy.ndarray
-                Indexing array giving the power spectrum index for each
-                represented mode, returned only if ``irreducible==False``.
-
-            Notes
-            -----
-            The indexing array is of the same shape as a field living in this
-            space and contains the indices of the associated bands.
-            kindex and rho are each one-dimensional arrays.
-        """
-        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-        if(self.fourier):
-            return gp.get_power_index(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),irred=irreducible,fourier=self.fourier) ## nontrivial
-        else:
-            raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
-
-#    def set_power_indices(self,log=None,nbin=None,binbounds=None,**kwargs):
     def set_power_indices(self,**kwargs):
         """
             Sets the (un)indexing objects for spectral indexing internally.
@@ -3549,10 +3576,10 @@ class lm_space(space):
                 Valid power spectrum.
         """
         if(isinstance(spec,field)):
-            spec = spec.val.astype(self.datatype)
+            spec = spec.val.astype(dtype=self.datatype)
         elif(callable(spec)):
             try:
-                spec = np.array(spec(np.arange(self.para[0]+1,dtype=np.int)),dtype=self.datatype)
+                spec = np.array(spec(np.arange(self.para[0]+1,dtype=self.vol.dtype)),dtype=self.datatype) ## prevent integer division
             except:
                 raise TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
@@ -4424,14 +4451,14 @@ class gl_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-        """
-            **DEPRECATED** Raises an error since the power spectrum for a field on the sphere
-            is defined via the spherical harmonics components and not its
-            position-space representation.
-        """
-        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
+#    def get_power_index(self,irreducible=False): ## TODO: remove in future version
+#        """
+#            **DEPRECATED** Raises an error since the power spectrum for a field on the sphere
+#            is defined via the spherical harmonics components and not its
+#            position-space representation.
+#        """
+#        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
+#        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
     def set_power_indices(self,**kwargs):
         """
@@ -5067,14 +5094,14 @@ class hp_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-        """
-            **DEPRECATED** Raises an error since the power spectrum for a field on the sphere
-            is defined via the spherical harmonics components and not its
-            position-space representation.
-        """
-        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
+#    def get_power_index(self,irreducible=False): ## TODO: remove in future version
+#        """
+#            **DEPRECATED** Raises an error since the power spectrum for a field on the sphere
+#            is defined via the spherical harmonics components and not its
+#            position-space representation.
+#        """
+#        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
+#        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
     def set_power_indices(self,**kwargs):
         """
@@ -5453,8 +5480,12 @@ class hp_space(space):
 
         else:
             x = self.enforce_shape(np.array(x,dtype=self.datatype))
-            if(norm=="log")and(np.min(x,axis=None,out=None)<=0):
-                raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+            if(norm=="log"):
+                if(vmin is not None):
+                    if(vmin<=0):
+                        raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+                elif(np.min(x,axis=None,out=None)<=0):
+                    raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
             if(cmap is None):
                 cmap = pl.cm.jet ## default
             cmap.set_under(color='k',alpha=0.0) ## transparent box
@@ -5605,13 +5636,13 @@ class nested_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-        """
-            **DEPRECATED** Raises an error since there is no canonical
-            definition for the power spectrum on a generic product space.
-        """
-        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
+#    def get_power_index(self,irreducible=False): ## TODO: remove in future version
+#        """
+#            **DEPRECATED** Raises an error since there is no canonical
+#            definition for the power spectrum on a generic product space.
+#        """
+#        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
+#        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
     def set_power_indices(self,**kwargs):
         """
@@ -9601,8 +9632,9 @@ class projection_operator(operator):
         Notes
         -----
         The application of the projection operator features a ``band`` keyword
-        specifying a single projection band (see examples) and a ``bandsup``
-        keyword specifying which projection bands to sum up.
+        specifying a single projection band (see examples), a ``bandsup``
+        keyword specifying which projection bands to sum up, and a ``split``
+        keyword.
 
         Examples
         --------
@@ -9792,7 +9824,7 @@ class projection_operator(operator):
             return Px
 
     def _inverse_multiply(self,x,**kwargs):
-        raise AttributeError(about._errors.cstring("ERROR: singular operator."))
+        raise AttributeError(about._errors.cstring("ERROR: singular operator.")) ## pseudo unitary
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -9818,6 +9850,49 @@ class projection_operator(operator):
                     if(x_.target!=x.target):
                         x_.set_target(newtarget=x.target) ## ... codomain
             return x_
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def times(self,x,**kwargs):
+        """
+            Applies the operator to a given object
+
+            Parameters
+            ----------
+            x : {scalar, ndarray, field}
+                Scalars are interpreted as constant arrays, and an array will
+                be interpreted as a field on the domain of the operator.
+
+            Returns
+            -------
+            Ox : {field, tuple of fields}
+                Mapped field on the target domain of the operator.
+
+            Other Parameters
+            ----------------
+            band : int, *optional*
+                Projection band whereon to project (default: None).
+            bandsup: {integer, list/array of integers}, *optional*
+                List of projection bands whereon to project and which to sum
+                up. The `band` keyword is prefered over `bandsup`
+                (default: None).
+            split: bool, *optional*
+                Whether to return a tuple of the projected and residual field;
+                applys only if `band` or `bandsup` is given
+                (default: False).
+
+        """
+        ## prepare
+        x_ = self._briefing(x,self.domain,False)
+        ## apply operator
+        x_ = self._multiply(x_,**kwargs)
+        ## evaluate
+        y = self._debriefing(x,x_,self.target,False)
+        ## split if ...
+        if(kwargs.get("split",False))and((kwargs.has_key("band"))or(kwargs.has_key("bandsup"))):
+            return y,x-y
+        else:
+            return y
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -10759,7 +10834,8 @@ class probing(object):
 
         if(summa.size==1):
             summa = summa.flatten(order='C')[0]
-            var = var.flatten(order='C')[0]
+            if(self.var):
+                var = var.flatten(order='C')[0]
         if(np.iscomplexobj(summa))and(np.all(np.imag(summa)==0)):
             summa = np.real(summa)
 
@@ -10788,33 +10864,28 @@ class probing(object):
         return self.probing(zipped[1],probe)
 
     def _serial_probing(self,zipped): ## > performs the probing operation serially
-        try:
-            result = self._single_probing(zipped)
-        except:
-            ## kill pool
-            os.kill()
-        else:
-            if(result is not None):
-                result = np.array(result).flatten(order='C')
-                if(np.iscomplexobj(result)):
-                    _share.sum[0].acquire(block=True,timeout=None)
-                    _share.sum[0][:] += np.real(result)
-                    _share.sum[0].release()
-                    _share.sum[1].acquire(block=True,timeout=None)
-                    _share.sum[1][:] += np.imag(result)
-                    _share.sum[1].release()
-                else:
-                    _share.sum.acquire(block=True,timeout=None)
-                    _share.sum[:] += result
-                    _share.sum.release()
-                _share.num.acquire(block=True,timeout=None)
-                _share.num.value += 1
-                _share.num.release()
-                if(self.var):
-                    _share.var.acquire(block=True,timeout=None)
-                    _share.var[:] += np.real(np.conjugate(result)*result)
-                    _share.var.release()
-                self._progress(_share.num.value)
+        result = self._single_probing(zipped)
+        if(result is not None):
+            result = np.array(result).flatten(order='C')
+            if(np.iscomplexobj(result)):
+                _share.sum[0].acquire(block=True,timeout=None)
+                _share.sum[0][:] += np.real(result)
+                _share.sum[0].release()
+                _share.sum[1].acquire(block=True,timeout=None)
+                _share.sum[1][:] += np.imag(result)
+                _share.sum[1].release()
+            else:
+                _share.sum.acquire(block=True,timeout=None)
+                _share.sum[:] += result
+                _share.sum.release()
+            _share.num.acquire(block=True,timeout=None)
+            _share.num.value += 1
+            _share.num.release()
+            if(self.var):
+                _share.var.acquire(block=True,timeout=None)
+                _share.var[:] += np.real(np.conjugate(result)*result)
+                _share.var.release()
+            self._progress(_share.num.value)
 
     def _parallel_probing(self): ## > performs the probing operations in parallel
         ## define random seed
@@ -10847,11 +10918,13 @@ class probing(object):
             about.infos.cflush(" done.")
             pool.close()
             pool.join()
-        except:
+        except BaseException as exception:
             ## terminate and join pool
+            about._errors.cprint("\nERROR: terminating pool.")
             pool.terminate()
             pool.join()
-            raise Exception(about._errors.cstring("ERROR: unknown. NOTE: pool terminated.")) ## traceback by looping
+            ## re-raise exception
+            raise exception ## traceback by looping
         ## evaluate
         if(np.iscomplexobj(result)):
             _sum = (np.array(_sum[0][:])+np.array(_sum[1][:])*1j).reshape(shape) ## comlpex array
@@ -11202,32 +11275,27 @@ class trace_probing(probing):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _serial_probing(self,zipped): ## > performs the probing operation serially
-        try:
-            result = self._single_probing(zipped)
-        except:
-            ## kill pool
-            os.kill()
-        else:
-            if(result is not None):
-                if(isinstance(_share.sum,tuple)):
-                    _share.sum[0].acquire(block=True,timeout=None)
-                    _share.sum[0].value += np.real(result)
-                    _share.sum[0].release()
-                    _share.sum[1].acquire(block=True,timeout=None)
-                    _share.sum[1].value += np.imag(result)
-                    _share.sum[1].release()
-                else:
-                    _share.sum.acquire(block=True,timeout=None)
-                    _share.sum.value += result
-                    _share.sum.release()
-                _share.num.acquire(block=True,timeout=None)
-                _share.num.value += 1
-                _share.num.release()
-                if(self.var):
-                    _share.var.acquire(block=True,timeout=None)
-                    _share.var.value += np.real(np.conjugate(result)*result)
-                    _share.var.release()
-                self._progress(_share.num.value)
+        result = self._single_probing(zipped)
+        if(result is not None):
+            if(isinstance(_share.sum,tuple)):
+                _share.sum[0].acquire(block=True,timeout=None)
+                _share.sum[0].value += np.real(result)
+                _share.sum[0].release()
+                _share.sum[1].acquire(block=True,timeout=None)
+                _share.sum[1].value += np.imag(result)
+                _share.sum[1].release()
+            else:
+                _share.sum.acquire(block=True,timeout=None)
+                _share.sum.value += result
+                _share.sum.release()
+            _share.num.acquire(block=True,timeout=None)
+            _share.num.value += 1
+            _share.num.release()
+            if(self.var):
+                _share.var.acquire(block=True,timeout=None)
+                _share.var.value += np.real(np.conjugate(result)*result)
+                _share.var.release()
+            self._progress(_share.num.value)
 
     def _parallel_probing(self): ## > performs the probing operations in parallel
         ## define random seed
@@ -11254,11 +11322,13 @@ class trace_probing(probing):
             about.infos.cflush(" done.")
             pool.close()
             pool.join()
-        except:
+        except BaseException as exception:
             ## terminate and join pool
+            about._errors.cprint("\nERROR: terminating pool.")
             pool.terminate()
             pool.join()
-            raise Exception(about._errors.cstring("ERROR: unknown. NOTE: pool terminated.")) ## traceback by looping
+            ## re-raise exception
+            raise exception ## traceback by looping
         ## evaluate
         if(issubclass(self.domain.datatype,np.complexfloating)):
             _sum = np.complex(_sum[0].value,_sum[1].value)
@@ -11628,33 +11698,28 @@ class diagonal_probing(probing):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _serial_probing(self,zipped): ## > performs the probing operation serially
-        try:
-            result = self._single_probing(zipped)
-        except:
-            ## kill pool
-            os.kill()
-        else:
-            if(result is not None):
-                result = np.array(result).flatten(order='C')
-                if(isinstance(_share.sum,tuple)):
-                    _share.sum[0].acquire(block=True,timeout=None)
-                    _share.sum[0][:] += np.real(result)
-                    _share.sum[0].release()
-                    _share.sum[1].acquire(block=True,timeout=None)
-                    _share.sum[1][:] += np.imag(result)
-                    _share.sum[1].release()
-                else:
-                    _share.sum.acquire(block=True,timeout=None)
-                    _share.sum[:] += result
-                    _share.sum.release()
-                _share.num.acquire(block=True,timeout=None)
-                _share.num.value += 1
-                _share.num.release()
-                if(self.var):
-                    _share.var.acquire(block=True,timeout=None)
-                    _share.var[:] += np.real(np.conjugate(result)*result)
-                    _share.var.release()
-                self._progress(_share.num.value)
+        result = self._single_probing(zipped)
+        if(result is not None):
+            result = np.array(result).flatten(order='C')
+            if(isinstance(_share.sum,tuple)):
+                _share.sum[0].acquire(block=True,timeout=None)
+                _share.sum[0][:] += np.real(result)
+                _share.sum[0].release()
+                _share.sum[1].acquire(block=True,timeout=None)
+                _share.sum[1][:] += np.imag(result)
+                _share.sum[1].release()
+            else:
+                _share.sum.acquire(block=True,timeout=None)
+                _share.sum[:] += result
+                _share.sum.release()
+            _share.num.acquire(block=True,timeout=None)
+            _share.num.value += 1
+            _share.num.release()
+            if(self.var):
+                _share.var.acquire(block=True,timeout=None)
+                _share.var[:] += np.real(np.conjugate(result)*result)
+                _share.var.release()
+            self._progress(_share.num.value)
 
     def _parallel_probing(self): ## > performs the probing operations in parallel
         ## define random seed
@@ -11681,11 +11746,13 @@ class diagonal_probing(probing):
             about.infos.cflush(" done.")
             pool.close()
             pool.join()
-        except:
+        except BaseException as exception:
             ## terminate and join pool
+            about._errors.cprint("\nERROR: terminating pool.")
             pool.terminate()
             pool.join()
-            raise Exception(about._errors.cstring("ERROR: unknown. NOTE: pool terminated.")) ## traceback by looping
+            ## re-raise exception
+            raise exception ## traceback by looping
         ## evaluate
         if(issubclass(self.domain.datatype,np.complexfloating)):
             _sum = (np.array(_sum[0][:])+np.array(_sum[1][:])*1j).reshape(self.domain.dim(split=True)) ## comlpex array
