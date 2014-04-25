@@ -33,7 +33,6 @@
 """
 from __future__ import division
 from nifty import *                                                   # version 0.7.0
-from nifty.nifty_explicit import *
 
 
 # some signal space; e.g., a one-dimensional regular grid

@@ -1100,73 +1100,6 @@ class space(object):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-#        """
-#            **DEPRECATED** Provides the indexing array of the power spectrum.
-#
-#            Provides either an array giving for each component of a field the
-#            corresponding index of a power spectrum (if ``irreducible==False``)
-#            or two arrays containing the scales of the modes and the numbers of
-#            modes with this scale (if ``irreducible==True``).
-#
-#            Parameters
-#            ----------
-#            irreducible : bool, *optional*
-#                Whether to return two arrays containing the scales and
-#                corresponding number of represented modes (if True) or the
-#                indexing array (if False) (default: False).
-#
-#            Returns
-#            -------
-#            kindex : numpy.ndarray
-#                Scale of each band, returned only if ``irreducible==True``.
-#            rho : numpy.ndarray
-#                Number of modes per scale represented in the discretization,
-#                returned only if ``irreducible==True``.
-#            pindex : numpy.ndarray
-#                Indexing array giving the power spectrum index for each
-#                represented mode, returned only if ``irreducible==False``.
-#
-#            Notes
-#            -----
-#            The indexing array is of the same shape as a field living in this
-#            space and contains the indices of the associated bands.
-#            kindex and rho are each one-dimensional arrays.
-#        """
-#        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-#        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_power_index'."))
-
-    def get_power_undex(self,pindex=None): ## TODO: remove in future version
-        """
-            **DEPRECATED** Provides the Unindexing array for an indexed power spectrum.
-
-            Parameters
-            ----------
-            pindex : numpy.ndarray, *optional*
-                Indexing array giving the power spectrum index for each
-                represented mode.
-
-            Returns
-            -------
-            pundex : numpy.ndarray
-                Unindexing array undoing power indexing.
-
-            Notes
-            -----
-            Indexing with the unindexing array undoes the indexing with the
-            indexing array; i.e., ``power == power[pindex].flatten()[pundex]``.
-
-            See Also
-            --------
-            get_power_index
-
-        """
-        about.warnings.cprint("WARNING: 'get_power_undex' is deprecated.")
-        if(pindex is None):
-            pindex = self.get_power_index(irreducible=False)
-#        return list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C')) ## < version 0.4
-        return np.unique(pindex,return_index=True,return_inverse=False)[1]
-
     def set_power_indices(self,**kwargs):
         """
             Sets the (un)indexing objects for spectral indexing internally.
@@ -1985,14 +1918,6 @@ class point_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-#        """
-#            **DEPRECATED** Raises an error since the power spectrum is
-#            ill-defined for point spaces.
-#        """
-#        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-#        raise AttributeError(about._errors.cstring("ERROR: power spectra ill-defined for (unstructured) point spaces."))
-
     def set_power_indices(self,**kwargs):
         """
             Raises
@@ -2501,45 +2426,6 @@ class rg_space(space):
         return spec
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#    def get_power_index(self,irreducible=False):  ## TODO: remove in future version
-#        """
-#            **DEPRECATED** Provides the indexing array of the power spectrum.
-#
-#            Provides either an array giving for each component of a field the
-#            corresponding index of a power spectrum (if ``irreducible==False``)
-#            or two arrays containing the scales of the modes and the numbers of
-#            modes with this scale (if ``irreducible==True``).
-#
-#            Parameters
-#            ----------
-#            irreducible : bool, *optional*
-#                Whether to return two arrays containing the scales and
-#                corresponding number of represented modes (if True) or the
-#                indexing array (if False) (default: False).
-#
-#            Returns
-#            -------
-#            kindex : numpy.ndarray
-#                Scale of each band, returned only if ``irreducible==True``.
-#            rho : numpy.ndarray
-#                Number of modes per scale represented in the discretization,
-#                returned only if ``irreducible==True``.
-#            pindex : numpy.ndarray
-#                Indexing array giving the power spectrum index for each
-#                represented mode, returned only if ``irreducible==False``.
-#
-#            Notes
-#            -----
-#            The indexing array is of the same shape as a field living in this
-#            space and contains the indices of the associated bands.
-#            kindex and rho are each one-dimensional arrays.
-#        """
-#        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-#        if(self.fourier):
-#            return gp.get_power_index(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),irred=irreducible,fourier=self.fourier) ## nontrivial
-#        else:
-#            raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
     def set_power_indices(self,**kwargs):
         """
@@ -3613,46 +3499,6 @@ class lm_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-        """
-            **DEPRECATED** Provides the indexing array of the power spectrum.
-
-            Provides either an array giving for each component of a field the
-            corresponding index of a power spectrum (if ``irreducible==False``)
-            or two arrays containing the scales of the modes and the numbers of
-            modes with this scale (if ``irreducible==True``).
-
-            Parameters
-            ----------
-            irreducible : bool, *optional*
-                Whether to return two arrays containing the scales and
-                corresponding number of represented modes (if True) or the
-                indexing array (if False) (default: False).
-
-            Returns
-            -------
-            kindex : numpy.ndarray
-                Scale of each band, returned only if ``irreducible==True``.
-            rho : numpy.ndarray
-                Number of modes per scale represented in the discretization,
-                returned only if ``irreducible==True``.
-            pindex : numpy.ndarray
-                Indexing array giving the power spectrum index for each
-                represented mode, returned only if ``irreducible==False``.
-
-            Notes
-            -----
-            The indexing array is of the same shape as a field living in this
-            space and contains the indices of the associated bands.
-            kindex and rho are each one-dimensional arrays.
-        """
-        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-        if(irreducible):
-            ind = np.arange(self.para[0]+1)
-            return ind,2*ind+1
-        else:
-            return hp.Alm.getlm(self.para[0],i=None)[0] ## l of (l,m)
-
     def set_power_indices(self,**kwargs):
         """
             Sets the (un)indexing objects for spectral indexing internally.
@@ -4451,15 +4297,6 @@ class gl_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-#        """
-#            **DEPRECATED** Raises an error since the power spectrum for a field on the sphere
-#            is defined via the spherical harmonics components and not its
-#            position-space representation.
-#        """
-#        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-#        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
-
     def set_power_indices(self,**kwargs):
         """
             Raises
@@ -5094,15 +4931,6 @@ class hp_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-#        """
-#            **DEPRECATED** Raises an error since the power spectrum for a field on the sphere
-#            is defined via the spherical harmonics components and not its
-#            position-space representation.
-#        """
-#        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-#        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
-
     def set_power_indices(self,**kwargs):
         """
             Raises
@@ -5635,14 +5463,6 @@ class nested_space(space):
         raise AttributeError(about._errors.cstring("ERROR: power spectra ill-defined."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-#        """
-#            **DEPRECATED** Raises an error since there is no canonical
-#            definition for the power spectrum on a generic product space.
-#        """
-#        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-#        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
     def set_power_indices(self,**kwargs):
         """
@@ -6332,22 +6152,21 @@ class field(object):
 
     def dim(self,split=False):
         """
-        Computes the (array) dimension of the underlying space.
+            Computes the (array) dimension of the underlying space.
 
-        Parameters
-        ----------
-        split : bool
-            Sets the output to be either split up per axis or
-            in form of total number of field entries in all
-            dimensions (default=False)
+            Parameters
+            ----------
+            split : bool
+                Sets the output to be either split up per axis or
+                in form of total number of field entries in all
+                dimensions (default=False)
 
-        Returns
-        -------
-        dim : {scalar, ndarray}
-            Dimension of space.
+            Returns
+            -------
+            dim : {scalar, ndarray}
+                Dimension of space.
 
         """
-
         return self.domain.dim(split=split)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -6890,6 +6709,183 @@ class field(object):
         minmax = [np.min(self.val,axis=None,out=None),np.max(self.val,axis=None,out=None)]
         medmean = [np.median(self.val,axis=None,out=None,overwrite_input=False),np.mean(self.val,axis=None,dtype=self.domain.datatype,out=None)]
         return "nifty_core.field instance\n- domain      = "+repr(self.domain)+"\n- val         = [...]"+"\n  - min.,max. = "+str(minmax)+"\n  - med.,mean = "+str(medmean)+"\n- target      = "+repr(self.target)
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def min(self,ignore=False,**kwargs):
+        """
+            Returns the minimum of the field values.
+
+            Parameters
+            ----------
+            ignore : bool
+                Whether to ignore NANs or not (default: False).
+
+            Returns
+            -------
+            amin : {scalar, ndarray}
+                Minimum field value.
+
+            See Also
+            --------
+            np.amin, np.nanmin
+
+        """
+        if(ignore):
+            return np.nanmin(self.val,**kwargs)
+        else:
+            return np.amin(self.val,**kwargs)
+
+    def max(self,ignore=False,**kwargs):
+        """
+            Returns the maximum of the field values.
+
+            Parameters
+            ----------
+            ignore : bool
+                Whether to ignore NANs or not (default: False).
+
+            Returns
+            -------
+            amax : {scalar, ndarray}
+                Maximum field value.
+
+            See Also
+            --------
+            np.amax, np.nanmax
+
+        """
+        if(ignore):
+            return np.nanmax(self.val,**kwargs)
+        else:
+            return np.amax(self.val,**kwargs)
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def med(self,**kwargs):
+        """
+            Returns the median of the field values.
+
+            Returns
+            -------
+            med : scalar
+                Median field value.
+
+            See Also
+            --------
+            np.median
+
+        """
+        return np.median(self.val,**kwargs)
+
+    def mean(self,**kwargs):
+        """
+            Returns the mean of the field values.
+
+            Returns
+            -------
+            mean : scalar
+                Mean field value.
+
+            See Also
+            --------
+            np.mean
+
+        """
+        return np.mean(self.val,**kwargs)
+
+    def std(self,**kwargs):
+        """
+            Returns the standard deviation of the field values.
+
+            Returns
+            -------
+            std : scalar
+                Standard deviation of the field values.
+
+            See Also
+            --------
+            np.std
+
+        """
+        return np.std(self.val,**kwargs)
+
+    def var(self,**kwargs):
+        """
+            Returns the variance of the field values.
+
+            Returns
+            -------
+            var : scalar
+                Variance of the field values.
+
+            See Also
+            --------
+            np.var
+
+        """
+        return np.var(self.val,**kwargs)
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+    def argmin(self,split=True,**kwargs):
+        """
+            Returns the index of the minimum field value.
+
+            Parameters
+            ----------
+            split : bool
+                Whether to split (unravel) the flat index or not; does not
+                apply to multiple indices along some axis (default: True).
+
+            Returns
+            -------
+            ind : {integer, tuple, array}
+                Index of the minimum field value being an integer for
+                one-dimensional fields, a tuple for multi-dimensional fields,
+                and an array in case minima along some axis are requested.
+
+            See Also
+            --------
+            np.argmax, np.argmin
+
+        """
+        ind = np.argmin(self.val,**kwargs)
+        if(split)and(np.isscalar(ind)):
+            ind = np.unravel_index(ind,self.val.shape,order='C')
+            if(len(ind)==1):
+                return ind[0]
+        return ind
+
+    def argmax(self,split=True,**kwargs):
+        """
+            Returns the index of the maximum field value.
+
+            Parameters
+            ----------
+            split : bool
+                Whether to split (unravel) the flat index or not; does not
+                apply to multiple indices along some axis (default: True).
+
+            Returns
+            -------
+            ind : {integer, tuple, array}
+                Index of the maximum field value being an integer for
+                one-dimensional fields, a tuple for multi-dimensional fields,
+                and an array in case maxima along some axis are requested.
+
+            See Also
+            --------
+            np.argmax, np.argmin
+
+        """
+        ind = np.argmax(self.val,**kwargs)
+        if(split)and(np.isscalar(ind)):
+            ind = np.unravel_index(ind,self.val.shape,order='C')
+            if(len(ind)==1):
+                return ind[0]
+        return ind
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
