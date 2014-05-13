@@ -1035,11 +1035,14 @@ class steepest_descent(object):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.x = x0
 
-        clevel = int(clevel)
+        clevel = max(1,int(clevel))
         limii = int(limii)
 
         E,g = self.eggs(self.x) ## energy and gradient
         norm = g.norm() ## gradient norm
+        if(norm==0):
+            self.note.cprint("\niteration : 00000000   alpha = 0.0E+00   delta = 0.0E+00\n... done.")
+            return self.x,clevel+2
 
         convergence = 0
         ii = 1
@@ -1059,6 +1062,10 @@ class steepest_descent(object):
             norm = g.norm() ## gradient norm
             if(ii==limii):
                 self.note.cprint("\n... quit.")
+                break
+            elif(delta==0):
+                convergence = clevel+2
+                self.note.cprint("   convergence level : %u\n... done."%convergence)
                 break
             elif(delta<tol):
                 convergence += 1
