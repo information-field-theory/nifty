@@ -2124,25 +2124,31 @@ class explicit_probing(probing):
         return self.probing(zipped[0],probe)
 
     def _serial_probing(self,zipped): ## > performs the probing operation serially
-        result = self._single_probing(zipped)
-        if(result is not None):
-            result = np.array(result).flatten(order='C')
-            rindex = zipped[0]*self.codomain.dim(split=False)
-            if(isinstance(_share.mat,tuple)):
-                _share.mat[0].acquire(block=True,timeout=None)
-                _share.mat[0][rindex:rindex+self.codomain.dim(split=False)] = np.real(result)
-                _share.mat[0].release()
-                _share.mat[1].acquire(block=True,timeout=None)
-                _share.mat[1][rindex:rindex+self.codomain.dim(split=False)] = np.imag(result)
-                _share.mat[1].release()
-            else:
-                _share.mat.acquire(block=True,timeout=None)
-                _share.mat[rindex:rindex+self.codomain.dim(split=False)] = result
-                _share.mat.release()
-            _share.num.acquire(block=True,timeout=None)
-            _share.num.value += 1
-            _share.num.release()
-            self._progress(_share.num.value)
+        try:
+            result = self._single_probing(zipped)
+        except Exception as exception:
+            raise exception
+        except BaseException: ## capture system-exiting exception including KeyboardInterrupt
+            raise Exception(about._errors.cstring("ERROR: unknown."))
+        else:
+            if(result is not None):
+                result = np.array(result).flatten(order='C')
+                rindex = zipped[0]*self.codomain.dim(split=False)
+                if(isinstance(_share.mat,tuple)):
+                    _share.mat[0].acquire(block=True,timeout=None)
+                    _share.mat[0][rindex:rindex+self.codomain.dim(split=False)] = np.real(result)
+                    _share.mat[0].release()
+                    _share.mat[1].acquire(block=True,timeout=None)
+                    _share.mat[1][rindex:rindex+self.codomain.dim(split=False)] = np.imag(result)
+                    _share.mat[1].release()
+                else:
+                    _share.mat.acquire(block=True,timeout=None)
+                    _share.mat[rindex:rindex+self.codomain.dim(split=False)] = result
+                    _share.mat.release()
+                _share.num.acquire(block=True,timeout=None)
+                _share.num.value += 1
+                _share.num.release()
+                self._progress(_share.num.value)
 
     def _parallel_probing(self): ## > performs the probing operations in parallel
         ## define weighted canonical base

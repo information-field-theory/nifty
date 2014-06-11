@@ -514,7 +514,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.7.7"
+        self._version = "0.7.9"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -2037,7 +2037,7 @@ class point_space(space):
 
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
 
-        fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+        fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
         ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
         xaxes = np.arange(self.para[0],dtype=np.int)
@@ -2087,7 +2087,7 @@ class point_space(space):
         ax0.set_title(title)
 
         if(bool(kwargs.get("save",False))):
-            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
             pl.close(fig)
         else:
             fig.canvas.draw()
@@ -3079,7 +3079,7 @@ class rg_space(space):
         if(power):
             x = self.calc_power(x,**kwargs)
 
-            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
             ## explicit kindex
@@ -3135,7 +3135,7 @@ class rg_space(space):
             x = self.enforce_shape(np.array(x))
 
             if(naxes==1):
-                fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+                fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
                 ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
                 xaxes = (np.arange(self.para[0],dtype=np.int)+self.para[2]*(self.para[0]//2))*self.vol
@@ -3213,7 +3213,7 @@ class rg_space(space):
                         raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
 
                     s_ = np.array([self.para[1]*self.vol[1]/np.max(self.para[:naxes]*self.vol,axis=None,out=None),self.para[0]*self.vol[0]/np.max(self.para[:naxes]*self.vol,axis=None,out=None)*(1.0+0.159*bool(cbar))])
-                    fig = pl.figure(num=None,figsize=(6.4*s_[0],6.4*s_[1]),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+                    fig = pl.figure(num=None,figsize=(6.4*s_[0],6.4*s_[1]),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
                     ax0 = fig.add_axes([0.06/s_[0],0.06/s_[1],1.0-0.12/s_[0],1.0-0.12/s_[1]])
 
                     xaxes = (np.arange(self.para[1]+1,dtype=np.int)-0.5+self.para[4]*(self.para[1]//2))*self.vol[1]
@@ -3245,7 +3245,7 @@ class rg_space(space):
                 raise ValueError(about._errors.cstring("ERROR: unsupported number of axes ( "+str(naxes)+" > 2 )."))
 
         if(bool(kwargs.get("save",False))):
-            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
             pl.close(fig)
         else:
             fig.canvas.draw()
@@ -3968,7 +3968,7 @@ class lm_space(space):
         if(power):
             x = self.calc_power(x)
 
-            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
             xaxes = np.arange(self.para[0]+1,dtype=np.int)
@@ -4035,7 +4035,7 @@ class lm_space(space):
                     lm += self.para[0]+1-mm
 
                 s_ = np.array([1,self.para[1]/self.para[0]*(1.0+0.159*bool(cbar))])
-                fig = pl.figure(num=None,figsize=(6.4*s_[0],6.4*s_[1]),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+                fig = pl.figure(num=None,figsize=(6.4*s_[0],6.4*s_[1]),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
                 ax0 = fig.add_axes([0.06/s_[0],0.06/s_[1],1.0-0.12/s_[0],1.0-0.12/s_[1]])
                 ax0.set_axis_bgcolor([0.0,0.0,0.0,0.0])
 
@@ -4066,7 +4066,7 @@ class lm_space(space):
                 ax0.set_title(title)
 
         if(bool(kwargs.get("save",False))):
-            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
             pl.close(fig)
         else:
             fig.canvas.draw()
@@ -4652,7 +4652,7 @@ class gl_space(space):
         if(power):
             x = self.calc_power(x)
 
-            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
             xaxes = np.arange(self.para[0],dtype=np.int)
@@ -4699,7 +4699,7 @@ class gl_space(space):
             if(norm=="log")and(vmin<=0):
                 raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
 
-            fig = pl.figure(num=None,figsize=(8.5,5.4),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+            fig = pl.figure(num=None,figsize=(8.5,5.4),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.02,0.05,0.96,0.9])
 
             lon,lat = gl.bounds(self.para[0],nlon=self.para[1])
@@ -4728,7 +4728,7 @@ class gl_space(space):
             ax0.set_title(title)
 
         if(bool(kwargs.get("save",False))):
-            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
             pl.close(fig)
         else:
             fig.canvas.draw()
@@ -5268,7 +5268,7 @@ class hp_space(space):
         if(power):
             x = self.calc_power(x,**kwargs)
 
-            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
             xaxes = np.arange(3*self.para[0],dtype=np.int)
@@ -5301,9 +5301,9 @@ class hp_space(space):
                     ax0.legend()
 
             ax0.set_xlim(xaxes[1],xaxes[-1])
-            ax0.set_xlabel(r"$l$")
+            ax0.set_xlabel(r"$\ell$")
             ax0.set_ylim(vmin,vmax)
-            ax0.set_ylabel(r"$l(2l+1) C_l$")
+            ax0.set_ylabel(r"$\ell(2\ell+1) C_\ell$")
             ax0.set_title(title)
 
         else:
@@ -5321,7 +5321,7 @@ class hp_space(space):
             fig = pl.gcf()
 
         if(bool(kwargs.get("save",False))):
-            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
             pl.close(fig)
         else:
             fig.canvas.draw()
@@ -10860,28 +10860,34 @@ class probing(object):
         return self.probing(zipped[1],probe)
 
     def _serial_probing(self,zipped): ## > performs the probing operation serially
-        result = self._single_probing(zipped)
-        if(result is not None):
-            result = np.array(result).flatten(order='C')
-            if(np.iscomplexobj(result)):
-                _share.sum[0].acquire(block=True,timeout=None)
-                _share.sum[0][:] += np.real(result)
-                _share.sum[0].release()
-                _share.sum[1].acquire(block=True,timeout=None)
-                _share.sum[1][:] += np.imag(result)
-                _share.sum[1].release()
-            else:
-                _share.sum.acquire(block=True,timeout=None)
-                _share.sum[:] += result
-                _share.sum.release()
-            _share.num.acquire(block=True,timeout=None)
-            _share.num.value += 1
-            _share.num.release()
-            if(self.var):
-                _share.var.acquire(block=True,timeout=None)
-                _share.var[:] += np.real(np.conjugate(result)*result)
-                _share.var.release()
-            self._progress(_share.num.value)
+        try:
+            result = self._single_probing(zipped)
+        except Exception as exception:
+            raise exception
+        except BaseException: ## capture system-exiting exception including KeyboardInterrupt
+            raise Exception(about._errors.cstring("ERROR: unknown."))
+        else:
+            if(result is not None):
+                result = np.array(result).flatten(order='C')
+                if(np.iscomplexobj(result)):
+                    _share.sum[0].acquire(block=True,timeout=None)
+                    _share.sum[0][:] += np.real(result)
+                    _share.sum[0].release()
+                    _share.sum[1].acquire(block=True,timeout=None)
+                    _share.sum[1][:] += np.imag(result)
+                    _share.sum[1].release()
+                else:
+                    _share.sum.acquire(block=True,timeout=None)
+                    _share.sum[:] += result
+                    _share.sum.release()
+                _share.num.acquire(block=True,timeout=None)
+                _share.num.value += 1
+                _share.num.release()
+                if(self.var):
+                    _share.var.acquire(block=True,timeout=None)
+                    _share.var[:] += np.real(np.conjugate(result)*result)
+                    _share.var.release()
+                self._progress(_share.num.value)
 
     def _parallel_probing(self): ## > performs the probing operations in parallel
         ## define random seed
@@ -11271,27 +11277,33 @@ class trace_probing(probing):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _serial_probing(self,zipped): ## > performs the probing operation serially
-        result = self._single_probing(zipped)
-        if(result is not None):
-            if(isinstance(_share.sum,tuple)):
-                _share.sum[0].acquire(block=True,timeout=None)
-                _share.sum[0].value += np.real(result)
-                _share.sum[0].release()
-                _share.sum[1].acquire(block=True,timeout=None)
-                _share.sum[1].value += np.imag(result)
-                _share.sum[1].release()
-            else:
-                _share.sum.acquire(block=True,timeout=None)
-                _share.sum.value += result
-                _share.sum.release()
-            _share.num.acquire(block=True,timeout=None)
-            _share.num.value += 1
-            _share.num.release()
-            if(self.var):
-                _share.var.acquire(block=True,timeout=None)
-                _share.var.value += np.real(np.conjugate(result)*result)
-                _share.var.release()
-            self._progress(_share.num.value)
+        try:
+            result = self._single_probing(zipped)
+        except Exception as exception:
+            raise exception
+        except BaseException: ## capture system-exiting exception including KeyboardInterrupt
+            raise Exception(about._errors.cstring("ERROR: unknown."))
+        else:
+            if(result is not None):
+                if(isinstance(_share.sum,tuple)):
+                    _share.sum[0].acquire(block=True,timeout=None)
+                    _share.sum[0].value += np.real(result)
+                    _share.sum[0].release()
+                    _share.sum[1].acquire(block=True,timeout=None)
+                    _share.sum[1].value += np.imag(result)
+                    _share.sum[1].release()
+                else:
+                    _share.sum.acquire(block=True,timeout=None)
+                    _share.sum.value += result
+                    _share.sum.release()
+                _share.num.acquire(block=True,timeout=None)
+                _share.num.value += 1
+                _share.num.release()
+                if(self.var):
+                    _share.var.acquire(block=True,timeout=None)
+                    _share.var.value += np.real(np.conjugate(result)*result)
+                    _share.var.release()
+                self._progress(_share.num.value)
 
     def _parallel_probing(self): ## > performs the probing operations in parallel
         ## define random seed
@@ -11694,28 +11706,34 @@ class diagonal_probing(probing):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _serial_probing(self,zipped): ## > performs the probing operation serially
-        result = self._single_probing(zipped)
-        if(result is not None):
-            result = np.array(result).flatten(order='C')
-            if(isinstance(_share.sum,tuple)):
-                _share.sum[0].acquire(block=True,timeout=None)
-                _share.sum[0][:] += np.real(result)
-                _share.sum[0].release()
-                _share.sum[1].acquire(block=True,timeout=None)
-                _share.sum[1][:] += np.imag(result)
-                _share.sum[1].release()
-            else:
-                _share.sum.acquire(block=True,timeout=None)
-                _share.sum[:] += result
-                _share.sum.release()
-            _share.num.acquire(block=True,timeout=None)
-            _share.num.value += 1
-            _share.num.release()
-            if(self.var):
-                _share.var.acquire(block=True,timeout=None)
-                _share.var[:] += np.real(np.conjugate(result)*result)
-                _share.var.release()
-            self._progress(_share.num.value)
+        try:
+            result = self._single_probing(zipped)
+        except Exception as exception:
+            raise exception
+        except BaseException: ## capture system-exiting exception including KeyboardInterrupt
+            raise Exception(about._errors.cstring("ERROR: unknown."))
+        else:
+            if(result is not None):
+                result = np.array(result).flatten(order='C')
+                if(isinstance(_share.sum,tuple)):
+                    _share.sum[0].acquire(block=True,timeout=None)
+                    _share.sum[0][:] += np.real(result)
+                    _share.sum[0].release()
+                    _share.sum[1].acquire(block=True,timeout=None)
+                    _share.sum[1][:] += np.imag(result)
+                    _share.sum[1].release()
+                else:
+                    _share.sum.acquire(block=True,timeout=None)
+                    _share.sum[:] += result
+                    _share.sum.release()
+                _share.num.acquire(block=True,timeout=None)
+                _share.num.value += 1
+                _share.num.release()
+                if(self.var):
+                    _share.var.acquire(block=True,timeout=None)
+                    _share.var[:] += np.real(np.conjugate(result)*result)
+                    _share.var.release()
+                self._progress(_share.num.value)
 
     def _parallel_probing(self): ## > performs the probing operations in parallel
         ## define random seed
