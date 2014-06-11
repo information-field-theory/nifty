@@ -23,8 +23,8 @@
 ## TODO: doc strings
 
 from __future__ import division
-#import gfft as gf
 import numpy as np
+#import gfft as gf
 
 
 def smooth_power(power, k, exclude=1, smooth_length=None):

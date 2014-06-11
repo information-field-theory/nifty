@@ -38,8 +38,20 @@
 
 """
 from __future__ import division
-#import numpy as np
 from nifty_core import *
+#from sys import stdout as so
+#import numpy as np
+#import pylab as pl
+#from matplotlib.colors import LogNorm as ln
+#from matplotlib.ticker import LogFormatter as lf
+#from multiprocessing import Pool as mp
+#from multiprocessing import Value as mv
+#from multiprocessing import Array as ma
+#from nifty_core import about,                                                \
+#                       space,                                                \
+#                       field,                                                \
+#                       operator,diagonal_operator,identity,vecvec_operator,  \
+#                       probing
 
 
 ##-----------------------------------------------------------------------------
@@ -420,7 +432,7 @@ class explicit_operator(operator):
 #            if(val.size>1048576):
 #                about.infos.cprint("INFO: matrix size > 2 ** 20.")
         else:
-            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(matrix,axis=None))+" <> "+str(self.nrow())+" x "+str(self.ncol())+" )."))
+            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(newmatrix,axis=None))+" <> "+str(self.nrow())+" x "+str(self.ncol())+" )."))
 
         ## check datatype
         if(np.any(np.iscomplex(val))):
