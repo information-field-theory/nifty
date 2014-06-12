@@ -48,14 +48,21 @@
     spherical spaces, their harmonic counterparts, and product spaces
     constructed as combinations of those.
 
+    References
+    ----------
+    .. [#] Selig et al., "NIFTY -- Numerical Information Field Theory --
+        a versatile Python library for signal inference",
+        `A&A, vol. 554, id. A26 <http://dx.doi.org/10.1051/0004-6361/201321236>`_,
+        2013; `arXiv:1301.4499 <http://www.arxiv.org/abs/1301.4499>`_
+
     Class & Feature Overview
     ------------------------
     The NIFTY library features three main classes: **spaces** that represent
     certain grids, **fields** that are defined on spaces, and **operators**
     that apply to fields.
 
-    Overview of all (core) classes:
-
+    .. Overview of all (core) classes:
+    ..
     .. - switch
     .. - notification
     .. - _about
@@ -78,38 +85,59 @@
     ..     - trace_probing
     ..     - diagonal_probing
 
+    Overview of the main classes and functions:
+
     .. automodule:: nifty
 
-    :py:class:`space`
+    - :py:class:`space`
+        - :py:class:`point_space`
+        - :py:class:`rg_space`
+        - :py:class:`lm_space`
+        - :py:class:`gl_space`
+        - :py:class:`hp_space`
+        - :py:class:`nested_space`
+    - :py:class:`field`
+    - :py:class:`operator`
+        - :py:class:`diagonal_operator`
+            - :py:class:`power_operator`
+        - :py:class:`projection_operator`
+        - :py:class:`vecvec_operator`
+        - :py:class:`response_operator`
 
-    - :py:class:`point_space`
-    - :py:class:`rg_space`
-    - :py:class:`lm_space`
-    - :py:class:`gl_space`
-    - :py:class:`hp_space`
-    - :py:class:`nested_space`
+        .. currentmodule:: nifty.nifty_tools
 
-    :py:class:`field`
+        - :py:class:`invertible_operator`
+        - :py:class:`propagator_operator`
 
-    :py:class:`operator`
+        .. currentmodule:: nifty.nifty_explicit
 
-    - :py:class:`diagonal_operator`
-        - :py:class:`power_operator`
-    - :py:class:`projection_operator`
-    - :py:class:`vecvec_operator`
-    - :py:class:`response_operator`
+        - :py:class:`explicit_operator`
 
-    :py:class:`probing`
+    .. automodule:: nifty
 
-    - :py:class:`trace_probing`
-    - :py:class:`diagonal_probing`
+    - :py:class:`probing`
+        - :py:class:`trace_probing`
+        - :py:class:`diagonal_probing`
 
-    References
-    ----------
-    .. [#] Selig et al., "NIFTY -- Numerical Information Field Theory --
-        a versatile Python library for signal inference",
-        `A&A, vol. 554, id. A26 <http://dx.doi.org/10.1051/0004-6361/201321236>`_,
-        2013; `arXiv:1301.4499 <http://www.arxiv.org/abs/1301.4499>`_
+        .. currentmodule:: nifty.nifty_explicit
+
+        - :py:class:`explicit_probing`
+
+    .. currentmodule:: nifty.nifty_tools
+
+    - :py:class:`conjugate_gradient`
+    - :py:class:`steepest_descent`
+
+    .. currentmodule:: nifty.nifty_explicit
+
+    - :py:func:`explicify`
+
+    .. currentmodule:: nifty.nifty_power
+
+    - :py:func:`weight_power`,
+      :py:func:`smooth_power`,
+      :py:func:`infer_power`,
+      :py:func:`interpolate_power`
 
 """
 ## standard libraries
@@ -486,7 +514,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.7.0"
+        self._version = "0.8.0"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -1071,73 +1099,6 @@ class space(object):
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'enforce_power'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-        """
-            **DEPRECATED** Provides the indexing array of the power spectrum.
-
-            Provides either an array giving for each component of a field the
-            corresponding index of a power spectrum (if ``irreducible==False``)
-            or two arrays containing the scales of the modes and the numbers of
-            modes with this scale (if ``irreducible==True``).
-
-            Parameters
-            ----------
-            irreducible : bool, *optional*
-                Whether to return two arrays containing the scales and
-                corresponding number of represented modes (if True) or the
-                indexing array (if False) (default: False).
-
-            Returns
-            -------
-            kindex : numpy.ndarray
-                Scale of each band, returned only if ``irreducible==True``.
-            rho : numpy.ndarray
-                Number of modes per scale represented in the discretization,
-                returned only if ``irreducible==True``.
-            pindex : numpy.ndarray
-                Indexing array giving the power spectrum index for each
-                represented mode, returned only if ``irreducible==False``.
-
-            Notes
-            -----
-            The indexing array is of the same shape as a field living in this
-            space and contains the indices of the associated bands.
-            kindex and rho are each one-dimensional arrays.
-        """
-        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_power_index'."))
-
-    def get_power_undex(self,pindex=None): ## TODO: remove in future version
-        """
-            **DEPRECATED** Provides the Unindexing array for an indexed power spectrum.
-
-            Parameters
-            ----------
-            pindex : numpy.ndarray, *optional*
-                Indexing array giving the power spectrum index for each
-                represented mode.
-
-            Returns
-            -------
-            pundex : numpy.ndarray
-                Unindexing array undoing power indexing.
-
-            Notes
-            -----
-            Indexing with the unindexing array undoes the indexing with the
-            indexing array; i.e., ``power == power[pindex].flatten()[pundex]``.
-
-            See Also
-            --------
-            get_power_index
-
-        """
-        about.warnings.cprint("WARNING: 'get_power_undex' is deprecated.")
-        if(pindex is None):
-            pindex = self.get_power_index(irreducible=False)
-#        return list(np.unravel_index(np.unique(pindex,return_index=True,return_inverse=False)[1],pindex.shape,order='C')) ## < version 0.4
-        return np.unique(pindex,return_index=True,return_inverse=False)[1]
 
     def set_power_indices(self,**kwargs):
         """
@@ -1957,14 +1918,6 @@ class point_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-        """
-            **DEPRECATED** Raises an error since the power spectrum is
-            ill-defined for point spaces.
-        """
-        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-        raise AttributeError(about._errors.cstring("ERROR: power spectra ill-defined for (unstructured) point spaces."))
-
     def set_power_indices(self,**kwargs):
         """
             Raises
@@ -2084,7 +2037,7 @@ class point_space(space):
 
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
 
-        fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+        fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
         ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
         xaxes = np.arange(self.para[0],dtype=np.int)
@@ -2134,7 +2087,7 @@ class point_space(space):
         ax0.set_title(title)
 
         if(bool(kwargs.get("save",False))):
-            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
             pl.close(fig)
         else:
             fig.canvas.draw()
@@ -2474,46 +2427,6 @@ class rg_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power_index(self,irreducible=False):  ## TODO: remove in future version
-        """
-            **DEPRECATED** Provides the indexing array of the power spectrum.
-
-            Provides either an array giving for each component of a field the
-            corresponding index of a power spectrum (if ``irreducible==False``)
-            or two arrays containing the scales of the modes and the numbers of
-            modes with this scale (if ``irreducible==True``).
-
-            Parameters
-            ----------
-            irreducible : bool, *optional*
-                Whether to return two arrays containing the scales and
-                corresponding number of represented modes (if True) or the
-                indexing array (if False) (default: False).
-
-            Returns
-            -------
-            kindex : numpy.ndarray
-                Scale of each band, returned only if ``irreducible==True``.
-            rho : numpy.ndarray
-                Number of modes per scale represented in the discretization,
-                returned only if ``irreducible==True``.
-            pindex : numpy.ndarray
-                Indexing array giving the power spectrum index for each
-                represented mode, returned only if ``irreducible==False``.
-
-            Notes
-            -----
-            The indexing array is of the same shape as a field living in this
-            space and contains the indices of the associated bands.
-            kindex and rho are each one-dimensional arrays.
-        """
-        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-        if(self.fourier):
-            return gp.get_power_index(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),irred=irreducible,fourier=self.fourier) ## nontrivial
-        else:
-            raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
-
-#    def set_power_indices(self,log=None,nbin=None,binbounds=None,**kwargs):
     def set_power_indices(self,**kwargs):
         """
             Sets the (un)indexing objects for spectral indexing internally.
@@ -3166,7 +3079,7 @@ class rg_space(space):
         if(power):
             x = self.calc_power(x,**kwargs)
 
-            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
             ## explicit kindex
@@ -3222,7 +3135,7 @@ class rg_space(space):
             x = self.enforce_shape(np.array(x))
 
             if(naxes==1):
-                fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+                fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
                 ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
                 xaxes = (np.arange(self.para[0],dtype=np.int)+self.para[2]*(self.para[0]//2))*self.vol
@@ -3300,7 +3213,7 @@ class rg_space(space):
                         raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
 
                     s_ = np.array([self.para[1]*self.vol[1]/np.max(self.para[:naxes]*self.vol,axis=None,out=None),self.para[0]*self.vol[0]/np.max(self.para[:naxes]*self.vol,axis=None,out=None)*(1.0+0.159*bool(cbar))])
-                    fig = pl.figure(num=None,figsize=(6.4*s_[0],6.4*s_[1]),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+                    fig = pl.figure(num=None,figsize=(6.4*s_[0],6.4*s_[1]),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
                     ax0 = fig.add_axes([0.06/s_[0],0.06/s_[1],1.0-0.12/s_[0],1.0-0.12/s_[1]])
 
                     xaxes = (np.arange(self.para[1]+1,dtype=np.int)-0.5+self.para[4]*(self.para[1]//2))*self.vol[1]
@@ -3332,7 +3245,7 @@ class rg_space(space):
                 raise ValueError(about._errors.cstring("ERROR: unsupported number of axes ( "+str(naxes)+" > 2 )."))
 
         if(bool(kwargs.get("save",False))):
-            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
             pl.close(fig)
         else:
             fig.canvas.draw()
@@ -3549,10 +3462,10 @@ class lm_space(space):
                 Valid power spectrum.
         """
         if(isinstance(spec,field)):
-            spec = spec.val.astype(self.datatype)
+            spec = spec.val.astype(dtype=self.datatype)
         elif(callable(spec)):
             try:
-                spec = np.array(spec(np.arange(self.para[0]+1,dtype=np.int)),dtype=self.datatype)
+                spec = np.array(spec(np.arange(self.para[0]+1,dtype=self.vol.dtype)),dtype=self.datatype) ## prevent integer division
             except:
                 raise TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
@@ -3585,46 +3498,6 @@ class lm_space(space):
         return spec
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-        """
-            **DEPRECATED** Provides the indexing array of the power spectrum.
-
-            Provides either an array giving for each component of a field the
-            corresponding index of a power spectrum (if ``irreducible==False``)
-            or two arrays containing the scales of the modes and the numbers of
-            modes with this scale (if ``irreducible==True``).
-
-            Parameters
-            ----------
-            irreducible : bool, *optional*
-                Whether to return two arrays containing the scales and
-                corresponding number of represented modes (if True) or the
-                indexing array (if False) (default: False).
-
-            Returns
-            -------
-            kindex : numpy.ndarray
-                Scale of each band, returned only if ``irreducible==True``.
-            rho : numpy.ndarray
-                Number of modes per scale represented in the discretization,
-                returned only if ``irreducible==True``.
-            pindex : numpy.ndarray
-                Indexing array giving the power spectrum index for each
-                represented mode, returned only if ``irreducible==False``.
-
-            Notes
-            -----
-            The indexing array is of the same shape as a field living in this
-            space and contains the indices of the associated bands.
-            kindex and rho are each one-dimensional arrays.
-        """
-        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-        if(irreducible):
-            ind = np.arange(self.para[0]+1)
-            return ind,2*ind+1
-        else:
-            return hp.Alm.getlm(self.para[0],i=None)[0] ## l of (l,m)
 
     def set_power_indices(self,**kwargs):
         """
@@ -4095,7 +3968,7 @@ class lm_space(space):
         if(power):
             x = self.calc_power(x)
 
-            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
             xaxes = np.arange(self.para[0]+1,dtype=np.int)
@@ -4162,7 +4035,7 @@ class lm_space(space):
                     lm += self.para[0]+1-mm
 
                 s_ = np.array([1,self.para[1]/self.para[0]*(1.0+0.159*bool(cbar))])
-                fig = pl.figure(num=None,figsize=(6.4*s_[0],6.4*s_[1]),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+                fig = pl.figure(num=None,figsize=(6.4*s_[0],6.4*s_[1]),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
                 ax0 = fig.add_axes([0.06/s_[0],0.06/s_[1],1.0-0.12/s_[0],1.0-0.12/s_[1]])
                 ax0.set_axis_bgcolor([0.0,0.0,0.0,0.0])
 
@@ -4193,7 +4066,7 @@ class lm_space(space):
                 ax0.set_title(title)
 
         if(bool(kwargs.get("save",False))):
-            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
             pl.close(fig)
         else:
             fig.canvas.draw()
@@ -4423,15 +4296,6 @@ class gl_space(space):
         return spec
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-        """
-            **DEPRECATED** Raises an error since the power spectrum for a field on the sphere
-            is defined via the spherical harmonics components and not its
-            position-space representation.
-        """
-        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
     def set_power_indices(self,**kwargs):
         """
@@ -4788,7 +4652,7 @@ class gl_space(space):
         if(power):
             x = self.calc_power(x)
 
-            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
             xaxes = np.arange(self.para[0],dtype=np.int)
@@ -4835,7 +4699,7 @@ class gl_space(space):
             if(norm=="log")and(vmin<=0):
                 raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
 
-            fig = pl.figure(num=None,figsize=(8.5,5.4),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+            fig = pl.figure(num=None,figsize=(8.5,5.4),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.02,0.05,0.96,0.9])
 
             lon,lat = gl.bounds(self.para[0],nlon=self.para[1])
@@ -4864,7 +4728,7 @@ class gl_space(space):
             ax0.set_title(title)
 
         if(bool(kwargs.get("save",False))):
-            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
             pl.close(fig)
         else:
             fig.canvas.draw()
@@ -5066,15 +4930,6 @@ class hp_space(space):
         return spec
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-        """
-            **DEPRECATED** Raises an error since the power spectrum for a field on the sphere
-            is defined via the spherical harmonics components and not its
-            position-space representation.
-        """
-        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
     def set_power_indices(self,**kwargs):
         """
@@ -5413,7 +5268,7 @@ class hp_space(space):
         if(power):
             x = self.calc_power(x,**kwargs)
 
-            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor=None,edgecolor=None,frameon=False,FigureClass=pl.Figure)
+            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
             xaxes = np.arange(3*self.para[0],dtype=np.int)
@@ -5446,15 +5301,19 @@ class hp_space(space):
                     ax0.legend()
 
             ax0.set_xlim(xaxes[1],xaxes[-1])
-            ax0.set_xlabel(r"$l$")
+            ax0.set_xlabel(r"$\ell$")
             ax0.set_ylim(vmin,vmax)
-            ax0.set_ylabel(r"$l(2l+1) C_l$")
+            ax0.set_ylabel(r"$\ell(2\ell+1) C_\ell$")
             ax0.set_title(title)
 
         else:
             x = self.enforce_shape(np.array(x,dtype=self.datatype))
-            if(norm=="log")and(np.min(x,axis=None,out=None)<=0):
-                raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+            if(norm=="log"):
+                if(vmin is not None):
+                    if(vmin<=0):
+                        raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+                elif(np.min(x,axis=None,out=None)<=0):
+                    raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
             if(cmap is None):
                 cmap = pl.cm.jet ## default
             cmap.set_under(color='k',alpha=0.0) ## transparent box
@@ -5462,7 +5321,7 @@ class hp_space(space):
             fig = pl.gcf()
 
         if(bool(kwargs.get("save",False))):
-            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor=None,edgecolor=None,orientation='portrait',papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
             pl.close(fig)
         else:
             fig.canvas.draw()
@@ -5604,14 +5463,6 @@ class nested_space(space):
         raise AttributeError(about._errors.cstring("ERROR: power spectra ill-defined."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_power_index(self,irreducible=False): ## TODO: remove in future version
-        """
-            **DEPRECATED** Raises an error since there is no canonical
-            definition for the power spectrum on a generic product space.
-        """
-        about.warnings.cprint("WARNING: 'get_power_index' is deprecated.")
-        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
 
     def set_power_indices(self,**kwargs):
         """
@@ -6301,22 +6152,21 @@ class field(object):
 
     def dim(self,split=False):
         """
-        Computes the (array) dimension of the underlying space.
+            Computes the (array) dimension of the underlying space.
 
-        Parameters
-        ----------
-        split : bool
-            Sets the output to be either split up per axis or
-            in form of total number of field entries in all
-            dimensions (default=False)
+            Parameters
+            ----------
+            split : bool
+                Sets the output to be either split up per axis or
+                in form of total number of field entries in all
+                dimensions (default=False)
 
-        Returns
-        -------
-        dim : {scalar, ndarray}
-            Dimension of space.
+            Returns
+            -------
+            dim : {scalar, ndarray}
+                Dimension of space.
 
         """
-
         return self.domain.dim(split=split)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -6859,6 +6709,183 @@ class field(object):
         minmax = [np.min(self.val,axis=None,out=None),np.max(self.val,axis=None,out=None)]
         medmean = [np.median(self.val,axis=None,out=None,overwrite_input=False),np.mean(self.val,axis=None,dtype=self.domain.datatype,out=None)]
         return "nifty_core.field instance\n- domain      = "+repr(self.domain)+"\n- val         = [...]"+"\n  - min.,max. = "+str(minmax)+"\n  - med.,mean = "+str(medmean)+"\n- target      = "+repr(self.target)
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def min(self,ignore=False,**kwargs):
+        """
+            Returns the minimum of the field values.
+
+            Parameters
+            ----------
+            ignore : bool
+                Whether to ignore NANs or not (default: False).
+
+            Returns
+            -------
+            amin : {scalar, ndarray}
+                Minimum field value.
+
+            See Also
+            --------
+            np.amin, np.nanmin
+
+        """
+        if(ignore):
+            return np.nanmin(self.val,**kwargs)
+        else:
+            return np.amin(self.val,**kwargs)
+
+    def max(self,ignore=False,**kwargs):
+        """
+            Returns the maximum of the field values.
+
+            Parameters
+            ----------
+            ignore : bool
+                Whether to ignore NANs or not (default: False).
+
+            Returns
+            -------
+            amax : {scalar, ndarray}
+                Maximum field value.
+
+            See Also
+            --------
+            np.amax, np.nanmax
+
+        """
+        if(ignore):
+            return np.nanmax(self.val,**kwargs)
+        else:
+            return np.amax(self.val,**kwargs)
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def med(self,**kwargs):
+        """
+            Returns the median of the field values.
+
+            Returns
+            -------
+            med : scalar
+                Median field value.
+
+            See Also
+            --------
+            np.median
+
+        """
+        return np.median(self.val,**kwargs)
+
+    def mean(self,**kwargs):
+        """
+            Returns the mean of the field values.
+
+            Returns
+            -------
+            mean : scalar
+                Mean field value.
+
+            See Also
+            --------
+            np.mean
+
+        """
+        return np.mean(self.val,**kwargs)
+
+    def std(self,**kwargs):
+        """
+            Returns the standard deviation of the field values.
+
+            Returns
+            -------
+            std : scalar
+                Standard deviation of the field values.
+
+            See Also
+            --------
+            np.std
+
+        """
+        return np.std(self.val,**kwargs)
+
+    def var(self,**kwargs):
+        """
+            Returns the variance of the field values.
+
+            Returns
+            -------
+            var : scalar
+                Variance of the field values.
+
+            See Also
+            --------
+            np.var
+
+        """
+        return np.var(self.val,**kwargs)
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+    def argmin(self,split=True,**kwargs):
+        """
+            Returns the index of the minimum field value.
+
+            Parameters
+            ----------
+            split : bool
+                Whether to split (unravel) the flat index or not; does not
+                apply to multiple indices along some axis (default: True).
+
+            Returns
+            -------
+            ind : {integer, tuple, array}
+                Index of the minimum field value being an integer for
+                one-dimensional fields, a tuple for multi-dimensional fields,
+                and an array in case minima along some axis are requested.
+
+            See Also
+            --------
+            np.argmax, np.argmin
+
+        """
+        ind = np.argmin(self.val,**kwargs)
+        if(split)and(np.isscalar(ind)):
+            ind = np.unravel_index(ind,self.val.shape,order='C')
+            if(len(ind)==1):
+                return ind[0]
+        return ind
+
+    def argmax(self,split=True,**kwargs):
+        """
+            Returns the index of the maximum field value.
+
+            Parameters
+            ----------
+            split : bool
+                Whether to split (unravel) the flat index or not; does not
+                apply to multiple indices along some axis (default: True).
+
+            Returns
+            -------
+            ind : {integer, tuple, array}
+                Index of the maximum field value being an integer for
+                one-dimensional fields, a tuple for multi-dimensional fields,
+                and an array in case maxima along some axis are requested.
+
+            See Also
+            --------
+            np.argmax, np.argmin
+
+        """
+        ind = np.argmax(self.val,**kwargs)
+        if(split)and(np.isscalar(ind)):
+            ind = np.unravel_index(ind,self.val.shape,order='C')
+            if(len(ind)==1):
+                return ind[0]
+        return ind
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -9601,8 +9628,9 @@ class projection_operator(operator):
         Notes
         -----
         The application of the projection operator features a ``band`` keyword
-        specifying a single projection band (see examples) and a ``bandsup``
-        keyword specifying which projection bands to sum up.
+        specifying a single projection band (see examples), a ``bandsup``
+        keyword specifying which projection bands to sum up, and a ``split``
+        keyword.
 
         Examples
         --------
@@ -9792,7 +9820,7 @@ class projection_operator(operator):
             return Px
 
     def _inverse_multiply(self,x,**kwargs):
-        raise AttributeError(about._errors.cstring("ERROR: singular operator."))
+        raise AttributeError(about._errors.cstring("ERROR: singular operator.")) ## pseudo unitary
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -9818,6 +9846,49 @@ class projection_operator(operator):
                     if(x_.target!=x.target):
                         x_.set_target(newtarget=x.target) ## ... codomain
             return x_
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def times(self,x,**kwargs):
+        """
+            Applies the operator to a given object
+
+            Parameters
+            ----------
+            x : {scalar, ndarray, field}
+                Scalars are interpreted as constant arrays, and an array will
+                be interpreted as a field on the domain of the operator.
+
+            Returns
+            -------
+            Ox : {field, tuple of fields}
+                Mapped field on the target domain of the operator.
+
+            Other Parameters
+            ----------------
+            band : int, *optional*
+                Projection band whereon to project (default: None).
+            bandsup: {integer, list/array of integers}, *optional*
+                List of projection bands whereon to project and which to sum
+                up. The `band` keyword is prefered over `bandsup`
+                (default: None).
+            split: bool, *optional*
+                Whether to return a tuple of the projected and residual field;
+                applys only if `band` or `bandsup` is given
+                (default: False).
+
+        """
+        ## prepare
+        x_ = self._briefing(x,self.domain,False)
+        ## apply operator
+        x_ = self._multiply(x_,**kwargs)
+        ## evaluate
+        y = self._debriefing(x,x_,self.target,False)
+        ## split if ...
+        if(kwargs.get("split",False))and((kwargs.has_key("band"))or(kwargs.has_key("bandsup"))):
+            return y,x-y
+        else:
+            return y
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -10759,7 +10830,8 @@ class probing(object):
 
         if(summa.size==1):
             summa = summa.flatten(order='C')[0]
-            var = var.flatten(order='C')[0]
+            if(self.var):
+                var = var.flatten(order='C')[0]
         if(np.iscomplexobj(summa))and(np.all(np.imag(summa)==0)):
             summa = np.real(summa)
 
@@ -10790,9 +10862,10 @@ class probing(object):
     def _serial_probing(self,zipped): ## > performs the probing operation serially
         try:
             result = self._single_probing(zipped)
-        except:
-            ## kill pool
-            os.kill()
+        except Exception as exception:
+            raise exception
+        except BaseException: ## capture system-exiting exception including KeyboardInterrupt
+            raise Exception(about._errors.cstring("ERROR: unknown."))
         else:
             if(result is not None):
                 result = np.array(result).flatten(order='C')
@@ -10847,11 +10920,13 @@ class probing(object):
             about.infos.cflush(" done.")
             pool.close()
             pool.join()
-        except:
+        except BaseException as exception:
             ## terminate and join pool
+            about._errors.cprint("\nERROR: terminating pool.")
             pool.terminate()
             pool.join()
-            raise Exception(about._errors.cstring("ERROR: unknown. NOTE: pool terminated.")) ## traceback by looping
+            ## re-raise exception
+            raise exception ## traceback by looping
         ## evaluate
         if(np.iscomplexobj(result)):
             _sum = (np.array(_sum[0][:])+np.array(_sum[1][:])*1j).reshape(shape) ## comlpex array
@@ -11204,9 +11279,10 @@ class trace_probing(probing):
     def _serial_probing(self,zipped): ## > performs the probing operation serially
         try:
             result = self._single_probing(zipped)
-        except:
-            ## kill pool
-            os.kill()
+        except Exception as exception:
+            raise exception
+        except BaseException: ## capture system-exiting exception including KeyboardInterrupt
+            raise Exception(about._errors.cstring("ERROR: unknown."))
         else:
             if(result is not None):
                 if(isinstance(_share.sum,tuple)):
@@ -11254,11 +11330,13 @@ class trace_probing(probing):
             about.infos.cflush(" done.")
             pool.close()
             pool.join()
-        except:
+        except BaseException as exception:
             ## terminate and join pool
+            about._errors.cprint("\nERROR: terminating pool.")
             pool.terminate()
             pool.join()
-            raise Exception(about._errors.cstring("ERROR: unknown. NOTE: pool terminated.")) ## traceback by looping
+            ## re-raise exception
+            raise exception ## traceback by looping
         ## evaluate
         if(issubclass(self.domain.datatype,np.complexfloating)):
             _sum = np.complex(_sum[0].value,_sum[1].value)
@@ -11630,9 +11708,10 @@ class diagonal_probing(probing):
     def _serial_probing(self,zipped): ## > performs the probing operation serially
         try:
             result = self._single_probing(zipped)
-        except:
-            ## kill pool
-            os.kill()
+        except Exception as exception:
+            raise exception
+        except BaseException: ## capture system-exiting exception including KeyboardInterrupt
+            raise Exception(about._errors.cstring("ERROR: unknown."))
         else:
             if(result is not None):
                 result = np.array(result).flatten(order='C')
@@ -11681,11 +11760,13 @@ class diagonal_probing(probing):
             about.infos.cflush(" done.")
             pool.close()
             pool.join()
-        except:
+        except BaseException as exception:
             ## terminate and join pool
+            about._errors.cprint("\nERROR: terminating pool.")
             pool.terminate()
             pool.join()
-            raise Exception(about._errors.cstring("ERROR: unknown. NOTE: pool terminated.")) ## traceback by looping
+            ## re-raise exception
+            raise exception ## traceback by looping
         ## evaluate
         if(issubclass(self.domain.datatype,np.complexfloating)):
             _sum = (np.array(_sum[0][:])+np.array(_sum[1][:])*1j).reshape(self.domain.dim(split=True)) ## comlpex array

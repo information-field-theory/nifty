@@ -47,23 +47,10 @@ about.infos.off()
 
 ##-----------------------------------------------------------------------------
 
-## spaces
-h  = hp_space(128)
-l  = lm_space(383)
-g  = gl_space(384) ## nlon == 767
-g_ = gl_space(384, nlon=768)
-r  = rg_space([768, 384], dist=[1/360, 1/180])
-r_ = rg_space([256, 128], dist=[1/120, 1/60])
-
-## map
-m = field(h, val=np.load("demo_faraday_map.npy"))
-
-## projection operator
-Sk = None
+# (global) Faraday map
+m = field(hp_space(128), val=np.load("demo_faraday_map.npy"))
 
 ##-----------------------------------------------------------------------------
-
-
 
 ##=============================================================================
 
@@ -74,47 +61,71 @@ def run(projection=False, power=False):
         Parameters
         ----------
         projection : bool, *optional*
-            Whether to additionaly include projections in the demo or not. If
-            ``projection == True`` the projection operator `Sk` will be
-            defined. (default: False)
+            Whether to additionaly show projections or not (default: False).
         power : bool, *optional*
-            Whether to additionaly show power spectra in the demo or not.
-            (default: False)
+            Whether to additionaly show power spectra or not (default: False).
 
     """
-    global Sk
-    ## start in hp_space
+    nicely = {"vmin":-4, "vmax":4, "cmap":ncmap.fm()}
+
+    # (a) representation on HEALPix grid
     m0 = m
+    m0.plot(title=r"$m$ on a HEALPix grid", **nicely)
+    nicely.update({"cmap":ncmap.fm()}) # healpy bug workaround
 
-    ## transform to lm_space
-    m1 = m0.transform(l)
-    if(projection):
-        ## define projection operator
-        Sk = projection_operator(l)
-        ## project quadrupole
-        m2 = Sk(m0, band=2)
+    # (b) representation in spherical harmonics
+    k_space = m0.target # == lm_space(383, mmax=383)
+    m1 = m0.transform(k_space) # == m.transform()
+#    m1.plot(title=r"$m$ in spherical harmonics")
 
-    ## transform to gl_space
-    m3 = m1.transform(g)
-
-    ## transform to rg_space
-    m4 = m1.transform(g_) ## auxiliary gl_space
-    m4.cast_domain(r) ## rg_space cast
-    m4.set_val(np.roll(m4.val[::-1, ::-1], g.nlon()//2, axis=1)) ## rearrange
-    if(power):
-        ## restrict to central window
-        m5 = field(r_, val=m4[128:256, 256:512]).transform()
-
-    ## plots
-    m0.plot(title=r"$m$ on a HEALPix grid", vmin=-4, vmax=4, cmap=ncmap.fm())
     if(power):
         m1.plot(title=r"angular power spectrum of $m$", vmin=1E-2, vmax=1E+1, mono=False)
     if(projection):
-        m2.plot(title=r"quadrupole of $m$ on a HEALPix grid", vmin=-4, vmax=4, cmap=ncmap.fm())
-    m3.plot(title=r"$m$ on a spherical Gauss-Legendre grid", vmin=-4, vmax=4, cmap=ncmap.fm())
-    m4.plot(title=r"$m$ on a regular 2D grid", vmin=-4, vmax=4, cmap=ncmap.fm())
+        # define projection operator
+        Sk = projection_operator(m1.domain)
+        # project quadrupole
+        m2 = Sk(m0, band=2)
+        m2.plot(title=r"angular quadrupole of $m$ on a HEALPix grid", **nicely)
+
+    # (c) representation on Gauss-Legendre grid
+    y_space = m.target.get_codomain(coname="gl") # == gl_space(384, nlon=767)
+    m3 = m1.transform(y_space) # == m0.transform().transform(y_space)
+    m3.plot(title=r"$m$ on a spherical Gauss-Legendre grid", **nicely)
+
+    if(projection):
+        m4 = Sk(m3, band=2)
+        m4.plot(title=r"angular quadrupole of $m$ on a Gauss-Legendre grid", **nicely)
+
+    # (d) representation on regular grid
+    y_space = gl_space(384, nlon=768) # auxiliary gl_space
+    z_space = rg_space([768, 384], dist=[1/360, 1/180])
+    m5 = m1.transform(y_space)
+    m5.cast_domain(z_space)
+    m5.set_val(np.roll(m5.val[::-1, ::-1], y_space.nlon()//2, axis=1)) # rearrange value array
+    m5.plot(title=r"$m$ on a regular 2D grid", **nicely)
+
     if(power):
-        m5.plot(title=r"(restricted, binned) Fourier power spectrum of $m$", vmin=1E-3, vmax=1E+0, mono=False, log=True)
+        m5.target.set_power_indices(log=False)
+        m5.plot(power=True, title=r"Fourier power spectrum of $m$", vmin=1E-3, vmax=1E+0, mono=False)
+    if(projection):
+        m5.target.set_power_indices(log=False)
+        # define projection operator
+        Sk = projection_operator(m5.target)
+        # project quadrupole
+        m6 = Sk(m5, band=2)
+        m6.plot(title=r"Fourier quadrupole of $m$ on a regular 2D grid", **nicely)
 
 ##=============================================================================
+
+##-----------------------------------------------------------------------------
+
+if(__name__=="__main__"):
+#    pl.close("all")
+
+    # run demo
+    run(projection=False, power=False)
+    # define projection operator
+    Sk = projection_operator(m.target)
+
+##-----------------------------------------------------------------------------
 

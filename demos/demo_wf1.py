@@ -32,36 +32,39 @@
 
 """
 from __future__ import division
-from nifty import *                                                   # version 0.6.0
+from nifty import *                                              # version 0.8.0
 
 
 # some signal space; e.g., a two-dimensional regular grid
-x_space = rg_space([256, 256])                                        # define signal space
+x_space = rg_space([128, 128])                                   # define signal space
+#x_space = rg_space(512)
+#x_space = hp_space(32)
+#x_space = gl_space(96)
 
-k_space = x_space.get_codomain()                                      # get conjugate space
+k_space = x_space.get_codomain()                                 # get conjugate space
 
 # some power spectrum
 power = (lambda k: 42 / (k + 1) ** 3)
 
-S = power_operator(k_space, spec=power)                               # define signal covariance
-s = S.get_random_field(domain=x_space)                                # generate signal
+S = power_operator(k_space, spec=power)                          # define signal covariance
+s = S.get_random_field(domain=x_space)                           # generate signal
 
-R = response_operator(x_space, sigma=0.0, mask=1.0, assign=None)      # define response
-d_space = R.target                                                    # get data space
+R = response_operator(x_space, sigma=0.0, mask=1.0, assign=None) # define response
+d_space = R.target                                               # get data space
 
-# some noise variance; e.g., 100
-N = diagonal_operator(d_space, diag=100, bare=True)                   # define noise covariance
-n = N.get_random_field(domain=d_space)                                # generate noise
+# some noise variance; e.g., signal-to-noise ratio of 1
+N = diagonal_operator(d_space, diag=s.var(), bare=True)          # define noise covariance
+n = N.get_random_field(domain=d_space)                           # generate noise
 
-d = R(s) + n                                                          # compute data
+d = R(s) + n                                                     # compute data
 
-j = R.adjoint_times(N.inverse_times(d))                               # define information source
-D = propagator_operator(S=S, N=N, R=R)                                # define information propagator
+j = R.adjoint_times(N.inverse_times(d))                          # define information source
+D = propagator_operator(S=S, N=N, R=R)                           # define information propagator
 
-m = D(j, tol=1E-4, note=True)                                         # reconstruct map
+m = D(j, W=S, tol=1E-3, note=True)                               # reconstruct map
 
-s.plot(title="signal")                                                # plot signal
+s.plot(title="signal")                                           # plot signal
 d_ = field(x_space, val=d.val, target=k_space)
-d_.plot(title="data", vmin=s.val.min(), vmax=s.val.max())             # plot data
-m.plot(title="reconstructed map", vmin=s.val.min(), vmax=s.val.max()) # plot map
+d_.plot(title="data", vmin=s.min(), vmax=s.max())                # plot data
+m.plot(title="reconstructed map", vmin=s.min(), vmax=s.max())    # plot map
 

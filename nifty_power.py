@@ -42,8 +42,12 @@
 """
 from __future__ import division
 from scipy.interpolate import interp1d as ip ## FIXME: conflicts with sphinx's autodoc
-#import numpy as np
 from nifty_core import *
+#import numpy as np
+#from nifty_core import about,                                                \
+#                       space,                                                \
+#                       field,                                                \
+#                       projection_operator
 import smoothing as gs
 
 
@@ -210,16 +214,16 @@ def smooth_power(spec,domain=None,kindex=None,mode="2s",exclude=1,sigma=-1,**kwa
 
         ## check power spectrum
         if(isinstance(spec,field)):
-            spec = spec.val.astype(kindex.dtype)
+            spec = spec.val
         elif(callable(spec)):
             try:
-                spec = np.array(spec(kindex),dtype=kindex.dtype)
+                spec = np.array(spec(kindex),dtype=None)
             except:
                 TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
-            spec = np.array([spec],dtype=kindex.dtype)
+            spec = np.array([spec],dtype=None)
         else:
-            spec = np.array(spec,dtype=kindex.dtype)
+            spec = np.array(spec,dtype=None)
         ## drop imaginary part
         spec = np.real(spec)
         ## check finiteness and positivity (excluding null)
@@ -663,13 +667,13 @@ def interpolate_power(spec,mode="linear",domain=None,kindex=None,newkindex=None,
             spec = spec.val.astype(kindex.dtype)
         elif(callable(spec)):
             try:
-                spec = np.array(spec(kindex),dtype=kindex.dtype)
+                spec = np.array(spec(kindex),dtype=None)
             except:
                 TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
         elif(np.isscalar(spec)):
-            spec = np.array([spec],dtype=kindex.dtype)
+            spec = np.array([spec],dtype=None)
         else:
-            spec = np.array(spec,dtype=kindex.dtype)
+            spec = np.array(spec,dtype=None)
         ## drop imaginary part
         spec = np.real(spec)
         ## check finiteness and positivity (excluding null)

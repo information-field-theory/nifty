@@ -23,7 +23,7 @@ from distutils.core import setup
 import os
 
 setup(name="nifty",
-      version="0.7.0",
+      version="0.8.0",
       description="Numerical Information Field Theory",
       author="Marco Selig",
       author_email="mselig@mpa-garching.mpg.de",
