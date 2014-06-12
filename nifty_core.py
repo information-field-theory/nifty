@@ -514,7 +514,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.7.9"
+        self._version = "0.8.0"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
