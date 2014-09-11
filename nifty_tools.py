@@ -155,8 +155,8 @@ class invertible_operator(operator):
             x : field
                 Valid input field.
             force : bool
-                Indicates wheter to return a field instead of ``None`` is
-                forced incase the conjugate gradient fails.
+                Indicates wheter to return a field instead of ``None`` in case
+                the conjugate gradient fails.
 
             Returns
             -------
@@ -213,8 +213,8 @@ class invertible_operator(operator):
             x : field
                 Valid input field.
             force : bool
-                Indicates wheter to return a field instead of ``None`` is
-                forced incase the conjugate gradient fails.
+                Indicates wheter to return a field instead of ``None`` in case
+                the conjugate gradient fails.
 
             Returns
             -------
@@ -430,10 +430,10 @@ class propagator_operator(operator):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _inverse_multiply_1(self,x,**kwargs): ## > applies A1 + A2 in self.codomain
-        return self._A1(x)+self._A2(x.transform(self.domain)).transform(self.codomain)
+        return self._A1(x,pseudo=True)+self._A2(x.transform(self.domain)).transform(self.codomain)
 
     def _inverse_multiply_2(self,x,**kwargs): ## > applies A1 + A2 in self.domain
-        return self._A1(x.transform(self.codomain)).transform(self.domain)+self._A2(x)
+        return self._A1(x.transform(self.codomain),pseudo=True).transform(self.domain)+self._A2(x)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -475,8 +475,8 @@ class propagator_operator(operator):
                 Scalars are interpreted as constant arrays, and an array will
                 be interpreted as a field on the domain of the operator.
             force : bool
-                Indicates wheter to return a field instead of ``None`` is
-                forced incase the conjugate gradient fails.
+                Indicates wheter to return a field instead of ``None`` in case
+                the conjugate gradient fails.
 
             Returns
             -------
@@ -836,6 +836,8 @@ class conjugate_gradient(object):
             s = self.W(r)
             gamma_ = gamma
             gamma = r.dot(s)
+            if(np.signbit(np.real(gamma))):
+                about.warnings.cprint("WARNING: positive definiteness of W violated.")
             beta = max(0,gamma/gamma_) ## positive definite
             d = s+beta*d ## conjugated gradient
 

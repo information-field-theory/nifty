@@ -514,7 +514,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.8.0"
+        self._version = "0.8.4"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -5137,7 +5137,7 @@ class hp_space(space):
             if(self.discrete):
                 x = self.calc_weight(x,power=-0.5)
             ## transform
-            Tx = hp.map2alm(x.astype(np.float64),lmax=codomain.para[0],mmax=codomain.para[1],iter=kwargs.get("iter",self.niter),pol=True,use_weights=False,regression=True,datapath=None)
+            Tx = hp.map2alm(x.astype(np.float64),lmax=codomain.para[0],mmax=codomain.para[1],iter=kwargs.get("iter",self.niter),pol=True,use_weights=False,datapath=None)
 
         else:
             raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
@@ -5181,7 +5181,7 @@ class hp_space(space):
         elif(sigma<0):
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         ## smooth
-        return hp.smoothing(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,iter=kwargs.get("iter",self.niter),lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,use_weights=False,regression=True,datapath=None)
+        return hp.smoothing(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,iter=kwargs.get("iter",self.niter),lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,use_weights=False,datapath=None)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -5211,7 +5211,7 @@ class hp_space(space):
         if(self.discrete):
             x = self.calc_weight(x,power=-0.5)
         ## power spectrum
-        return hp.anafast(x,map2=None,nspec=None,lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,iter=kwargs.get("iter",self.niter),alm=False,pol=True,use_weights=False,regression=True,datapath=None)
+        return hp.anafast(x,map2=None,nspec=None,lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,iter=kwargs.get("iter",self.niter),alm=False,pol=True,use_weights=False,datapath=None)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -8755,7 +8755,7 @@ class diagonal_operator(operator):
         if(np.any(self.val==0)):
             if(pseudo):
                 x_ = field(self.domain,val=None,target=x.target)
-                x_.val = x.val*np.where(self.val==0,0,1/self.val) ## bypasses self.domain.enforce_values
+                x_.val = np.ma.filled(x.val/np.ma.masked_where(self.val==0,self.val,copy=False),fill_value=0) ## bypasses self.domain.enforce_values
                 return x_
             else:
                 raise AttributeError(about._errors.cstring("ERROR: singular operator."))
@@ -8768,7 +8768,7 @@ class diagonal_operator(operator):
         if(np.any(self.val==0)):
             if(pseudo):
                 x_ = field(self.domain,val=None,target=x.target)
-                x_.val = x.val*np.where(self.val==0,0,1/np.conjugate(self.val)) ## bypasses self.domain.enforce_values
+                x_.val = np.ma.filled(x.val/np.ma.masked_where(self.val==0,np.conjugate(self.val),copy=False),fill_value=0) ## bypasses self.domain.enforce_values
                 return x_
             else:
                 raise AttributeError(about._errors.cstring("ERROR: singular operator."))
@@ -8781,7 +8781,7 @@ class diagonal_operator(operator):
         if(np.any(self.val==0)):
             if(pseudo):
                 x_ = field(self.domain,val=None,target=x.target)
-                x_.val = x.val*np.where(self.val==0,0,np.conjugate(1/self.val)) ## bypasses self.domain.enforce_values
+                x_.val = np.ma.filled(x.val/np.conjugate(np.ma.masked_where(self.val==0,self.val,copy=False)),fill_value=0) ## bypasses self.domain.enforce_values
                 return x_
             else:
                 raise AttributeError(about._errors.cstring("ERROR: singular operator."))
