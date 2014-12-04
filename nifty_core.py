@@ -514,7 +514,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.8.9"
+        self._version = "0.9.0"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -8290,25 +8290,51 @@ class operator(object):
 
     def det(self):
         """
-            Computes the determinant of the operator
+            Computes the determinant of the operator.
 
             Returns
             -------
             det : float
                 The determinant
+
         """
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'det'."))
 
     def inverse_det(self):
         """
-            Computes the determinant of the inverse operator
+            Computes the determinant of the inverse operator.
 
             Returns
             -------
             det : float
                 The determinant
+
         """
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'inverse_det'."))
+
+    def log_det(self):
+        """
+            Computes the logarithm of the determinant of the operator (if applicable).
+
+            Returns
+            -------
+            logdet : float
+                The logarithm of the determinant
+
+        """
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'log_det'."))
+
+    def tr_log(self):
+        """
+            Computes the trace of the logarithm of the operator (if applicable).
+
+            Returns
+            -------
+            logdet : float
+                The trace of the logarithm
+
+        """
+        return self.log_det()
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -9128,6 +9154,23 @@ class diagonal_operator(operator):
             return 1/det
         else:
             raise ValueError(about._errors.cstring("ERROR: singular operator."))
+
+    def log_det(self):
+        """
+            Computes the logarithm of the determinant of the operator.
+
+            Returns
+            -------
+            logdet : float
+                The logarithm of the determinant
+
+        """
+        if(self.uni): ## identity
+            return 0
+        elif(self.domain.dim(split=False)<self.domain.dof()): ## hidden degrees of freedom
+            return self.domain.calc_dot(np.ones(self.domain.dim(split=True),dtype=self.domain.datatype,order='C'),np.log(self.val))
+        else:
+            return np.sum(np.log(self.val),axis=None,dtype=None,out=None)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -10211,7 +10254,8 @@ class vecvec_operator(operator):
 
     def inverse_diag(self):
         """
-        Inverse is ill-defined for this operator.
+            Inverse is ill-defined for this operator.
+
         """
         raise AttributeError(about._errors.cstring("ERROR: singular operator."))
 
@@ -10219,18 +10263,27 @@ class vecvec_operator(operator):
 
     def det(self):
         """
-            Computes the determinant of the operator
+            Computes the determinant of the operator.
 
             Returns
             -------
             det : 0
                 The determinant
+
         """
         return 0
 
     def inverse_det(self):
         """
-        Inverse is ill-defined for this operator.
+            Inverse is ill-defined for this operator.
+
+        """
+        raise AttributeError(about._errors.cstring("ERROR: singular operator."))
+
+    def log_det(self):
+        """
+            Logarithm of the determinant is ill-defined for this singular operator.
+
         """
         raise AttributeError(about._errors.cstring("ERROR: singular operator."))
 
