@@ -1,3 +1,24 @@
+## NIFTY (Numerical Information Field Theory) has been developed at the
+## Max-Planck-Institute for Astrophysics.
+##
+## Copyright (C) 2014 Max-Planck-Society
+##
+## Author: Maksim Greiner
+## Project homepage: <http://www.mpa-garching.mpg.de/ift/nifty/>
+##
+## This program is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+## See the GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program. If not, see <http://www.gnu.org/licenses/>.
+
 from nifty import *
 
 def power_backward_conversion_rg(k_space,p,mean=None,bare=True):
@@ -16,12 +37,12 @@ def power_backward_conversion_rg(k_space,p,mean=None,bare=True):
             Needs to have the same number of entries as
             `k_space.get_power_indices()[0]`
         mean : float, *optional*
-            specifies the mean of the log-normal field. If `mean` is not 
+            specifies the mean of the log-normal field. If `mean` is not
             specified the function will use the monopole of the power spectrum.
-            If it is specified the function will NOT use the monopole of the 
+            If it is specified the function will NOT use the monopole of the
             spectrum (default: None).
             WARNING: a mean that is too low can violate positive definiteness
-            of the log-normal field. In this case the function produces an 
+            of the log-normal field. In this case the function produces an
             error.
         bare : bool, *optional*
             whether `p` is the bare power spectrum or not (default: True).
@@ -34,7 +55,7 @@ def power_backward_conversion_rg(k_space,p,mean=None,bare=True):
             the power spectrum of the underlying Gaussian field, where the
             monopole has been set to zero. Eventual monopole power has been
             shifted to the mean.
-                        
+
         References
         ----------
         .. [#] M. Greiner and T.A. Ensslin, "Log-transforming the matter power spectrum";
@@ -42,41 +63,41 @@ def power_backward_conversion_rg(k_space,p,mean=None,bare=True):
     """
     pindex = k_space.get_power_indices()[2]
     V = k_space.vol.prod()**(-1)
-    
+
     mono_ind = np.where(pindex==0)
-    
+
     spec = power_operator(k_space,spec=p,bare=bare).get_power(bare=False)
-    
+
     if(mean is None):
         mean = 0.
     else:
         spec[0] = 0.
-    
+
     pf = field(k_space,val=spec[pindex]).transform()+mean**2
-    
+
     if(np.any(pf.val<0.)):
         raise ValueError(about._errors.cstring("ERROR: spectrum or mean incompatible with positive definiteness.\n Try increasing the mean."))
         return None
-    
+
     p1 = sqrt(log(pf).power())
-    
+
     p1[0] = (log(pf)).transform()[mono_ind][0]
-    
+
     p2 = 0.5*V*log(k_space.calc_weight(spec[pindex],1).sum()+mean**2)
-    
+
     logmean = 1/V * (p1[0]-p2)
-    
+
     p1[0] = 0.
-    
+
     if(np.any(p1<0.)):
         raise ValueError(about._errors.cstring("ERROR: spectrum or mean incompatible with positive definiteness.\n Try increasing the mean."))
         return None
-    
+
     if(bare==True):
         return logmean.real,power_operator(k_space,spec=p1,bare=False).get_power(bare=True).real
     else:
         return logmean.real,p1.real
-        
+
 def power_forward_conversion_rg(k_space,p,mean=0,bare=True):
     """
         This function is designed to convert a theoretical/statistical power
@@ -101,31 +122,31 @@ def power_forward_conversion_rg(k_space,p,mean=0,bare=True):
         -------
         p1 : np.array,
             the power spectrum of the exponentiated Gaussian field.
-                        
+
         References
         ----------
         .. [#] M. Greiner and T.A. Ensslin, "Log-transforming the matter power spectrum";
             `arXiv:1312.1354 <http://arxiv.org/abs/1312.1354>`_
     """
-    
+
     pindex = k_space.get_power_indices()[2]
-    
+
     spec = power_operator(k_space,spec=p,bare=bare).get_power(bare=False)
-    
+
     S_x = field(k_space,val=spec[pindex]).transform()
-    
+
     S_0 = k_space.calc_weight(spec[pindex],1).sum()
-    
+
     pf = exp(S_x+S_0+2*mean)
-    
+
     p1 = sqrt(pf.power())
-    
+
     if(bare==True):
         return power_operator(k_space,spec=p1,bare=False).get_power(bare=True).real
     else:
         return p1.real
-        
-        
+
+
 
 def power_backward_conversion_lm(k_space,p,mean=None):
     """
@@ -143,12 +164,12 @@ def power_backward_conversion_lm(k_space,p,mean=None):
             Needs to have the same number of entries as
             `k_space.get_power_indices()[0]`
         mean : float, *optional*
-            specifies the mean of the log-normal field. If `mean` is not 
+            specifies the mean of the log-normal field. If `mean` is not
             specified the function will use the monopole of the power spectrum.
-            If it is specified the function will NOT use the monopole of the 
+            If it is specified the function will NOT use the monopole of the
             spectrum. (default: None)
             WARNING: a mean that is too low can violate positive definiteness
-            of the log-normal field. In this case the function produces an 
+            of the log-normal field. In this case the function produces an
             error.
 
         Returns
@@ -159,13 +180,13 @@ def power_backward_conversion_lm(k_space,p,mean=None):
             the power spectrum of the underlying Gaussian field, where the
             monopole has been set to zero. Eventual monopole power has been
             shifted to the mean.
-                        
+
         References
         ----------
         .. [#] M. Greiner and T.A. Ensslin, "Log-transforming the matter power spectrum";
             `arXiv:1312.1354 <http://arxiv.org/abs/1312.1354>`_
     """
-    
+
     p = np.copy(p)
     if(mean is not None):
         p[0] = 4*pi*mean**2
@@ -174,7 +195,7 @@ def power_backward_conversion_lm(k_space,p,mean=None):
     C_0_Omega = field(k_space,val=0)
     C_0_Omega.val[:len(klen)] = p*sqrt(2*klen+1)/sqrt(4*pi)
     C_0_Omega = C_0_Omega.transform()
-    
+
     if(np.any(C_0_Omega.val<0.)):
         raise ValueError(about._errors.cstring("ERROR: spectrum or mean incompatible with positive definiteness.\n Try increasing the mean."))
         return None
@@ -186,20 +207,20 @@ def power_backward_conversion_lm(k_space,p,mean=None):
     spec = Z.val[:len(klen)]
 
     mean = (spec[0]-0.5*sqrt(4*pi)*log((p*(2*klen+1)/(4*pi)).sum()))/sqrt(4*pi)
-    
+
     spec[0] = 0.
 
     spec = spec*sqrt(4*pi)/sqrt(2*klen+1)
-    
+
     spec = np.real(spec)
-    
+
     if(np.any(spec<0.)):
         spec = spec*(spec>0.)
         about.warnings.cprint("WARNING: negative modes set to zero.")
 
     return mean.real,spec
-    
-    
+
+
 def power_forward_conversion_lm(k_space,p,mean=0):
     """
         This function is designed to convert a theoretical/statistical power
@@ -217,12 +238,12 @@ def power_forward_conversion_lm(k_space,p,mean=0):
             `k_space.get_power_indices()[0]`
         m : float, *optional*
             specifies the mean of the Gaussian field (default: 0).
-            
+
         Returns
         -------
         p1 : np.array,
             the power spectrum of the exponentiated Gaussian field.
-            
+
         References
         ----------
         .. [#] M. Greiner and T.A. Ensslin, "Log-transforming the matter power spectrum";
@@ -233,7 +254,7 @@ def power_forward_conversion_lm(k_space,p,mean=0):
     C_0_Omega = field(k_space,val=0)
     C_0_Omega.val[:len(klen)] = p*sqrt(2*klen+1)/sqrt(4*pi)
     C_0_Omega = C_0_Omega.transform()
-    
+
     C_0_0 = (p*(2*klen+1)/(4*pi)).sum()
 
     exC = exp(C_0_Omega+C_0_0+2*m)
@@ -243,9 +264,9 @@ def power_forward_conversion_lm(k_space,p,mean=0):
     spec = Z.val[:len(klen)]
 
     spec = spec*sqrt(4*pi)/sqrt(2*klen+1)
-    
+
     spec = np.real(spec)
-    
+
     if(np.any(spec<0.)):
         spec = spec*(spec>0.)
         about.warnings.cprint("WARNING: negative modes set to zero.")

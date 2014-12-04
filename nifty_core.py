@@ -514,7 +514,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.8.4"
+        self._version = "0.8.9"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -2485,7 +2485,7 @@ class rg_space(space):
             config = {"binbounds":kwargs.get("binbounds",None),"log":kwargs.get("log",None),"nbin":kwargs.get("nbin",None)}
         ## power indices
         about.infos.cflush("INFO: setting power indices ...")
-        pindex,kindex,rho = gp.get_power_indices(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=True)
+        pindex,kindex,rho = gp.get_power_indices2(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=True)
         ## bin if ...
         if(config.get("log") is not None)or(config.get("nbin") is not None)or(config.get("binbounds") is not None):
             pindex,kindex,rho = gp.bin_power_indices(pindex,kindex,rho,**config)
@@ -3195,6 +3195,9 @@ class rg_space(space):
                     about.infos.cprint("INFO: absolute values and phases are plotted.")
                     if(title):
                         title += " "
+                    if(bool(kwargs.get("save",False))):
+                        save_ = os.path.splitext(os.path.basename(str(kwargs.get("save"))))
+                        kwargs.update(save=save_[0]+"_absolute"+save_[1])
                     self.get_plot(np.absolute(x),title=title+"(absolute)",vmin=vmin,vmax=vmax,power=False,unit=unit,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
 #                    self.get_plot(np.real(x),title=title+"(real part)",vmin=vmin,vmax=vmax,power=False,unit=unit,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
 #                    self.get_plot(np.imag(x),title=title+"(imaginary part)",vmin=vmin,vmax=vmax,power=False,unit=unit,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
@@ -3202,6 +3205,8 @@ class rg_space(space):
                         unit = "rad"
                     if(cmap is None):
                         cmap = pl.cm.hsv_r
+                    if(bool(kwargs.get("save",False))):
+                        kwargs.update(save=save_[0]+"_phase"+save_[1])
                     self.get_plot(np.angle(x,deg=False),title=title+"(phase)",vmin=-3.1416,vmax=3.1416,power=False,unit=unit,norm=None,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs) ## values in [-pi,pi]
                     return None ## leave method
                 else:
@@ -4011,11 +4016,16 @@ class lm_space(space):
             if(np.iscomplexobj(x)):
                 if(title):
                     title += " "
+                if(bool(kwargs.get("save",False))):
+                    save_ = os.path.splitext(os.path.basename(str(kwargs.get("save"))))
+                    kwargs.update(save=save_[0]+"_absolute"+save_[1])
                 self.get_plot(np.absolute(x),title=title+"(absolute)",vmin=vmin,vmax=vmax,power=False,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
 #                self.get_plot(np.real(x),title=title+"(real part)",vmin=vmin,vmax=vmax,power=False,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
 #                self.get_plot(np.imag(x),title=title+"(imaginary part)",vmin=vmin,vmax=vmax,power=False,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
                 if(cmap is None):
                     cmap = pl.cm.hsv_r
+                if(bool(kwargs.get("save",False))):
+                    kwargs.update(save=save_[0]+"_phase"+save_[1])
                 self.get_plot(np.angle(x,deg=False),title=title+"(phase)",vmin=-3.1416,vmax=3.1416,power=False,norm=None,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs) ## values in [-pi,pi]
                 return None ## leave method
             else:
@@ -5413,7 +5423,7 @@ class nested_space(space):
         self.datatype = self.nest[-1].datatype
 
         self.discrete = np.prod([nn.discrete for nn in self.nest],axis=0,dtype=np.bool,out=None)
-        self.vol = None ## not needed
+        self.vol = np.prod([nn.get_meta_volume(total=True) for nn in self.nest],axis=0,dtype=None,out=None) ## total volume
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -5738,7 +5748,7 @@ class nested_space(space):
         """
         if(total):
             ## product
-            return np.prod([nn.get_meta_volume(total=True) for nn in self.nest],axis=0,dtype=None,out=None)
+            return self.vol ## == np.prod([nn.get_meta_volume(total=True) for nn in self.nest],axis=0,dtype=None,out=None)
         else:
             mol = self.nest[0].get_meta_volume(total=False)
             ## tensor product

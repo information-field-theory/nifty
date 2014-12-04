@@ -26,7 +26,7 @@ from nifty_power import *
 from nifty_tools import *
 from nifty_explicit import *
 
-from nifty_power_conversion import *
+#from nifty_power_conversion import *
 
 
 ##-----------------------------------------------------------------------------
