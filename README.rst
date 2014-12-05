@@ -99,7 +99,7 @@ Requirements
 Download
 ........
 
-The latest release is tagged **v0.8.0** and is available as a source package
+The latest release is tagged **v0.9.0** and is available as a source package
 at `<https://github.com/mselig/nifty/tags>`_. The current version can be
 obtained by cloning the repository::
 

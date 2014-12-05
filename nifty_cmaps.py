@@ -242,8 +242,7 @@ class ncmap(object):
     @staticmethod
     def planck(ncolors=256):
         """
-            Returns a color map similar to the one used for the
-            "Planck CMB MAP".
+            Returns a color map similar to the one used for the "Planck CMB Map".
 
             Parameters
             ----------
