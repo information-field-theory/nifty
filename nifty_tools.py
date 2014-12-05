@@ -774,10 +774,7 @@ class conjugate_gradient(object):
 
             delta = delta_*np.absolute(gamma)**0.5
             self.note.cflush("\niteration : %08u   alpha = %3.1E   beta = %3.1E   delta = %3.1E"%(ii,np.real(alpha),np.real(beta),np.real(delta)))
-            if(ii==limii):
-                self.note.cprint("\n... quit.")
-                break
-            elif(gamma==0):
+            if(gamma==0):
                 convergence = clevel+1
                 self.note.cprint("   convergence level : INF\n... done.")
                 break
@@ -789,6 +786,9 @@ class conjugate_gradient(object):
                     break
             else:
                 convergence = max(0,convergence-1)
+            if(ii==limii):
+                self.note.cprint("\n... quit.")
+                break
 
             if(self.spam is not None):
                 self.spam(self.x,ii)
@@ -843,10 +843,7 @@ class conjugate_gradient(object):
 
             delta = delta_*np.absolute(gamma)**0.5
             self.note.cflush("\niteration : %08u   alpha = %3.1E   beta = %3.1E   delta = %3.1E"%(ii,np.real(alpha),np.real(beta),np.real(delta)))
-            if(ii==limii):
-                self.note.cprint("\n... quit.")
-                break
-            elif(gamma==0):
+            if(gamma==0):
                 convergence = clevel+1
                 self.note.cprint("   convergence level : INF\n... done.")
                 break
@@ -858,6 +855,9 @@ class conjugate_gradient(object):
                     break
             else:
                 convergence = max(0,convergence-1)
+            if(ii==limii):
+                self.note.cprint("\n... quit.")
+                break
 
             if(self.spam is not None):
                 self.spam(self.x,ii)
@@ -1066,10 +1066,7 @@ class steepest_descent(object):
                 alpha *= a
 
             norm = g.norm() ## gradient norm
-            if(ii==limii):
-                self.note.cprint("\n... quit.")
-                break
-            elif(delta==0):
+            if(delta==0):
                 convergence = clevel+2
                 self.note.cprint("   convergence level : %u\n... done."%convergence)
                 break
@@ -1082,6 +1079,9 @@ class steepest_descent(object):
                     break
             else:
                 convergence = max(0,convergence-1)
+            if(ii==limii):
+                self.note.cprint("\n... quit.")
+                break
 
             if(self.spam is not None):
                 self.spam(self.x,ii)

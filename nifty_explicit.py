@@ -1077,7 +1077,11 @@ class explicit_operator(operator):
 
         if(np.any(self._hidden)):
             about.warnings.cprint("WARNING: inappropriate determinant calculation.")
-        return np.linalg.det(self.weight(rowpower=0.5,colpower=0.5,overwrite=False))
+        det = np.linalg.det(self.weight(rowpower=0.5,colpower=0.5,overwrite=False))
+        if(np.isreal(det)):
+            return np.asscalar(np.real(det))
+        else:
+            return det
 
     def inverse_det(self):
         """
@@ -1103,6 +1107,44 @@ class explicit_operator(operator):
             return 1/det
         else:
             raise ValueError(about._errors.cstring("ERROR: singular matrix."))
+
+    def log_det(self):
+        """
+            Computes the logarithm of the determinant of the operator
+            (if applicable).
+
+            Returns
+            -------
+            logdet : float
+                The logarithm of the determinant
+
+            See Also
+            --------
+            numpy.linalg.slogdet
+
+            Raises
+            ------
+            ValueError
+                If `domain` and `target` are unequal or it is non-positive
+                definite matrix.
+
+        """
+        if(self.domain!=self.target):
+            raise ValueError(about._errors.cstring("ERROR: determinant ill-defined."))
+
+        if(np.any(self._hidden)):
+            about.warnings.cprint("WARNING: inappropriate determinant calculation.")
+        sign,logdet = np.linalg.slogdet(self.weight(rowpower=0.5,colpower=0.5,overwrite=False))
+        if(abs(sign)<0.1): ## abs(sign) << 1
+            raise ValueError(about._errors.cstring("ERROR: singular matrix."))
+        if(sign==-1):
+            raise ValueError(about._errors.cstring("ERROR: non-positive definite matrix."))
+        else:
+            logdet += np.log(sign)
+            if(np.isreal(logdet)):
+                return np.asscalar(np.real(logdet))
+            else:
+                return logdet
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2324,7 +2366,11 @@ def explicify(op,newdomain=None,newtarget=None,ncpu=2,nper=1,loop=False,**quargs
         raise TypeError(about._errors.cstring("ERROR: invalid input."))
     elif(newdomain is not None)and(newtarget is None)and(op.domain==op.target):
         newtarget = newdomain
-    return explicit_probing(op=op,function=op.times,domain=newdomain,codomain=newtarget,target=op.domain,ncpu=ncpu,nper=nper,**quargs)(loop=loop)
+    if(newdomain is None)or(newdomain==op.domain):
+        target_ = None
+    else:
+        target_ = op.domain
+    return explicit_probing(op=op,function=op.times,domain=newdomain,codomain=newtarget,target=target_,ncpu=ncpu,nper=nper,**quargs)(loop=loop)
 
 ##-----------------------------------------------------------------------------
 

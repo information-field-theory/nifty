@@ -385,6 +385,66 @@ def get_power_indices(axes,dgrid,zerocentered,fourier=True):
     return ind,klength,rho
 
 
+def get_power_indices2(axes,dgrid,zerocentered,fourier=True):
+    """
+        Returns the index of the Fourier grid points in a numpy
+        array, ordered following the zerocentered flag.
+
+        Parameters
+        ----------
+        axes : ndarray
+            An array with the length of each axis.
+
+        dgrid : ndarray
+            An array with the pixel length of each axis.
+
+        zerocentered : bool
+            Whether the output array should be zerocentered, i.e. starting with
+            negative Fourier modes going over the zero mode to positive modes,
+            or not zerocentered, where zero, positive and negative modes are
+            simpy ordered consecutively.
+
+        irred : bool : *optional*
+            If True, the function returns an array of all k-vector lengths and
+            their degeneracy factors. If False, just the power index array is
+            returned.
+
+        fourier : bool : *optional*
+            Whether the output should be in Fourier space or not
+            (default=False).
+
+        Returns
+        -------
+        index, klength, rho : ndarrays
+            Returns the power index array, an array of all k-vector lengths and
+            their degeneracy factors.
+
+    """
+
+    ## kdict, klength
+    if(np.any(zerocentered==False)):
+        kdict = np.fft.fftshift(nkdict_fast2(axes,dgrid,fourier),axes=shiftaxes(zerocentered,st_to_zero_mode=True))
+    else:
+        kdict = nkdict_fast2(axes,dgrid,fourier)
+
+    klength,rho,ind = nkdict_to_indices(kdict)
+
+    return ind,klength,rho
+
+
+def nkdict_to_indices(kdict):
+
+    kindex,pindex = np.unique(kdict,return_inverse=True)
+    pindex = pindex.reshape(kdict.shape)
+
+    rho = pindex.flatten()
+    rho.sort()
+    rho = np.unique(rho,return_index=True,return_inverse=False)[1]
+    rho = np.append(rho[1:]-rho[:-1],[np.prod(pindex.shape)-rho[-1]])
+
+    return kindex,rho,pindex
+
+
 def bin_power_indices(pindex,kindex,rho,log=False,nbin=None,binbounds=None):
     """
         Returns the (re)binned power indices associated with the Fourier grid.
@@ -620,6 +680,31 @@ def nkdict_fast(axes,dgrid,fourier=True):
     temp_vecs *= dk
     temp_vecs *= temp_vecs
     return np.sqrt(np.sum((temp_vecs),axis=-1))
+
+
+def nkdict_fast2(axes,dgrid,fourier=True):
+    """
+        Calculates an n-dimensional array with its entries being the lengths of
+        the k-vectors from the zero point of the grid.
+
+    """
+    if(fourier):
+        dk = dgrid
+    else:
+        dk = np.array([1/dgrid[i]/axes[i] for i in range(len(axes))])
+
+    inds = []
+    for a in axes:
+        inds += [slice(0,a)]
+
+    cords = np.ogrid[inds]
+
+    dists = ((cords[0]-axes[0]//2)*dk[0])**2
+    for ii in range(1,len(axes)):
+        dists = dists + ((cords[ii]-axes[ii]//2)*dk[ii])**2
+    dists = np.sqrt(dists)
+
+    return dists
 
 
 def nklength(kdict):

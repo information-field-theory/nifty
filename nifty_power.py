@@ -575,7 +575,7 @@ def infer_power(m,domain=None,Sk=None,D=None,pindex=None,pundex=None,kindex=None
 
 ##-----------------------------------------------------------------------------
 
-def interpolate_power(spec,mode="linear",domain=None,kindex=None,newkindex=None,**kwargs):
+def interpolate_power(spec,mode="linear",domain=None,kindex=None,newkindex=None,loglog=False,**kwargs):
     """
         Interpolates a given power spectrum at new k(-indices).
 
@@ -604,6 +604,9 @@ def interpolate_power(spec,mode="linear",domain=None,kindex=None,newkindex=None,
             Scales corresponding to each band in the new power spectrum;
             can be retrieved from `domain` if `kindex` is given
             (default: None).
+        loglog : bool, *optional*
+            Flag specifying whether the interpolation is done on log-log-scale
+            (ignoring the monopole) or not (default: False)
 
         Returns
         -------
@@ -719,7 +722,13 @@ def interpolate_power(spec,mode="linear",domain=None,kindex=None,newkindex=None,
         spec = np.r_[spec,np.exp(2*np.log(spec[-1])-np.log(spec[-nmirror:-1][::-1]))]
         kindex = np.r_[kindex,(2*kindex[-1]-kindex[-nmirror:-1][::-1])]
     ## interpolation
-    newspec = ip(kindex,spec,kind=mode,axis=0,copy=True,bounds_error=True,fill_value=np.NAN)(newkindex)
+    if(loglog):
+        ## map to log-log-scale ignoring monopole
+        logspec = np.log(spec[1:])
+        logspec = ip(np.log(kindex[1:]),logspec,kind=mode,axis=0,copy=True,bounds_error=True,fill_value=np.NAN)(np.log(newkindex[1:]))
+        newspec = np.concatenate([[spec[0]],np.exp(logspec)])
+    else:
+        newspec = ip(kindex,spec,kind=mode,axis=0,copy=True,bounds_error=True,fill_value=np.NAN)(newkindex)
     ## check new power spectrum
     if(not np.all(np.isfinite(newspec))):
         raise ValueError(about._errors.cstring("ERROR: infinite value(s)."))
