@@ -691,7 +691,7 @@ class explicit_operator(operator):
                 If it is no square matrix.
 
         """
-        return self._inverse_adjoint_times(x,**kwargs)
+        return self.inverse_adjoint_times(x,**kwargs)
 
     def inverse_adjoint_times(self,x,**kwargs):
         """

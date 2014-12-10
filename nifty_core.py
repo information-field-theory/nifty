@@ -514,7 +514,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.9.0"
+        self._version = "0.9.2"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -1238,7 +1238,7 @@ class space(object):
                 if(self.datatype is not x.domain.datatype):
                     raise TypeError(about._errors.cstring("ERROR: inequal data types ( '"+str(np.result_type(self.datatype))+"' <> '"+str(np.result_type(x.domain.datatype))+"' )."))
                 else:
-                    x = x.val
+                    x = np.copy(x.val,order='C')
             else:
                 raise ValueError(about._errors.cstring("ERROR: inequal domains."))
         else:
@@ -5952,7 +5952,7 @@ class nested_space(space):
                 for ii in xrange(len(self.nest)):
                     reorder += range(lim[ii][0],lim[ii][1])
                 ## permute
-                Tx = np.copy(x)
+                Tx = np.copy(x,order='C')
                 for ii in xrange(len(reorder)):
                     while(reorder[ii]!=ii):
                         Tx = np.swapaxes(Tx,ii,reorder[ii])
