@@ -749,7 +749,7 @@ class conjugate_gradient(object):
         gamma = r.dot(d)
         if(gamma==0):
             return self.x,clevel+1
-        delta_ = self.b.norm**(-1)#np.absolute(gamma)**(-0.5) ## independent
+        delta_ = np.absolute(gamma)**(-0.5)
 
         convergence = 0
         ii = 1
@@ -815,7 +815,7 @@ class conjugate_gradient(object):
         gamma = r.dot(d)
         if(gamma==0):
             return self.x,clevel+1
-        delta_ = self.b.norm**(-1)#np.absolute(gamma)**(-0.5) ## independent
+        delta_ = np.absolute(gamma)**(-0.5)
 
         convergence = 0
         ii = 1

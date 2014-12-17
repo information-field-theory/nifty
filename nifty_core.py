@@ -514,7 +514,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.9.2"
+        self._version = "0.9.3"
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -1238,7 +1238,7 @@ class space(object):
                 if(self.datatype is not x.domain.datatype):
                     raise TypeError(about._errors.cstring("ERROR: inequal data types ( '"+str(np.result_type(self.datatype))+"' <> '"+str(np.result_type(x.domain.datatype))+"' )."))
                 else:
-                    x = np.copy(x.val,order='C')
+                    x = np.copy(x.val)
             else:
                 raise ValueError(about._errors.cstring("ERROR: inequal domains."))
         else:
@@ -2527,7 +2527,7 @@ class rg_space(space):
                 if(self.datatype is not x.domain.datatype):
                     raise TypeError(about._errors.cstring("ERROR: inequal data types ( '"+str(np.result_type(self.datatype))+"' <> '"+str(np.result_type(x.domain.datatype))+"' )."))
                 else:
-                    x = x.val
+                    x = np.copy(x.val)
             else:
                 raise ValueError(about._errors.cstring("ERROR: inequal domains."))
         else:
@@ -3561,7 +3561,7 @@ class lm_space(space):
                 if(self.datatype is not x.domain.datatype):
                     raise TypeError(about._errors.cstring("ERROR: inequal data types ( '"+str(np.result_type(self.datatype))+"' <> '"+str(np.result_type(x.domain.datatype))+"' )."))
                 else:
-                    x = x.val
+                    x = np.copy(x.val)
             else:
                 raise ValueError(about._errors.cstring("ERROR: inequal domains."))
         else:
@@ -5513,7 +5513,7 @@ class nested_space(space):
                 if(self.datatype is not x.domain.datatype):
                     raise TypeError(about._errors.cstring("ERROR: inequal data types ( '"+str(np.result_type(self.datatype))+"' <> '"+str(np.result_type(x.domain.datatype))+"' )."))
                 else:
-                    x = x.val
+                    x = np.copy(x.val)
             elif(self.nest[-1]==x.domain):
                 if(self.datatype is not x.domain.datatype):
                     raise TypeError(about._errors.cstring("ERROR: inequal data types ( '"+str(np.result_type(self.datatype))+"' <> '"+str(np.result_type(x.domain.datatype))+"' )."))
