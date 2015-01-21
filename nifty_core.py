@@ -163,7 +163,7 @@ import powerspectrum as gp
 
 pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679
 
-__version__ = "0.9.5"
+__version__ = "0.9.6"
 
 
 ##-----------------------------------------------------------------------------
@@ -10429,11 +10429,11 @@ class response_operator(operator):
                 for ii in xrange(np.size(assign,axis=1)):
                     if(np.any(assign[:,ii]>=self.domain.dim(split=True)[ii]))or(np.any(assign[:,ii]<-self.domain.dim(split=True)[ii])):
                         raise IndexError(about._errors.cstring("ERROR: invalid bounds."))
-        self.assign = assign.T ## transpose
+        self.assign = assign ## transpose
 
         if(target is None):
             ## set target
-            target = point_space(np.size(assign,axis=0),datatype=self.domain.datatype)
+            target = point_space(np.size(self.assign,axis=0),datatype=self.domain.datatype)
         else:
             ## check target
             if(not isinstance(target,space)):
@@ -10442,8 +10442,8 @@ class response_operator(operator):
                 raise ValueError(about._errors.cstring("ERROR: continuous codomain.")) ## discrete(!)
             elif(np.size(target.dim(split=True))!=1):
                 raise ValueError(about._errors.cstring("ERROR: structured codomain.")) ## unstructured(!)
-            elif(np.size(assign,axis=0)!=target.dim(split=False)):
-                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(assign,axis=0))+" <> "+str(target.dim(split=False))+" )."))
+            elif(np.size(self.assign,axis=0)!=target.dim(split=False)):
+                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(self.assign,axis=0))+" <> "+str(target.dim(split=False))+" )."))
         self.target = target
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -10493,13 +10493,14 @@ class response_operator(operator):
         ## mask
         x_ *= self.mask
         ## assign
-        #return x_[self.assign.tolist()]
-        return field(self.target,val=x_[self.assign.tolist()],target=kwargs.get("target",None))
+        #return x_[self.assign.T.tolist()]
+        return field(self.target,val=x_[self.assign.T.tolist()],target=kwargs.get("target",None))
 
     def _adjoint_multiply(self,x,**kwargs): ## > applies the adjoint operator to a given field
         x_ = np.zeros(self.domain.dim(split=True),dtype=self.domain.datatype,order='C')
         ## assign (transposed)
-        x_[self.assign.tolist()] += x.val.flatten(order='C')
+        for ii in xrange(np.size(self.assign,axis=0)):
+            x_[np.array([self.assign[ii]]).T.tolist()] += x[ii]
         ## mask
         x_ *= self.mask
         ## smooth

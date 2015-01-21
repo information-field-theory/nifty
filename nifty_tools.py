@@ -1006,6 +1006,8 @@ class steepest_descent(object):
         self.c = c ## 0 < c1 < c2 < 1
         self.note = notification(default=bool(note))
 
+        self._alpha = None ## last alpha
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __call__(self,x0,alpha=1,tol=1E-4,clevel=8,limii=100000):
@@ -1040,6 +1042,10 @@ class steepest_descent(object):
         if(not isinstance(x0,field)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.x = x0
+
+        ## check for exsisting alpha
+        if(alpha is None)and(self._alpha is not None):
+            alpha = self._alpha
 
         clevel = max(1,int(clevel))
         limii = int(limii)
@@ -1090,6 +1096,10 @@ class steepest_descent(object):
 
         if(self.spam is not None):
             self.spam(self.x,ii)
+
+        ## memorise last alpha
+        if(alpha is not None):
+            self._alpha = alpha/a ## undo update
 
         return self.x,convergence
 
