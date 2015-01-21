@@ -163,6 +163,8 @@ import powerspectrum as gp
 
 pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679
 
+__version__ = "0.9.5"
+
 
 ##-----------------------------------------------------------------------------
 
@@ -514,7 +516,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.9.3"
+        self._version = str(__version__)
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)

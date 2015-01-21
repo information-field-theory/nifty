@@ -25,38 +25,7 @@ from nifty_cmaps import *
 from nifty_power import *
 from nifty_tools import *
 from nifty_explicit import *
-
 #from nifty_power_conversion import *
+from demos import *
+from pickling import *
 
-
-##-----------------------------------------------------------------------------
-
-import copy_reg as cr
-from types import MethodType as mt
-
-
-def _pickle_method(method):
-    fct_name = method.im_func.__name__
-    obj = method.im_self
-    cl = method.im_class
-    ## handle mangled function name
-    if(fct_name.startswith("__"))and(not fct_name.endswith("__")):
-        cl_name = cl.__name__.lstrip("_")
-        fct_name = "_" + cl_name + fct_name
-    return _unpickle_method, (fct_name, obj, cl)
-
-
-def _unpickle_method(fct_name, obj, cl):
-    for oo in cl.__mro__:
-        try:
-            fct = oo.__dict__[fct_name]
-        except(KeyError):
-            pass
-        else:
-            break
-    return fct.__get__(obj, cl)
-
-## enable instance methods pickling
-cr.pickle(mt, _pickle_method, _unpickle_method)
-
-##-----------------------------------------------------------------------------
