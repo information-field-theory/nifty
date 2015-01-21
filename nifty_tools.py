@@ -1044,8 +1044,11 @@ class steepest_descent(object):
         self.x = x0
 
         ## check for exsisting alpha
-        if(alpha is None)and(self._alpha is not None):
-            alpha = self._alpha
+        if(alpha is None):
+            if(self._alpha is not None):
+                alpha = self._alpha
+            else:
+                alpha = 1
 
         clevel = max(1,int(clevel))
         limii = int(limii)
