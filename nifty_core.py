@@ -10620,8 +10620,8 @@ class probing(object):
         ncpu : int, *optional*
             the number of cpus to be used from parallel probing. (default: 2)
         nrun : int, *optional*
-            the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
-            set to `ncpu**2`. (default: 8)
+            the number of probes to be evaluated. If `nrun<ncpu`, it will be
+            set to `ncpu`. (default: 8)
         nper : int, *optional*
             this number specifies how many probes will be evaluated by one
             worker. Afterwards a new worker will be created to evaluate a chunk
@@ -10700,8 +10700,8 @@ class probing(object):
         ncpu : int, *optional*
             the number of cpus to be used from parallel probing. (default: 2)
         nrun : int, *optional*
-            the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
-            set to `ncpu**2`. (default: 8)
+            the number of probes to be evaluated. If `nrun<ncpu`, it will be
+            set to `ncpu`. (default: 8)
         nper : int, *optional*
             this number specifies how many probes will be evaluated by one
             worker. Afterwards a new worker will be created to evaluate a chunk
@@ -10770,7 +10770,7 @@ class probing(object):
         self.random = random
 
         self.ncpu = int(max(1,ncpu))
-        self.nrun = int(max(self.ncpu**2,nrun))
+        self.nrun = int(max(self.ncpu,nrun))
         if(nper is None):
             self.nper = None
         else:
@@ -10793,8 +10793,8 @@ class probing(object):
             ncpu : int, *optional*
                 the number of cpus to be used for parallel probing. (default: 2)
             nrun : int, *optional*
-                the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
-                set to `ncpu**2`. (default: 8)
+                the number of probes to be evaluated. If `nrun<ncpu`, it will be
+                set to `ncpu`. (default: 8)
             nper : int, *optional*
                 number of probes, that will be evaluated by one worker (default: 1)
             var : bool, *optional*
@@ -10809,7 +10809,7 @@ class probing(object):
         if("ncpu" in kwargs):
             self.ncpu = int(max(1,kwargs.get("ncpu")))
         if("nrun" in kwargs):
-            self.nrun = int(max(self.ncpu**2,kwargs.get("nrun")))
+            self.nrun = int(max(self.ncpu,kwargs.get("nrun")))
         if("nper" in kwargs):
             if(kwargs.get("nper") is None):
                 self.nper = None
@@ -11104,8 +11104,8 @@ class trace_probing(probing):
         ncpu : int, *optional*
             the number of cpus to be used from parallel probing. (default: 2)
         nrun : int, *optional*
-            the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
-            set to `ncpu**2`. (default: 8)
+            the number of probes to be evaluated. If `nrun<ncpu`, it will be
+            set to `ncpu`. (default: 8)
         nper : int, *optional*
             this number specifies how many probes will be evaluated by one
             worker. Afterwards a new worker will be created to evaluate a chunk
@@ -11186,8 +11186,8 @@ class trace_probing(probing):
         ncpu : int, *optional*
             the number of cpus to be used from parallel probing. (default: 2)
         nrun : int, *optional*
-            the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
-            set to `ncpu**2`. (default: 8)
+            the number of probes to be evaluated. If `nrun<ncpu`, it will be
+            set to `ncpu`. (default: 8)
         nper : int, *optional*
             this number specifies how many probes will be evaluated by one
             worker. Afterwards a new worker will be created to evaluate a chunk
@@ -11256,7 +11256,7 @@ class trace_probing(probing):
         self.random = random
 
         self.ncpu = int(max(1,ncpu))
-        self.nrun = int(max(self.ncpu**2,nrun))
+        self.nrun = int(max(self.ncpu,nrun))
         if(nper is None):
             self.nper = None
         else:
@@ -11468,8 +11468,8 @@ class diagonal_probing(probing):
         ncpu : int, *optional*
             the number of cpus to be used for parallel probing. (default: 2)
         nrun : int, *optional*
-            the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
-            set to `ncpu**2`. (default: 8)
+            the number of probes to be evaluated. If `nrun<ncpu`, it will be
+            set to `ncpu`. (default: 8)
         nper : int, *optional*
             this number specifies how many probes will be evaluated by one
             worker. Afterwards a new worker will be created to evaluate a chunk
@@ -11567,8 +11567,8 @@ class diagonal_probing(probing):
         ncpu : int, *optional*
             the number of cpus to be used for parallel probing. (default: 2)
         nrun : int, *optional*
-            the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
-            set to `ncpu**2`. (default: 8)
+            the number of probes to be evaluated. If `nrun<ncpu`, it will be
+            set to `ncpu`. (default: 8)
         nper : int, *optional*
             this number specifies how many probes will be evaluated by one
             worker. Afterwards a new worker will be created to evaluate a chunk
@@ -11650,7 +11650,7 @@ class diagonal_probing(probing):
         self.random = random
 
         self.ncpu = int(max(1,ncpu))
-        self.nrun = int(max(self.ncpu**2,nrun))
+        self.nrun = int(max(self.ncpu,nrun))
         if(nper is None):
             self.nper = None
         else:
@@ -11683,8 +11683,8 @@ class diagonal_probing(probing):
                 the number of cpus to be used for parallel probing
                 (default: 2)
             nrun : int, *optional*
-                the number of probes to be evaluated. If `nrun<ncpu**2`, it will
-                be set to `ncpu**2`. (default: 8)
+                the number of probes to be evaluated. If `nrun<ncpu`, it will
+                be set to `ncpu`. (default: 8)
             nper : int, *optional*
                 number of probes, that will be evaluated by one worker
                 (default: 1)
@@ -11708,7 +11708,7 @@ class diagonal_probing(probing):
         if("ncpu" in kwargs):
             self.ncpu = int(max(1,kwargs.get("ncpu")))
         if("nrun" in kwargs):
-            self.nrun = int(max(self.ncpu**2,kwargs.get("nrun")))
+            self.nrun = int(max(self.ncpu,kwargs.get("nrun")))
         if("nper" in kwargs):
             if(kwargs.get("nper") is None):
                 self.nper = None
