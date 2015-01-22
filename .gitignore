@@ -14,6 +14,7 @@ build
 
 demos/*
 !demos/__init__.py
+!demos/demos_core.py
 !demos/demo_faraday.py
 !demos/demo_faraday_map.npy
 !demos/demo_excaliwir.py
