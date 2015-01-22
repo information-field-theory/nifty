@@ -38,20 +38,20 @@
 
 """
 from __future__ import division
-from nifty_core import *
-#from sys import stdout as so
-#import numpy as np
-#import pylab as pl
-#from matplotlib.colors import LogNorm as ln
-#from matplotlib.ticker import LogFormatter as lf
-#from multiprocessing import Pool as mp
-#from multiprocessing import Value as mv
-#from multiprocessing import Array as ma
-#from nifty_core import about,                                                \
-#                       space,                                                \
-#                       field,                                                \
-#                       operator,diagonal_operator,identity,vecvec_operator,  \
-#                       probing
+#from nifty_core import *
+from sys import stdout as so
+import numpy as np
+import pylab as pl
+from matplotlib.colors import LogNorm as ln
+from matplotlib.ticker import LogFormatter as lf
+from multiprocessing import Pool as mp
+from multiprocessing import Value as mv
+from multiprocessing import Array as ma
+from nifty_core import about,                                                \
+                       space,                                                \
+                       field,                                                \
+                       operator,diagonal_operator,identity,vecvec_operator,  \
+                       probing
 
 
 ##-----------------------------------------------------------------------------

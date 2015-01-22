@@ -48,7 +48,7 @@ about.infos.off()
 ##-----------------------------------------------------------------------------
 
 # (global) Faraday map
-m = field(hp_space(128), val=np.load("demo_faraday_map.npy"))
+m = field(hp_space(128), val=np.load(os.path.join(get_demo_dir(),"demo_faraday_map.npy")))
 
 ##-----------------------------------------------------------------------------
 

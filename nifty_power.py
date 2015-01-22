@@ -42,12 +42,12 @@
 """
 from __future__ import division
 from scipy.interpolate import interp1d as ip ## FIXME: conflicts with sphinx's autodoc
-from nifty_core import *
-#import numpy as np
-#from nifty_core import about,                                                \
-#                       space,                                                \
-#                       field,                                                \
-#                       projection_operator
+#from nifty_core import *
+import numpy as np
+from nifty_core import about,                                                \
+                       space,                                                \
+                       field,                                                \
+                       projection_operator
 import smoothing as gs
 
 

@@ -163,7 +163,7 @@ import powerspectrum as gp
 
 pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679
 
-__version__ = "0.9.6"
+__version__ = "0.9.7"
 
 
 ##-----------------------------------------------------------------------------
@@ -5954,7 +5954,7 @@ class nested_space(space):
                 for ii in xrange(len(self.nest)):
                     reorder += range(lim[ii][0],lim[ii][1])
                 ## permute
-                Tx = np.copy(x,order='C')
+                Tx = np.copy(x)
                 for ii in xrange(len(reorder)):
                     while(reorder[ii]!=ii):
                         Tx = np.swapaxes(Tx,ii,reorder[ii])
@@ -9176,7 +9176,7 @@ class diagonal_operator(operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_random_field(self,domain=None,target=None,**kwargs):
+    def get_random_field(self,domain=None,target=None):
         """
             Generates a Gaussian random field with variance equal to the
             diagonal.
@@ -9196,8 +9196,6 @@ class diagonal_operator(operator):
                 Random field.
 
         """
-        if(len(kwargs)):  ## TODO: remove **kwargs in future version
-            about.warnings.cprint("WARNING: deprecated keyword(s).")
         ## weight if ...
         if(not self.domain.discrete):
             diag = self.domain.calc_weight(self.val,power=-1)
@@ -10404,36 +10402,47 @@ class response_operator(operator):
         self.sigma = sigma
 
         ## check assignment(s)
-        if(np.size(self.domain.dim(split=True))==1):
-            if(assign is None):
-                assign = np.arange(self.domain.dim(split=False),dtype=np.int)
-            elif(np.isscalar(assign)):
-                assign = np.array([assign],dtype=np.int)
+        if(assign is None):
+            ## 1:1 assignment
+            assignments = self.domain.dim(split=False)
+            self.assign = None
+        elif(np.size(self.domain.dim(split=True))==1):
+            if(np.isscalar(assign)):
+                ## X:1 assignment
+                assignments = 1
                 if(assign[0]>=self.domain.dim(split=False))or(assign[0]<-self.domain.dim(split=False)):
                     raise IndexError(about._errors.cstring("ERROR: invalid bounds."))
+                self.assign = [int(assign)]
             else:
                 assign = np.array(assign,dtype=np.int)
+                assignments = len(assign)
                 if(np.ndim(assign)!=1):
                     raise ValueError(about._errors.cstring("ERROR: invalid input."))
                 elif(np.any(assign>=self.domain.dim(split=False)))or(np.any(assign<-self.domain.dim(split=False))):
                     raise IndexError(about._errors.cstring("ERROR: invalid bounds."))
+                if(assignments==len(np.unique(assign,return_index=False,return_inverse=False))):
+                    self.assign = assign.tolist()
+                else:
+                    self.assign = assign
         else:
-            if(assign is None):
-                assign = np.array([ii for ii in np.ndindex(tuple(self.domain.dim(split=True)))],dtype=np.int)
-            elif(np.isscalar(assign)):
+            if(np.isscalar(assign)):
                 raise ValueError(about._errors.cstring("ERROR: invalid input."))
             else:
                 assign = np.array(assign,dtype=np.int)
+                assignments = np.size(assign,axis=0)
                 if(np.ndim(assign)!=2)or(np.size(assign,axis=1)!=np.size(self.domain.dim(split=True))):
                     raise ValueError(about._errors.cstring("ERROR: invalid input."))
                 for ii in xrange(np.size(assign,axis=1)):
                     if(np.any(assign[:,ii]>=self.domain.dim(split=True)[ii]))or(np.any(assign[:,ii]<-self.domain.dim(split=True)[ii])):
                         raise IndexError(about._errors.cstring("ERROR: invalid bounds."))
-        self.assign = assign ## transpose
+                if(assignments==len(np.unique(np.ravel_multi_index(assign.T,self.domain.dim(split=True),mode="raise",order='C'),return_index=False,return_inverse=False))):
+                    self.assign = assign.T.tolist()
+                else:
+                    self.assign = assign
 
         if(target is None):
             ## set target
-            target = point_space(np.size(self.assign,axis=0),datatype=self.domain.datatype)
+            target = point_space(assignments,datatype=self.domain.datatype)
         else:
             ## check target
             if(not isinstance(target,space)):
@@ -10442,8 +10451,8 @@ class response_operator(operator):
                 raise ValueError(about._errors.cstring("ERROR: continuous codomain.")) ## discrete(!)
             elif(np.size(target.dim(split=True))!=1):
                 raise ValueError(about._errors.cstring("ERROR: structured codomain.")) ## unstructured(!)
-            elif(np.size(self.assign,axis=0)!=target.dim(split=False)):
-                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(self.assign,axis=0))+" <> "+str(target.dim(split=False))+" )."))
+            elif(assignments!=target.dim(split=False)):
+                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(assignments)+" <> "+str(target.dim(split=False))+" )."))
         self.target = target
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -10492,15 +10501,24 @@ class response_operator(operator):
         x_ = self.domain.calc_smooth(x.val,sigma=self.sigma)
         ## mask
         x_ *= self.mask
-        ## assign
-        #return x_[self.assign.T.tolist()]
-        return field(self.target,val=x_[self.assign.T.tolist()],target=kwargs.get("target",None))
+        ## assign and return
+        if(self.assign is None):
+            return field(self.target,val=x_,target=kwargs.get("target",None))
+        elif(isinstance(self.assign,list)):
+            return field(self.target,val=x_[self.assign],target=kwargs.get("target",None))
+        else:
+            return field(self.target,val=x_[self.assign.T.tolist()],target=kwargs.get("target",None))
 
     def _adjoint_multiply(self,x,**kwargs): ## > applies the adjoint operator to a given field
         x_ = np.zeros(self.domain.dim(split=True),dtype=self.domain.datatype,order='C')
         ## assign (transposed)
-        for ii in xrange(np.size(self.assign,axis=0)):
-            x_[np.array([self.assign[ii]]).T.tolist()] += x[ii]
+        if(self.assign is None):
+            x_ = np.copy(x.val.flatten(order='C'))
+        elif(isinstance(self.assign,list)):
+            x_[self.assign] += x.val.flatten(order='C')
+        else:
+            for ii in xrange(np.size(self.assign,axis=0)):
+                x_[np.array([self.assign[ii]]).T.tolist()] += x[ii]
         ## mask
         x_ *= self.mask
         ## smooth

@@ -1,7 +1,7 @@
 ## NIFTY (Numerical Information Field Theory) has been developed at the
 ## Max-Planck-Institute for Astrophysics.
 ##
-## Copyright (C) 2014 Max-Planck-Society
+## Copyright (C) 2015 Max-Planck-Society
 ##
 ## Author: Marco Selig
 ## Project homepage: <http://www.mpa-garching.mpg.de/ift/nifty/>

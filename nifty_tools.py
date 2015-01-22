@@ -37,12 +37,12 @@
 
 """
 from __future__ import division
-from nifty_core import *
-#import numpy as np
-#from nifty_core import notification,about,                                   \
-#                       space,                                                \
-#                       field,                                                \
-#                       operator,diagonal_operator
+#from nifty_core import *
+import numpy as np
+from nifty_core import notification,about,                                   \
+                       space,                                                \
+                       field,                                                \
+                       operator,diagonal_operator
 
 
 ##-----------------------------------------------------------------------------
