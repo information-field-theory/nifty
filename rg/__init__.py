@@ -1,7 +1,7 @@
 ## NIFTY (Numerical Information Field Theory) has been developed at the
 ## Max-Planck-Institute for Astrophysics.
 ##
-## Copyright (C) 2013 Max-Planck-Society
+## Copyright (C) 2015 Max-Planck-Society
 ##
 ## Author: Marco Selig
 ## Project homepage: <http://www.mpa-garching.mpg.de/ift/nifty/>
@@ -20,18 +20,5 @@
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division
-from nifty_core import * ## imports `about`
-from nifty_cmaps import *
-from nifty_power import *
-from nifty_tools import *
-from nifty_explicit import *
-
-## optional submodule `rg`
-try:
-    from rg import *
-except(ImportError):
-    pass
-
-from demos import *
-from pickling import *
+from nifty_rg import *
 
