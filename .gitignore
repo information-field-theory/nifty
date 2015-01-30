@@ -18,7 +18,13 @@ rg/*
 !rg/nifty_power_conversion_rg.py
 !rg/gfft_rg.py
 !rg/powerspectrum.py
-!rg/smoothing.py
+
+lm/*
+!rg/__init__.py
+!rg/nifty_lm.py
+!rg/nifty_gl.py
+!rg/nifty_hp.py
+!rg/nifty_power_conversion_lm.py
 
 demos/*
 !demos/__init__.py
