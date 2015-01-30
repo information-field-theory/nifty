@@ -43,7 +43,7 @@ from nifty.nifty_core import about,                                          \
                              space,                                          \
                              field
 import nifty.smoothing as gs
-import nifty.powerspectrum as gp
+import powerspectrum as gp
 try:
     import gfft as gf
 except(ImportError):
