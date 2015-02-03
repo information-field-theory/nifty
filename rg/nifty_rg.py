@@ -28,7 +28,7 @@
     ..  /__/ /__/ /__/ /__/    \___/  \___   /  rg
     ..                               /______/
 
-    This submodule for regular Cartesian grids.
+    NIFTY submodule for regular Cartesian grids.
 
 """
 from __future__ import division

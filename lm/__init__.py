@@ -20,6 +20,25 @@
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division
-#from nifty_rg import *
+
+#from nifty_lm import *
+try:
+    import libsharp_wrapper_gl as gl
+except(ImportError):
+    try:
+        import healpy as hp
+    except(ImportError):
+        pass ## import nothing
+    else:
+        from nifty_lm import lm_space,hp_space ## import lm & hp
+        ## TODO: change about
+else:
+    try:
+        import healpy as hp
+    except(ImportError):
+        from nifty_lm import lm_space,gl_space ## import lm & gl
+    else:
+        from nifty_lm import lm_space,gl_space,hp_space ## import all 3
+
 from nifty_power_conversion_lm import *
 

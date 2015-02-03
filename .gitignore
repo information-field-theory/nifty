@@ -22,8 +22,6 @@ rg/*
 lm/*
 !lm/__init__.py
 !lm/nifty_lm.py
-!lm/nifty_gl.py
-!lm/nifty_hp.py
 !lm/nifty_power_conversion_lm.py
 
 demos/*
