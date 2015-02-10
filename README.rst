@@ -111,24 +111,25 @@ obtained by cloning the repository::
 Installation
 ............
 
-(a) NIFTY can be installed using **pip** by running the following command::
+*   NIFTY can be installed using `PyPI <https://pypi.python.org/pypi>`_ and
+    **pip** by running the following command::
 
-    pip install nifty
+        pip install nifty
 
-Alternatively, a private or user specific installation can be done by::
+    Alternatively, a private or user specific installation can be done by::
 
-    pip install --user nifty
+        pip install --user nifty
 
 
-(b) NIFTY can be installed using **Distutils** by running the
-following command::
+*   NIFTY can be installed using **Distutils** by running the following
+    command::
 
-    python setup.py install
+        python setup.py install
 
-Alternatively, a private or user specific installation can be done by::
+    Alternatively, a private or user specific installation can be done by::
 
-    python setup.py install --user
-    python setup.py install --install-lib=/SOMEWHERE
+        python setup.py install --user
+        python setup.py install --install-lib=/SOMEWHERE
 
 Acknowledgement
 ---------------
