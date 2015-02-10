@@ -91,7 +91,7 @@ Requirements
 
 *   `HEALPy <https://github.com/healpy/healpy>`_ (v1.4 without openmp) - A
     Python wrapper for `HEALPix <http://sourceforge.net/projects/healpix/>`_ -
-     - **optional**
+    **optional**
 
 *   `libsharp-wrapper <https://github.com/mselig/libsharp-wrapper>`_ (v0.1.2
     without openmp) - A Python wrapper for the
