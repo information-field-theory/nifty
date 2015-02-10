@@ -1,7 +1,7 @@
 ## NIFTY (Numerical Information Field Theory) has been developed at the
 ## Max-Planck-Institute for Astrophysics.
 ##
-## Copyright (C) 2013 Max-Planck-Society
+## Copyright (C) 2015 Max-Planck-Society
 ##
 ## Author: Marco Selig
 ## Project homepage: <http://www.mpa-garching.mpg.de/ift/nifty/>
@@ -19,25 +19,20 @@
 ## You should have received a copy of the GNU General Public License
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import division
-from nifty_core import * ## imports `about`
-from nifty_cmaps import *
-from nifty_power import *
-from nifty_tools import *
-from nifty_explicit import *
+"""
+    NIFTY provides a number of demonstrations that you can run either using
+    ``execfile`` provided with (absolute or relative) file names or using
+    ``run -m`` providing the module name. You can retrieve the directory of
+    the NIFTY demos calling :py:func:`get_demo_dir`.
 
-## optional submodule `rg`
-try:
-    from rg import *
-except(ImportError):
-    pass
+"""
+import os
+import nifty as nt
 
-## optional submodule `lm`
-try:
-    from lm import *
-except(ImportError):
-    pass
+def get_demo_dir():
+    """
+        Returns the path of the NIFTY demos directory.
 
-from demos import *
-from pickling import *
+    """
+    return os.path.split(nt.demos.__file__)[0]
 

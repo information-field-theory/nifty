@@ -12,8 +12,21 @@
 .spyderproject
 build
 
+rg/*
+!rg/__init__.py
+!rg/nifty_rg.py
+!rg/nifty_power_conversion_rg.py
+!rg/gfft_rg.py
+!rg/powerspectrum.py
+
+lm/*
+!lm/__init__.py
+!lm/nifty_lm.py
+!lm/nifty_power_conversion_lm.py
+
 demos/*
 !demos/__init__.py
+!demos/demos_core.py
 !demos/demo_faraday.py
 !demos/demo_faraday_map.npy
 !demos/demo_excaliwir.py

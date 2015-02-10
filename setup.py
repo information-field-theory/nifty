@@ -23,12 +23,12 @@ from distutils.core import setup
 import os
 
 setup(name="nifty",
-      version="0.9.0",
+      version="1.0.6",
       description="Numerical Information Field Theory",
       author="Marco Selig",
       author_email="mselig@mpa-garching.mpg.de",
       url="http://www.mpa-garching.mpg.de/ift/nifty/",
-      packages=["nifty", "nifty.demos"],
+      packages=["nifty", "nifty.demos", "nifty.rg", "nifty.lm"],
       package_dir={"nifty": ""},
       data_files=[(os.path.expanduser('~') + "/.nifty", ["nifty_config"])])
 

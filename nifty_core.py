@@ -140,25 +140,17 @@
       :py:func:`interpolate_power`
 
 """
-## standard libraries
 from __future__ import division
 import os
-#import sys
 from sys import stdout as so
 import numpy as np
 import pylab as pl
-from matplotlib.colors import LogNorm as ln
-from matplotlib.ticker import LogFormatter as lf
 from multiprocessing import Pool as mp
 from multiprocessing import Value as mv
 from multiprocessing import Array as ma
-## third party libraries
-import gfft as gf
-import healpy as hp
-import libsharp_wrapper_gl as gl
-## internal libraries
-import smoothing as gs
-import powerspectrum as gp
+
+
+__version__ = "1.0.6"
 
 
 pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679
@@ -514,7 +506,7 @@ class _about(object): ## nifty support class for global settings
 
         """
         ## version
-        self._version = "0.9.0"
+        self._version = str(__version__)
 
         ## switches and notifications
         self._errors = notification(default=True,ccode=notification._code)
@@ -1238,7 +1230,7 @@ class space(object):
                 if(self.datatype is not x.domain.datatype):
                     raise TypeError(about._errors.cstring("ERROR: inequal data types ( '"+str(np.result_type(self.datatype))+"' <> '"+str(np.result_type(x.domain.datatype))+"' )."))
                 else:
-                    x = x.val
+                    x = np.copy(x.val)
             else:
                 raise ValueError(about._errors.cstring("ERROR: inequal domains."))
         else:
@@ -2104,3247 +2096,2080 @@ class point_space(space):
 
 
 
-##-----------------------------------------------------------------------------
-
-class rg_space(space):
-    """
-        ..      _____   _______
-        ..    /   __/ /   _   /
-        ..   /  /    /  /_/  /
-        ..  /__/     \____  /  space class
-        ..          /______/
-
-        NIFTY subclass for spaces of regular Cartesian grids.
-
-        Parameters
-        ----------
-        num : {int, numpy.ndarray}
-            Number of gridpoints or numbers of gridpoints along each axis.
-        naxes : int, *optional*
-            Number of axes (default: None).
-        zerocenter : {bool, numpy.ndarray}, *optional*
-            Whether the Fourier zero-mode is located in the center of the grid
-            (or the center of each axis speparately) or not (default: True).
-        hermitian : bool, *optional*
-            Whether the fields living in the space follow hermitian symmetry or
-            not (default: True).
-        purelyreal : bool, *optional*
-            Whether the field values are purely real (default: True).
-        dist : {float, numpy.ndarray}, *optional*
-            Distance between two grid points along each axis (default: None).
-        fourier : bool, *optional*
-            Whether the space represents a Fourier or a position grid
-            (default: False).
-
-        Notes
-        -----
-        Only even numbers of grid points per axis are supported.
-        The basis transformations between position `x` and Fourier mode `k`
-        rely on (inverse) fast Fourier transformations using the
-        :math:`exp(2 \pi i k^\dagger x)`-formulation.
-
-        Attributes
-        ----------
-        para : numpy.ndarray
-            One-dimensional array containing information on the axes of the
-            space in the following form: The first entries give the grid-points
-            along each axis in reverse order; the next entry is 0 if the
-            fields defined on the space are purely real-valued, 1 if they are
-            hermitian and complex, and 2 if they are not hermitian, but
-            complex-valued; the last entries hold the information on whether
-            the axes are centered on zero or not, containing a one for each
-            zero-centered axis and a zero for each other one, in reverse order.
-        datatype : numpy.dtype
-            Data type of the field values for a field defined on this space,
-            either ``numpy.float64`` or ``numpy.complex128``.
-        discrete : bool
-            Whether or not the underlying space is discrete, always ``False``
-            for regular grids.
-        vol : numpy.ndarray
-            One-dimensional array containing the distances between two grid
-            points along each axis, in reverse order. By default, the total
-            length of each axis is assumed to be one.
-        fourier : bool
-            Whether or not the grid represents a Fourier basis.
-    """
-    epsilon = 0.0001 ## relative precision for comparisons
-
-    def __init__(self,num,naxes=None,zerocenter=True,hermitian=True,purelyreal=True,dist=None,fourier=False):
-        """
-            Sets the attributes for an rg_space class instance.
-
-            Parameters
-            ----------
-            num : {int, numpy.ndarray}
-                Number of gridpoints or numbers of gridpoints along each axis.
-            naxes : int, *optional*
-                Number of axes (default: None).
-            zerocenter : {bool, numpy.ndarray}, *optional*
-                Whether the Fourier zero-mode is located in the center of the
-                grid (or the center of each axis speparately) or not
-                (default: True).
-            hermitian : bool, *optional*
-                Whether the fields living in the space follow hermitian
-                symmetry or not (default: True).
-            purelyreal : bool, *optional*
-                Whether the field values are purely real (default: True).
-            dist : {float, numpy.ndarray}, *optional*
-                Distance between two grid points along each axis
-                (default: None).
-            fourier : bool, *optional*
-                Whether the space represents a Fourier or a position grid
-                (default: False).
-
-            Returns
-            -------
-            None
-        """
-        ## check parameters
-        para = np.array([],dtype=np.int)
-        if(np.isscalar(num)):
-            num = np.array([num],dtype=np.int)
-        else:
-            num = np.array(num,dtype=np.int)
-        if(np.any(num%2)): ## module restriction
-            raise ValueError(about._errors.cstring("ERROR: unsupported odd number of grid points."))
-        if(naxes is None):
-            naxes = np.size(num)
-        elif(np.size(num)==1):
-            num = num*np.ones(naxes,dtype=np.int,order='C')
-        elif(np.size(num)!=naxes):
-            raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(num))+" <> "+str(naxes)+" )."))
-        para = np.append(para,num[::-1],axis=None)
-        para = np.append(para,2-(bool(hermitian) or bool(purelyreal))-bool(purelyreal),axis=None) ## {0,1,2}
-        if(np.isscalar(zerocenter)):
-            zerocenter = bool(zerocenter)*np.ones(naxes,dtype=np.int,order='C')
-        else:
-            zerocenter = np.array(zerocenter,dtype=np.bool)
-            if(np.size(zerocenter)==1):
-                zerocenter = zerocenter*np.ones(naxes,dtype=np.int,order='C')
-            elif(np.size(zerocenter)!=naxes):
-                raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(zerocenter))+" <> "+str(naxes)+" )."))
-        para = np.append(para,zerocenter[::-1]*-1,axis=None) ## -1 XOR 0 (centered XOR not)
-
-        self.para = para
-
-        ## set data type
-        if(not self.para[naxes]):
-            self.datatype = np.float64
-        else:
-            self.datatype = np.complex128
-
-        self.discrete = False
-
-        ## set volume
-        if(dist is None):
-            dist = 1/num.astype(self.datatype)
-        elif(np.isscalar(dist)):
-            dist = self.datatype(dist)*np.ones(naxes,dtype=self.datatype,order='C')
-        else:
-            dist = np.array(dist,dtype=self.datatype)
-            if(np.size(dist)==1):
-                dist = dist*np.ones(naxes,dtype=self.datatype,order='C')
-            if(np.size(dist)!=naxes):
-                raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(dist))+" <> "+str(naxes)+" )."))
-        if(np.any(dist<=0)):
-            raise ValueError(about._errors.cstring("ERROR: nonpositive distance(s)."))
-        self.vol = np.real(dist)[::-1]
-
-        self.fourier = bool(fourier)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def naxes(self):
-        """
-            Returns the number of axes of the grid.
-
-            Returns
-            -------
-            naxes : int
-                Number of axes of the regular grid.
-        """
-        return (np.size(self.para)-1)//2
-
-    def zerocenter(self):
-        """
-            Returns information on the centering of the axes.
-
-            Returns
-            -------
-            zerocenter : numpy.ndarray
-                Whether the grid is centered on zero for each axis or not.
-        """
-        return self.para[-(np.size(self.para)-1)//2:][::-1].astype(np.bool)
-
-    def dist(self):
-        """
-            Returns the distances between grid points along each axis.
-
-            Returns
-            -------
-            dist : np.ndarray
-                Distances between two grid points on each axis.
-        """
-        return self.vol[::-1]
-
-    def dim(self,split=False):
-        """
-            Computes the dimension of the space, i.e.\  the number of pixels.
-
-            Parameters
-            ----------
-            split : bool, *optional*
-                Whether to return the dimension split up, i.e. the numbers of
-                pixels along each axis, or their product (default: False).
-
-            Returns
-            -------
-            dim : {int, numpy.ndarray}
-                Dimension(s) of the space. If ``split==True``, a
-                one-dimensional array with an entry for each axis is returned.
-        """
-        ## dim = product(n)
-        if(split):
-            return self.para[:(np.size(self.para)-1)//2]
-        else:
-            return np.prod(self.para[:(np.size(self.para)-1)//2],axis=0,dtype=None,out=None)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def dof(self):
-        """
-            Computes the number of degrees of freedom of the space, i.e.\  the
-            number of grid points multiplied with one or two, depending on
-            complex-valuedness and hermitian symmetry of the fields.
-
-            Returns
-            -------
-            dof : int
-                Number of degrees of freedom of the space.
-        """
-        ## dof ~ dim
-        if(self.para[(np.size(self.para)-1)//2]<2):
-            return np.prod(self.para[:(np.size(self.para)-1)//2],axis=0,dtype=None,out=None)
-        else:
-            return 2*np.prod(self.para[:(np.size(self.para)-1)//2],axis=0,dtype=None,out=None)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def enforce_power(self,spec,size=None,**kwargs):
-        """
-            Provides a valid power spectrum array from a given object.
-
-            Parameters
-            ----------
-            spec : {float, list, numpy.ndarray, nifty.field, function}
-                Fiducial power spectrum from which a valid power spectrum is to
-                be calculated. Scalars are interpreted as constant power
-                spectra.
-
-            Returns
-            -------
-            spec : numpy.ndarray
-                Valid power spectrum.
-
-            Other parameters
-            ----------------
-            size : int, *optional*
-                Number of bands the power spectrum shall have (default: None).
-            kindex : numpy.ndarray, *optional*
-                Scale of each band.
-            codomain : nifty.space, *optional*
-                A compatible codomain for power indexing (default: None).
-            log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
-                scale or not; if set, the number of used bins is set
-                automatically (if not given otherwise); by default no binning
-                is done (default: None).
-            nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
-                integers below the minimum of 3 induce an automatic setting;
-                by default no binning is done (default: None).
-            binbounds : {list, array}, *optional*
-                User specific inner boundaries of the bins, which are preferred
-                over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
-                Lower limit of the uniform distribution if ``random == "uni"``
-                (default: 0).
-
-        """
-        if(size is None)or(callable(spec)):
-            ## explicit kindex
-            kindex = kwargs.get("kindex",None)
-            if(kindex is None):
-                ## quick kindex
-                if(self.fourier)and(not hasattr(self,"power_indices"))and(len(kwargs)==0):
-                    kindex = gp.nklength(gp.nkdict_fast(self.para[:(np.size(self.para)-1)//2],self.vol,fourier=True))
-                ## implicit kindex
-                else:
-                    try:
-                        self.set_power_indices(**kwargs)
-                    except:
-                        codomain = kwargs.get("codomain",self.get_codomain())
-                        codomain.set_power_indices(**kwargs)
-                        kindex = codomain.power_indices.get("kindex")
-                    else:
-                        kindex = self.power_indices.get("kindex")
-            size = len(kindex)
-
-        if(isinstance(spec,field)):
-            spec = spec.val.astype(self.datatype)
-        elif(callable(spec)):
-            try:
-                spec = np.array(spec(kindex),dtype=self.datatype)
-            except:
-                raise TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
-        elif(np.isscalar(spec)):
-            spec = np.array([spec],dtype=self.datatype)
-        else:
-            spec = np.array(spec,dtype=self.datatype)
-
-        ## drop imaginary part
-        spec = np.real(spec)
-        ## check finiteness
-        if(not np.all(np.isfinite(spec))):
-            about.warnings.cprint("WARNING: infinite value(s).")
-        ## check positivity (excluding null)
-        if(np.any(spec<0)):
-            raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
-        elif(np.any(spec==0)):
-            about.warnings.cprint("WARNING: nonpositive value(s).")
-
-        ## extend
-        if(np.size(spec)==1):
-            spec = spec*np.ones(size,dtype=spec.dtype,order='C')
-        ## size check
-        elif(np.size(spec)<size):
-            raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(spec))+" < "+str(size)+" )."))
-        elif(np.size(spec)>size):
-            about.warnings.cprint("WARNING: power spectrum cut to size ( == "+str(size)+" ).")
-            spec = spec[:size]
-
-        return spec
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def set_power_indices(self,**kwargs):
-        """
-            Sets the (un)indexing objects for spectral indexing internally.
-
-            Parameters
-            ----------
-            log : bool
-                Flag specifying if the binning is performed on logarithmic
-                scale or not; if set, the number of used bins is set
-                automatically (if not given otherwise); by default no binning
-                is done (default: None).
-            nbin : integer
-                Number of used bins; if given `log` is set to ``False``;
-                integers below the minimum of 3 induce an automatic setting;
-                by default no binning is done (default: None).
-            binbounds : {list, array}
-                User specific inner boundaries of the bins, which are preferred
-                over the above parameters; by default no binning is done
-                (default: None).
-
-            Returns
-            -------
-            None
-
-            See Also
-            --------
-            get_power_indices
-
-            Raises
-            ------
-            AttributeError
-                If ``self.fourier == False``.
-            ValueError
-                If the binning leaves one or more bins empty.
-
-        """
-        if(not self.fourier):
-            raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
-        ## check storage
-        if(hasattr(self,"power_indices")):
-            config = self.power_indices.get("config")
-            ## check configuration
-            redo = False
-            if(config.get("log")!=kwargs.get("log",config.get("log"))):
-                config["log"] = kwargs.get("log")
-                redo = True
-            if(config.get("nbin")!=kwargs.get("nbin",config.get("nbin"))):
-                config["nbin"] = kwargs.get("nbin")
-                redo = True
-            if(np.any(config.get("binbounds")!=kwargs.get("binbounds",config.get("binbounds")))):
-                config["binbounds"] = kwargs.get("binbounds")
-                redo = True
-            if(not redo):
-                return None
-        else:
-            config = {"binbounds":kwargs.get("binbounds",None),"log":kwargs.get("log",None),"nbin":kwargs.get("nbin",None)}
-        ## power indices
-        about.infos.cflush("INFO: setting power indices ...")
-        pindex,kindex,rho = gp.get_power_indices2(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=True)
-        ## bin if ...
-        if(config.get("log") is not None)or(config.get("nbin") is not None)or(config.get("binbounds") is not None):
-            pindex,kindex,rho = gp.bin_power_indices(pindex,kindex,rho,**config)
-            ## check binning
-            if(np.any(rho==0)):
-                raise ValueError(about._errors.cstring("ERROR: empty bin(s).")) ## binning too fine
-        ## power undex
-        pundex = np.unique(pindex,return_index=True,return_inverse=False)[1]
-        ## storage
-        self.power_indices = {"config":config,"kindex":kindex,"pindex":pindex,"pundex":pundex,"rho":rho} ## alphabetical
-        about.infos.cprint(" done.")
-        return None
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def enforce_values(self,x,extend=True):
-        """
-            Computes valid field values from a given object, taking care of
-            data types, shape, and symmetry.
-
-            Parameters
-            ----------
-            x : {float, numpy.ndarray, nifty.field}
-                Object to be transformed into an array of valid field values.
-
-            Returns
-            -------
-            x : numpy.ndarray
-                Array containing the valid field values.
-
-            Other parameters
-            ----------------
-            extend : bool, *optional*
-                Whether a scalar is extented to a constant array or not
-                (default: True).
-        """
-        if(isinstance(x,field)):
-            if(self==x.domain):
-                if(self.datatype is not x.domain.datatype):
-                    raise TypeError(about._errors.cstring("ERROR: inequal data types ( '"+str(np.result_type(self.datatype))+"' <> '"+str(np.result_type(x.domain.datatype))+"' )."))
-                else:
-                    x = x.val
-            else:
-                raise ValueError(about._errors.cstring("ERROR: inequal domains."))
-        else:
-            if(np.size(x)==1):
-                if(extend):
-                    x = self.datatype(x)*np.ones(self.dim(split=True),dtype=self.datatype,order='C')
-                else:
-                    if(np.isscalar(x)):
-                        x = np.array([x],dtype=self.datatype)
-                    else:
-                        x = np.array(x,dtype=self.datatype)
-            else:
-                x = self.enforce_shape(np.array(x,dtype=self.datatype))
-
-        ## hermitianize if ...
-        if(about.hermitianize.status)and(np.size(x)!=1)and(self.para[(np.size(self.para)-1)//2]==1):
-            x = gp.nhermitianize_fast(x,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),special=False)
-
-        ## check finiteness
-        if(not np.all(np.isfinite(x))):
-            about.warnings.cprint("WARNING: infinite value(s).")
-
-        return x
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_random_values(self,**kwargs):
-        """
-            Generates random field values according to the specifications given
-            by the parameters, taking into account possible complex-valuedness
-            and hermitian symmetry.
-
-            Returns
-            -------
-            x : numpy.ndarray
-                Valid field values.
-
-            Other parameters
-            ----------------
-            random : string, *optional*
-                Specifies the probability distribution from which the random
-                numbers are to be drawn.
-                Supported distributions are:
-
-                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
-                - "gau" (normal distribution with zero-mean and a given standard
-                    deviation or variance)
-                - "syn" (synthesizes from a given power spectrum)
-                - "uni" (uniform distribution over [vmin,vmax[)
-
-                (default: None).
-            dev : float, *optional*
-                Standard deviation (default: 1).
-            var : float, *optional*
-                Variance, overriding `dev` if both are specified
-                (default: 1).
-            spec : {scalar, list, numpy.ndarray, nifty.field, function}, *optional*
-                Power spectrum (default: 1).
-            pindex : numpy.ndarray, *optional*
-                Indexing array giving the power spectrum index of each band
-                (default: None).
-            kindex : numpy.ndarray, *optional*
-                Scale of each band (default: None).
-            codomain : nifty.rg_space, *optional*
-                A compatible codomain with power indices (default: None).
-            log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
-                scale or not; if set, the number of used bins is set
-                automatically (if not given otherwise); by default no binning
-                is done (default: None).
-            nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
-                integers below the minimum of 3 induce an automatic setting;
-                by default no binning is done (default: None).
-            binbounds : {list, array}, *optional*
-                User specific inner boundaries of the bins, which are preferred
-                over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
-                Lower limit of the uniform distribution if ``random == "uni"``
-                (default: 0).            vmin : float, *optional*
-                Lower limit for a uniform distribution (default: 0).
-            vmax : float, *optional*
-                Upper limit for a uniform distribution (default: 1).
-        """
-        arg = random.arguments(self,**kwargs)
-
-        if(arg is None):
-            return np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
-
-        elif(arg[0]=="pm1"):
-            if(about.hermitianize.status)and(self.para[(np.size(self.para)-1)//2]==1):
-                return gp.random_hermitian_pm1(self.datatype,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),self.dim(split=True)) ## special case
-            else:
-                x = random.pm1(datatype=self.datatype,shape=self.dim(split=True))
-
-        elif(arg[0]=="gau"):
-            x = random.gau(datatype=self.datatype,shape=self.dim(split=True),mean=None,dev=arg[2],var=arg[3])
-
-        elif(arg[0]=="syn"):
-            naxes = (np.size(self.para)-1)//2
-            x = gp.draw_vector_nd(self.para[:naxes],self.vol,arg[1],symtype=self.para[naxes],fourier=self.fourier,zerocentered=self.para[-naxes:].astype(np.bool),kpack=arg[2])
-            ## correct for 'ifft'
-            if(not self.fourier):
-                x = self.calc_weight(x,power=-1)
-            return x
-
-        elif(arg[0]=="uni"):
-            x = random.uni(datatype=self.datatype,shape=self.dim(split=True),vmin=arg[1],vmax=arg[2])
-
-        else:
-            raise KeyError(about._errors.cstring("ERROR: unsupported random key '"+str(arg[0])+"'."))
-
-        ## hermitianize if ...
-        if(about.hermitianize.status)and(self.para[(np.size(self.para)-1)//2]==1):
-            x = gp.nhermitianize_fast(x,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),special=(arg[0] in ["gau","pm1"]))
-
-        return x
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def check_codomain(self,codomain):
-        """
-            Checks whether a given codomain is compatible to the space or not.
-
-            Parameters
-            ----------
-            codomain : nifty.space
-                Space to be checked for compatibility.
-
-            Returns
-            -------
-            check : bool
-                Whether or not the given codomain is compatible to the space.
-        """
-        if(not isinstance(codomain,space)):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
-
-        elif(isinstance(codomain,rg_space)):
-            ##                       naxes==naxes
-            if((np.size(codomain.para)-1)//2==(np.size(self.para)-1)//2):
-                naxes = (np.size(self.para)-1)//2
-                ##                            num'==num
-                if(np.all(codomain.para[:naxes]==self.para[:naxes])):
-                    ##                 typ'==typ             ==2
-                    if(codomain.para[naxes]==self.para[naxes]==2):
-                        ##                                         dist'~=1/(num*dist)
-                        if(np.all(np.absolute(self.para[:naxes]*self.vol*codomain.vol-1)<self.epsilon)):
-                            return True
-                        ##           fourier'==fourier
-                        elif(codomain.fourier==self.fourier):
-                            ##                           dist'~=dist
-                            if(np.all(np.absolute(codomain.vol/self.vol-1)<self.epsilon)):
-                                return True
-                            else:
-                                about.warnings.cprint("WARNING: unrecommended codomain.")
-                    ##   2!=                typ'!=typ             !=2                                             dist'~=1/(num*dist)
-                    elif(2!=codomain.para[naxes]!=self.para[naxes]!=2)and(np.all(np.absolute(self.para[:naxes]*self.vol*codomain.vol-1)<self.epsilon)):
-                        return True
-                    ##                   typ'==typ             !=2
-                    elif(codomain.para[naxes]==self.para[naxes]!=2)and(codomain.fourier==self.fourier):
-                        ##                           dist'~=dist
-                        if(np.all(np.absolute(codomain.vol/self.vol-1)<self.epsilon)):
-                            return True
-                        else:
-                            about.warnings.cprint("WARNING: unrecommended codomain.")
-
-        return False
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_codomain(self,coname=None,cozerocenter=None,**kwargs):
-        """
-            Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  either a shifted grid or a Fourier conjugate
-            grid.
-
-            Parameters
-            ----------
-            coname : string, *optional*
-                String specifying a desired codomain (default: None).
-            cozerocenter : {bool, numpy.ndarray}, *optional*
-                Whether or not the grid is zerocentered for each axis or not
-                (default: None).
-
-            Returns
-            -------
-            codomain : nifty.rg_space
-                A compatible codomain.
-
-            Notes
-            -----
-            Possible arguments for `coname` are ``'f'`` in which case the
-            codomain arises from a Fourier transformation, ``'i'`` in which case
-            it arises from an inverse Fourier transformation, and ``'?'`` in
-            which case it arises from a simple shift. If no `coname` is given,
-            the Fourier conjugate grid is produced.
-        """
-        naxes = (np.size(self.para)-1)//2
-        if(cozerocenter is None):
-            cozerocenter = self.para[-naxes:][::-1]
-        elif(np.isscalar(cozerocenter)):
-            cozerocenter = bool(cozerocenter)
-        else:
-            cozerocenter = np.array(cozerocenter,dtype=np.bool)
-            if(np.size(cozerocenter)==1):
-                cozerocenter = np.asscalar(cozerocenter)
-            elif(np.size(cozerocenter)!=naxes):
-                raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(cozerocenter))+" <> "+str(naxes)+" )."))
-
-        if(coname is None):
-            return rg_space(self.para[:naxes][::-1],naxes=naxes,zerocenter=cozerocenter,hermitian=bool(self.para[naxes]<2),purelyreal=bool(self.para[naxes]==1),dist=1/(self.para[:naxes]*self.vol)[::-1],fourier=bool(not self.fourier)) ## dist',fourier' = 1/(num*dist),NOT fourier
-
-        elif(coname[0]=='f'):
-            return rg_space(self.para[:naxes][::-1],naxes=naxes,zerocenter=cozerocenter,hermitian=bool(self.para[naxes]<2),purelyreal=bool(self.para[naxes]==1),dist=1/(self.para[:naxes]*self.vol)[::-1],fourier=True) ## dist',fourier' = 1/(num*dist),True
-
-        elif(coname[0]=='i'):
-            return rg_space(self.para[:naxes][::-1],naxes=naxes,zerocenter=cozerocenter,hermitian=bool(self.para[naxes]<2),purelyreal=bool(self.para[naxes]==1),dist=1/(self.para[:naxes]*self.vol)[::-1],fourier=False) ## dist',fourier' = 1/(num*dist),False
-
-        else:
-            return rg_space(self.para[:naxes][::-1],naxes=naxes,zerocenter=cozerocenter,hermitian=bool(self.para[naxes]<2),purelyreal=bool(not self.para[naxes]),dist=self.vol[::-1],fourier=self.fourier) ## dist',fourier' = dist,fourier
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_meta_volume(self,total=False):
-        """
-            Calculates the meta volumes.
-
-            The meta volumes are the volumes associated with each component of
-            a field, taking into account field components that are not
-            explicitly included in the array of field values but are determined
-            by symmetry conditions. In the case of an :py:class:`rg_space`, the
-            meta volumes are simply the pixel volumes.
-
-            Parameters
-            ----------
-            total : bool, *optional*
-                Whether to return the total meta volume of the space or the
-                individual ones of each pixel (default: False).
-
-            Returns
-            -------
-            mol : {numpy.ndarray, float}
-                Meta volume of the pixels or the complete space.
-        """
-        if(total):
-            return self.dim(split=False)*np.prod(self.vol,axis=0,dtype=None,out=None)
-        else:
-            mol = np.ones(self.dim(split=True),dtype=self.vol.dtype,order='C')
-            return self.calc_weight(mol,power=1)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_weight(self,x,power=1):
-        """
-            Weights a given array with the pixel volumes to a given power.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array to be weighted.
-            power : float, *optional*
-                Power of the pixel volumes to be used (default: 1).
-
-            Returns
-            -------
-            y : numpy.ndarray
-                Weighted array.
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        ## weight
-        return x*np.prod(self.vol,axis=0,dtype=None,out=None)**power
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_dot(self,x,y):
-        """
-            Computes the discrete inner product of two given arrays.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                First array
-            y : numpy.ndarray
-                Second array
-
-            Returns
-            -------
-            dot : scalar
-                Inner product of the two arrays.
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        y = self.enforce_shape(np.array(y,dtype=self.datatype))
-        ## inner product
-        dot = np.dot(np.conjugate(x.flatten(order='C')),y.flatten(order='C'),out=None)
-        if(np.isreal(dot)):
-            return np.asscalar(np.real(dot))
-        elif(self.para[(np.size(self.para)-1)//2]!=2):
-                ## check imaginary part
-                if(np.absolute(dot.imag)>self.epsilon**2*np.absolute(dot.real)):
-                    about.warnings.cprint("WARNING: discarding considerable imaginary part.")
-                return np.asscalar(np.real(dot))
-        else:
-            return dot
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_transform(self,x,codomain=None,**kwargs):
-        """
-            Computes the transform of a given array of field values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array to be transformed.
-            codomain : nifty.rg_space, *optional*
-                Target space to which the transformation shall map
-                (default: None).
-
-            Returns
-            -------
-            Tx : numpy.ndarray
-                Transformed array
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-
-        if(codomain is None):
-            return x ## T == id
-
-        ## mandatory(!) codomain check
-        if(isinstance(codomain,rg_space))and(self.check_codomain(codomain)):
-            naxes = (np.size(self.para)-1)//2
-            ## select machine
-            if(np.all(np.absolute(self.para[:naxes]*self.vol*codomain.vol-1)<self.epsilon)):
-                if(codomain.fourier):
-                    ftmachine = "fft"
-                    ## correct for 'fft'
-                    x = self.calc_weight(x,power=1)
-                else:
-                    ftmachine = "ifft"
-                    ## correct for 'ifft'
-                    x = self.calc_weight(x,power=1)
-                    x *= self.dim(split=False)
-            else:
-                ftmachine = "none"
-            ## transform
-            if(self.datatype==np.float64):
-                Tx = gf.gfft(x.astype(np.complex128),in_ax=[],out_ax=[],ftmachine=ftmachine,in_zero_center=self.para[-naxes:].astype(np.bool).tolist(),out_zero_center=codomain.para[-naxes:].astype(np.bool).tolist(),enforce_hermitian_symmetry=bool(codomain.para[naxes]==1),W=-1,alpha=-1,verbose=False)
-            else:
-                Tx = gf.gfft(x,in_ax=[],out_ax=[],ftmachine=ftmachine,in_zero_center=self.para[-naxes:].astype(np.bool).tolist(),out_zero_center=codomain.para[-naxes:].astype(np.bool).tolist(),enforce_hermitian_symmetry=bool(codomain.para[naxes]==1),W=-1,alpha=-1,verbose=False)
-            ## check complexity
-            if(not codomain.para[naxes]): ## purely real
-                ## check imaginary part
-                if(np.any(Tx.imag!=0))and(np.dot(Tx.imag.flatten(order='C'),Tx.imag.flatten(order='C'),out=None)>self.epsilon**2*np.dot(Tx.real.flatten(order='C'),Tx.real.flatten(order='C'),out=None)):
-                    about.warnings.cprint("WARNING: discarding considerable imaginary part.")
-                Tx = np.real(Tx)
-
-        else:
-            raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
-
-        return Tx.astype(codomain.datatype)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_smooth(self,x,sigma=0,**kwargs):
-        """
-            Smoothes an array of field values by convolution with a Gaussian
-            kernel.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array of field values to be smoothed.
-            sigma : float, *optional*
-                Standard deviation of the Gaussian kernel, specified in units
-                of length in position space; for testing: a sigma of -1 will be
-                reset to a reasonable value (default: 0).
-
-            Returns
-            -------
-            Gx : numpy.ndarray
-                Smoothed array.
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        naxes = (np.size(self.para)-1)//2
-
-        ## check sigma
-        if(sigma==0):
-            return x
-        elif(sigma==-1):
-            about.infos.cprint("INFO: invalid sigma reset.")
-            if(self.fourier):
-                sigma = 1.5/np.min(self.para[:naxes]*self.vol) ## sqrt(2)*max(dist)
-            else:
-                sigma = 1.5*np.max(self.vol) ## sqrt(2)*max(dist)
-        elif(sigma<0):
-            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        ## smooth
-        Gx = gs.smooth_field(x,self.fourier,self.para[-naxes:].astype(np.bool).tolist(),bool(self.para[naxes]==1),self.vol,smooth_length=sigma)
-        ## check complexity
-        if(not self.para[naxes]): ## purely real
-            ## check imaginary part
-            if(np.any(Gx.imag!=0))and(np.dot(Gx.imag.flatten(order='C'),Gx.imag.flatten(order='C'),out=None)>self.epsilon**2*np.dot(Gx.real.flatten(order='C'),Gx.real.flatten(order='C'),out=None)):
-                about.warnings.cprint("WARNING: discarding considerable imaginary part.")
-            Gx = np.real(Gx)
-        return Gx
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_power(self,x,**kwargs):
-        """
-            Computes the power of an array of field values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array containing the field values of which the power is to be
-                calculated.
-
-            Returns
-            -------
-            spec : numpy.ndarray
-                Power contained in the input array.
-
-            Other parameters
-            ----------------
-            pindex : numpy.ndarray, *optional*
-                Indexing array assigning the input array components to
-                components of the power spectrum (default: None).
-            kindex : numpy.ndarray, *optional*
-                Scale corresponding to each band in the power spectrum
-                (default: None).
-            rho : numpy.ndarray, *optional*
-                Number of degrees of freedom per band (default: None).
-            codomain : nifty.space, *optional*
-                A compatible codomain for power indexing (default: None).
-            log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
-                scale or not; if set, the number of used bins is set
-                automatically (if not given otherwise); by default no binning
-                is done (default: None).
-            nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
-                integers below the minimum of 3 induce an automatic setting;
-                by default no binning is done (default: None).
-            binbounds : {list, array}, *optional*
-                User specific inner boundaries of the bins, which are preferred
-                over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
-                Lower limit of the uniform distribution if ``random == "uni"``
-                (default: 0).
-
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        ## correct for 'fft'
-        if(not self.fourier):
-            x = self.calc_weight(x,power=1)
-        ## explicit power indices
-        pindex,kindex,rho = kwargs.get("pindex",None),kwargs.get("kindex",None),kwargs.get("rho",None)
-        ## implicit power indices
-        if(pindex is None)or(kindex is None)or(rho is None):
-            try:
-                self.set_power_indices(**kwargs)
-            except:
-                codomain = kwargs.get("codomain",self.get_codomain())
-                codomain.set_power_indices(**kwargs)
-                pindex,kindex,rho = codomain.power_indices.get("pindex"),codomain.power_indices.get("kindex"),codomain.power_indices.get("rho")
-            else:
-                pindex,kindex,rho = self.power_indices.get("pindex"),self.power_indices.get("kindex"),self.power_indices.get("rho")
-        ## power spectrum
-        return gp.calc_ps_fast(x,self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier,pindex=pindex,kindex=kindex,rho=rho)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_plot(self,x,title="",vmin=None,vmax=None,power=None,unit="",norm=None,cmap=None,cbar=True,other=None,legend=False,mono=True,**kwargs):
-        """
-            Creates a plot of field values according to the specifications
-            given by the parameters.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array containing the field values.
-
-            Returns
-            -------
-            None
-
-            Other parameters
-            ----------------
-            title : string, *optional*
-                Title of the plot (default: "").
-            vmin : float, *optional*
-                Minimum value to be displayed (default: ``min(x)``).
-            vmax : float, *optional*
-                Maximum value to be displayed (default: ``max(x)``).
-            power : bool, *optional*
-                Whether to plot the power contained in the field or the field
-                values themselves (default: False).
-            unit : string, *optional*
-                Unit of the field values (default: "").
-            norm : string, *optional*
-                Scaling of the field values before plotting (default: None).
-            cmap : matplotlib.colors.LinearSegmentedColormap, *optional*
-                Color map to be used for two-dimensional plots (default: None).
-            cbar : bool, *optional*
-                Whether to show the color bar or not (default: True).
-            other : {single object, tuple of objects}, *optional*
-                Object or tuple of objects to be added, where objects can be
-                scalars, arrays, or fields (default: None).
-            legend : bool, *optional*
-                Whether to show the legend or not (default: False).
-            mono : bool, *optional*
-                Whether to plot the monopole or not (default: True).
-            save : string, *optional*
-                Valid file name where the figure is to be stored, by default
-                the figure is not saved (default: False).
-            error : {float, numpy.ndarray, nifty.field}, *optional*
-                Object indicating some confidence interval to be plotted
-                (default: None).
-            kindex : numpy.ndarray, *optional*
-                Scale corresponding to each band in the power spectrum
-                (default: None).
-            codomain : nifty.space, *optional*
-                A compatible codomain for power indexing (default: None).
-            log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
-                scale or not; if set, the number of used bins is set
-                automatically (if not given otherwise); by default no binning
-                is done (default: None).
-            nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
-                integers below the minimum of 3 induce an automatic setting;
-                by default no binning is done (default: None).
-            binbounds : {list, array}, *optional*
-                User specific inner boundaries of the bins, which are preferred
-                over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
-                Lower limit of the uniform distribution if ``random == "uni"``
-                (default: 0).
-
-        """
-        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
-            about.warnings.cprint("WARNING: interactive mode off.")
-
-        naxes = (np.size(self.para)-1)//2
-        if(power is None):
-            power = bool(self.para[naxes])
-
-        if(power):
-            x = self.calc_power(x,**kwargs)
-
-            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
-            ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
-
-            ## explicit kindex
-            xaxes = kwargs.get("kindex",None)
-            ## implicit kindex
-            if(xaxes is None):
-                try:
-                    self.set_power_indices(**kwargs)
-                except:
-                    codomain = kwargs.get("codomain",self.get_codomain())
-                    codomain.set_power_indices(**kwargs)
-                    xaxes = codomain.power_indices.get("kindex")
-                else:
-                    xaxes = self.power_indices.get("kindex")
-
-            if(norm is None)or(not isinstance(norm,int)):
-                norm = naxes
-            if(vmin is None):
-                vmin = np.min(x[:mono].tolist()+(xaxes**norm*x)[1:].tolist(),axis=None,out=None)
-            if(vmax is None):
-                vmax = np.max(x[:mono].tolist()+(xaxes**norm*x)[1:].tolist(),axis=None,out=None)
-            ax0.loglog(xaxes[1:],(xaxes**norm*x)[1:],color=[0.0,0.5,0.0],label="graph 0",linestyle='-',linewidth=2.0,zorder=1)
-            if(mono):
-                ax0.scatter(0.5*(xaxes[1]+xaxes[2]),x[0],s=20,color=[0.0,0.5,0.0],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=1)
-
-            if(other is not None):
-                if(isinstance(other,tuple)):
-                    other = list(other)
-                    for ii in xrange(len(other)):
-                        if(isinstance(other[ii],field)):
-                            other[ii] = other[ii].power(**kwargs)
-                        else:
-                            other[ii] = self.enforce_power(other[ii],size=np.size(xaxes),kindex=xaxes)
-                elif(isinstance(other,field)):
-                    other = [other.power(**kwargs)]
-                else:
-                    other = [self.enforce_power(other,size=np.size(xaxes),kindex=xaxes)]
-                imax = max(1,len(other)-1)
-                for ii in xrange(len(other)):
-                    ax0.loglog(xaxes[1:],(xaxes**norm*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
-                    if(mono):
-                        ax0.scatter(0.5*(xaxes[1]+xaxes[2]),other[ii][0],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=-ii)
-                if(legend):
-                    ax0.legend()
-
-            ax0.set_xlim(xaxes[1],xaxes[-1])
-            ax0.set_xlabel(r"$|k|$")
-            ax0.set_ylim(vmin,vmax)
-            ax0.set_ylabel(r"$|k|^{%i} P_k$"%norm)
-            ax0.set_title(title)
-
-        else:
-            x = self.enforce_shape(np.array(x))
-
-            if(naxes==1):
-                fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
-                ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
-
-                xaxes = (np.arange(self.para[0],dtype=np.int)+self.para[2]*(self.para[0]//2))*self.vol
-                if(vmin is None):
-                    if(np.iscomplexobj(x)):
-                        vmin = min(np.min(np.absolute(x),axis=None,out=None),np.min(np.real(x),axis=None,out=None),np.min(np.imag(x),axis=None,out=None))
-                    else:
-                        vmin = np.min(x,axis=None,out=None)
-                if(vmax is None):
-                    if(np.iscomplexobj(x)):
-                        vmax = max(np.max(np.absolute(x),axis=None,out=None),np.max(np.real(x),axis=None,out=None),np.max(np.imag(x),axis=None,out=None))
-                    else:
-                        vmax = np.max(x,axis=None,out=None)
-                if(norm=="log"):
-                    ax0graph = ax0.semilogy
-                    if(vmin<=0):
-                        raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
-                else:
-                    ax0graph = ax0.plot
-
-                if(np.iscomplexobj(x)):
-                    ax0graph(xaxes,np.absolute(x),color=[0.0,0.5,0.0],label="graph (absolute)",linestyle='-',linewidth=2.0,zorder=1)
-                    ax0graph(xaxes,np.real(x),color=[0.0,0.5,0.0],label="graph (real part)",linestyle="--",linewidth=1.0,zorder=0)
-                    ax0graph(xaxes,np.imag(x),color=[0.0,0.5,0.0],label="graph (imaginary part)",linestyle=':',linewidth=1.0,zorder=0)
-                    if(legend):
-                        ax0.legend()
-                elif(other is not None):
-                    ax0graph(xaxes,x,color=[0.0,0.5,0.0],label="graph 0",linestyle='-',linewidth=2.0,zorder=1)
-                    if(isinstance(other,tuple)):
-                        other = [self.enforce_values(xx,extend=True) for xx in other]
-                    else:
-                        other = [self.enforce_values(other,extend=True)]
-                    imax = max(1,len(other)-1)
-                    for ii in xrange(len(other)):
-                        ax0graph(xaxes,other[ii],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
-                    if("error" in kwargs):
-                        error = self.enforce_values(np.absolute(kwargs.get("error")),extend=True)
-                        ax0.fill_between(xaxes,x-error,x+error,color=[0.8,0.8,0.8],label="error 0",zorder=-len(other))
-                    if(legend):
-                        ax0.legend()
-                else:
-                    ax0graph(xaxes,x,color=[0.0,0.5,0.0],label="graph 0",linestyle='-',linewidth=2.0,zorder=1)
-                    if("error" in kwargs):
-                        error = self.enforce_values(np.absolute(kwargs.get("error")),extend=True)
-                        ax0.fill_between(xaxes,x-error,x+error,color=[0.8,0.8,0.8],label="error 0",zorder=0)
-
-                ax0.set_xlim(xaxes[0],xaxes[-1])
-                ax0.set_xlabel("coordinate")
-                ax0.set_ylim(vmin,vmax)
-                if(unit):
-                    unit = " ["+unit+"]"
-                ax0.set_ylabel("values"+unit)
-                ax0.set_title(title)
-
-            elif(naxes==2):
-                if(np.iscomplexobj(x)):
-                    about.infos.cprint("INFO: absolute values and phases are plotted.")
-                    if(title):
-                        title += " "
-                    if(bool(kwargs.get("save",False))):
-                        save_ = os.path.splitext(os.path.basename(str(kwargs.get("save"))))
-                        kwargs.update(save=save_[0]+"_absolute"+save_[1])
-                    self.get_plot(np.absolute(x),title=title+"(absolute)",vmin=vmin,vmax=vmax,power=False,unit=unit,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
-#                    self.get_plot(np.real(x),title=title+"(real part)",vmin=vmin,vmax=vmax,power=False,unit=unit,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
-#                    self.get_plot(np.imag(x),title=title+"(imaginary part)",vmin=vmin,vmax=vmax,power=False,unit=unit,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
-                    if(unit):
-                        unit = "rad"
-                    if(cmap is None):
-                        cmap = pl.cm.hsv_r
-                    if(bool(kwargs.get("save",False))):
-                        kwargs.update(save=save_[0]+"_phase"+save_[1])
-                    self.get_plot(np.angle(x,deg=False),title=title+"(phase)",vmin=-3.1416,vmax=3.1416,power=False,unit=unit,norm=None,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs) ## values in [-pi,pi]
-                    return None ## leave method
-                else:
-                    if(vmin is None):
-                        vmin = np.min(x,axis=None,out=None)
-                    if(vmax is None):
-                        vmax = np.max(x,axis=None,out=None)
-                    if(norm=="log")and(vmin<=0):
-                        raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
-
-                    s_ = np.array([self.para[1]*self.vol[1]/np.max(self.para[:naxes]*self.vol,axis=None,out=None),self.para[0]*self.vol[0]/np.max(self.para[:naxes]*self.vol,axis=None,out=None)*(1.0+0.159*bool(cbar))])
-                    fig = pl.figure(num=None,figsize=(6.4*s_[0],6.4*s_[1]),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
-                    ax0 = fig.add_axes([0.06/s_[0],0.06/s_[1],1.0-0.12/s_[0],1.0-0.12/s_[1]])
-
-                    xaxes = (np.arange(self.para[1]+1,dtype=np.int)-0.5+self.para[4]*(self.para[1]//2))*self.vol[1]
-                    yaxes = (np.arange(self.para[0]+1,dtype=np.int)-0.5+self.para[3]*(self.para[0]//2))*self.vol[0]
-                    if(norm=="log"):
-                        n_ = ln(vmin=vmin,vmax=vmax)
-                    else:
-                        n_ = None
-                    sub = ax0.pcolormesh(xaxes,yaxes,x,cmap=cmap,norm=n_,vmin=vmin,vmax=vmax)
-                    ax0.set_xlim(xaxes[0],xaxes[-1])
-                    ax0.set_xticks([0],minor=False)
-                    ax0.set_ylim(yaxes[0],yaxes[-1])
-                    ax0.set_yticks([0],minor=False)
-                    ax0.set_aspect("equal")
-                    if(cbar):
-                        if(norm=="log"):
-                            f_ = lf(10,labelOnlyBase=False)
-                            b_ = sub.norm.inverse(np.linspace(0,1,sub.cmap.N+1))
-                            v_ = np.linspace(sub.norm.vmin,sub.norm.vmax,sub.cmap.N)
-                        else:
-                            f_ = None
-                            b_ = None
-                            v_ = None
-                        cb0 = fig.colorbar(sub,ax=ax0,orientation="horizontal",fraction=0.1,pad=0.05,shrink=0.75,aspect=20,ticks=[vmin,vmax],format=f_,drawedges=False,boundaries=b_,values=v_)
-                        cb0.ax.text(0.5,-1.0,unit,fontdict=None,withdash=False,transform=cb0.ax.transAxes,horizontalalignment="center",verticalalignment="center")
-                    ax0.set_title(title)
-
-            else:
-                raise ValueError(about._errors.cstring("ERROR: unsupported number of axes ( "+str(naxes)+" > 2 )."))
-
-        if(bool(kwargs.get("save",False))):
-            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
-            pl.close(fig)
-        else:
-            fig.canvas.draw()
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def __repr__(self):
-        return "<nifty_core.rg_space>"
-
-    def __str__(self):
-        naxes = (np.size(self.para)-1)//2
-        num = self.para[:naxes][::-1].tolist()
-        zerocenter = self.para[-naxes:][::-1].astype(np.bool).tolist()
-        dist = self.vol[::-1].tolist()
-        return "nifty_core.rg_space instance\n- num        = "+str(num)+"\n- naxes      = "+str(naxes)+"\n- hermitian  = "+str(bool(self.para[naxes]<2))+"\n- purelyreal = "+str(bool(not self.para[naxes]))+"\n- zerocenter = "+str(zerocenter)+"\n- dist       = "+str(dist)+"\n- fourier    = "+str(self.fourier)
-
-##-----------------------------------------------------------------------------
-
-
-
-##-----------------------------------------------------------------------------
-
-class lm_space(space):
-    """
-        ..       __
-        ..     /  /
-        ..    /  /    __ ____ ___
-        ..   /  /   /   _    _   |
-        ..  /  /_  /  / /  / /  /
-        ..  \___/ /__/ /__/ /__/  space class
-
-        NIFTY subclass for spherical harmonics components, for representations
-        of fields on the two-sphere.
-
-        Parameters
-        ----------
-        lmax : int
-            Maximum :math:`\ell`-value up to which the spherical harmonics
-            coefficients are to be used.
-        mmax : int, *optional*
-            Maximum :math:`m`-value up to which the spherical harmonics
-            coefficients are to be used (default: `lmax`).
-        datatype : numpy.dtype, *optional*
-            Data type of the field values (default: numpy.complex128).
-
-        See Also
-        --------
-        hp_space : A class for the HEALPix discretization of the sphere [#]_.
-        gl_space : A class for the Gauss-Legendre discretization of the
-            sphere [#]_.
-
-        Notes
-        -----
-        Hermitian symmetry, i.e. :math:`a_{\ell -m} = \overline{a}_{\ell m}` is
-        always assumed for the spherical harmonics components, i.e. only fields
-        on the two-sphere with real-valued representations in position space
-        can be handled.
-
-        References
-        ----------
-        .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
-               High-Resolution Discretization and Fast Analysis of Data
-               Distributed on the Sphere", *ApJ* 622..759G.
-        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
-               harmonic transforms revisited";
-               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
-
-        Attributes
-        ----------
-        para : numpy.ndarray
-            One-dimensional array containing the two numbers `lmax` and
-            `mmax`.
-        datatype : numpy.dtype
-            Data type of the field values.
-        discrete : bool
-            Parameter captioning the fact that an :py:class:`lm_space` is
-            always discrete.
-        vol : numpy.ndarray
-            Pixel volume of the :py:class:`lm_space`, which is always 1.
-    """
-    def __init__(self,lmax,mmax=None,datatype=None):
-        """
-            Sets the attributes for an lm_space class instance.
-
-            Parameters
-            ----------
-            lmax : int
-                Maximum :math:`\ell`-value up to which the spherical harmonics
-                coefficients are to be used.
-            mmax : int, *optional*
-                Maximum :math:`m`-value up to which the spherical harmonics
-                coefficients are to be used (default: `lmax`).
-            datatype : numpy.dtype, *optional*
-                Data type of the field values (default: numpy.complex128).
-
-            Returns
-            -------
-            None.
-        """
-        ## check parameters
-        if(lmax<1):
-            raise ValueError(about._errors.cstring("ERROR: nonpositive number."))
-        if(lmax%2==0)and(lmax>2): ## exception lmax == 2 (nside == 1)
-            about.warnings.cprint("WARNING: unrecommended parameter ( lmax <> 2*n+1 ).")
-        if(mmax is None):
-            mmax = lmax
-        elif(mmax<1)or(mmax>lmax):
-            about.warnings.cprint("WARNING: parameter set to default.")
-            mmax = lmax
-        if(mmax!=lmax):
-            about.warnings.cprint("WARNING: unrecommended parameter ( mmax <> lmax ).")
-        self.para = np.array([lmax,mmax],dtype=np.int)
-
-        ## check data type
-        if(datatype is None):
-            datatype = np.complex128
-        elif(datatype not in [np.complex64,np.complex128]):
-            about.warnings.cprint("WARNING: data type set to default.")
-            datatype = np.complex128
-        self.datatype = datatype
-
-        self.discrete = True
-        self.vol = np.real(np.array([1],dtype=self.datatype))
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def lmax(self):
-        """
-            Returns the maximum quantum number :math:`\ell`.
-
-            Returns
-            -------
-            lmax : int
-                Maximum quantum number :math:`\ell`.
-        """
-        return self.para[0]
-
-    def mmax(self):
-        """
-            Returns the maximum quantum number :math:`m`.
-
-            Returns
-            -------
-            mmax : int
-                Maximum quantum number :math:`m`.
-
-        """
-        return self.para[1]
-
-    def dim(self,split=False):
-        """
-            Computes the dimension of the space, i.e.\  the number of spherical
-            harmonics components that are stored.
-
-            Parameters
-            ----------
-            split : bool, *optional*
-                Whether to return the dimension as an array with one component
-                or as a scalar (default: False).
-
-            Returns
-            -------
-            dim : {int, numpy.ndarray}
-                Number of spherical harmonics components.
-
-            Notes
-            -----
-            Due to the symmetry assumption, only the components with
-            non-negative :math:`m` are stored and only these components are
-            counted here.
-        """
-        ## dim = (mmax+1)*(lmax-mmax/2+1)
-        if(split):
-            return np.array([(self.para[0]+1)*(self.para[1]+1)-(self.para[1]+1)*self.para[1]//2],dtype=np.int)
-        else:
-            return (self.para[0]+1)*(self.para[1]+1)-(self.para[1]+1)*self.para[1]//2
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def dof(self):
-        """
-            Computes the number of degrees of freedom of the space, taking into
-            account symmetry constraints and complex-valuedness.
-
-            Returns
-            -------
-            dof : int
-                Number of degrees of freedom of the space.
-
-            Notes
-            -----
-            The number of degrees of freedom is reduced due to the hermitian
-            symmetry, which is assumed for the spherical harmonics components.
-        """
-        ## dof = 2*dim-(lmax+1) = (lmax+1)*(2*mmax+1)*(mmax+1)*mmax
-        return (self.para[0]+1)*(2*self.para[1]+1)-(self.para[1]+1)*self.para[1]
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def enforce_power(self,spec,**kwargs):
-        """
-            Provides a valid power spectrum array from a given object.
-
-            Parameters
-            ----------
-            spec : {float, list, numpy.ndarray, nifty.field, function}
-                Fiducial power spectrum from which a valid power spectrum is to
-                be calculated. Scalars are interpreted as constant power
-                spectra.
-
-            Returns
-            -------
-            spec : numpy.ndarray
-                Valid power spectrum.
-        """
-        if(isinstance(spec,field)):
-            spec = spec.val.astype(dtype=self.datatype)
-        elif(callable(spec)):
-            try:
-                spec = np.array(spec(np.arange(self.para[0]+1,dtype=self.vol.dtype)),dtype=self.datatype) ## prevent integer division
-            except:
-                raise TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
-        elif(np.isscalar(spec)):
-            spec = np.array([spec],dtype=self.datatype)
-        else:
-            spec = np.array(spec,dtype=self.datatype)
-
-        ## drop imaginary part
-        spec = np.real(spec)
-        ## check finiteness
-        if(not np.all(np.isfinite(spec))):
-            about.warnings.cprint("WARNING: infinite value(s).")
-        ## check positivity (excluding null)
-        if(np.any(spec<0)):
-            raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
-        elif(np.any(spec==0)):
-            about.warnings.cprint("WARNING: nonpositive value(s).")
-
-        size = self.para[0]+1 ## lmax+1
-        ## extend
-        if(np.size(spec)==1):
-            spec = spec*np.ones(size,dtype=spec.dtype,order='C')
-        ## size check
-        elif(np.size(spec)<size):
-            raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(spec))+" < "+str(size)+" )."))
-        elif(np.size(spec)>size):
-            about.warnings.cprint("WARNING: power spectrum cut to size ( == "+str(size)+" ).")
-            spec = spec[:size]
-
-        return spec
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def set_power_indices(self,**kwargs):
-        """
-            Sets the (un)indexing objects for spectral indexing internally.
-
-            Parameters
-            ----------
-            None
-
-            Returns
-            -------
-            None
-
-            See Also
-            --------
-            get_power_indices
-
-        """
-        ## check storage
-        if(not hasattr(self,"power_indices")):
-            ## power indices
-#            about.infos.cflush("INFO: setting power indices ...")
-            kindex = np.arange(self.para[0]+1,dtype=np.int)
-            rho = 2*kindex+1
-            pindex = hp.Alm.getlm(self.para[0],i=None)[0] ## l of (l,m)
-            pundex = np.unique(pindex,return_index=True,return_inverse=False)[1]
-            ## storage
-            self.power_indices = {"kindex":kindex,"pindex":pindex,"pundex":pundex,"rho":rho} ## alphabetical
-#            about.infos.cprint(" done.")
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def enforce_values(self,x,extend=True):
-        """
-            Computes valid field values from a given object, taking into
-            account data types, size, and hermitian symmetry.
-
-            Parameters
-            ----------
-            x : {float, numpy.ndarray, nifty.field}
-                Object to be transformed into an array of valid field values.
-
-            Returns
-            -------
-            x : numpy.ndarray
-                Array containing the valid field values.
-
-            Other parameters
-            ----------------
-            extend : bool, *optional*
-                Whether a scalar is extented to a constant array or not
-                (default: True).
-        """
-        if(isinstance(x,field)):
-            if(self==x.domain):
-                if(self.datatype is not x.domain.datatype):
-                    raise TypeError(about._errors.cstring("ERROR: inequal data types ( '"+str(np.result_type(self.datatype))+"' <> '"+str(np.result_type(x.domain.datatype))+"' )."))
-                else:
-                    x = x.val
-            else:
-                raise ValueError(about._errors.cstring("ERROR: inequal domains."))
-        else:
-            if(np.size(x)==1):
-                if(extend):
-                    x = self.datatype(x)*np.ones(self.dim(split=True),dtype=self.datatype,order='C')
-                else:
-                    if(np.isscalar(x)):
-                        x = np.array([x],dtype=self.datatype)
-                    else:
-                        x = np.array(x,dtype=self.datatype)
-            else:
-                x = self.enforce_shape(np.array(x,dtype=self.datatype))
-
-        if(np.size(x)!=1)and(np.any(x.imag[:self.para[0]+1]!=0)):
-            about.warnings.cprint("WARNING: forbidden values reset.")
-            x.real[:self.para[0]+1] = np.absolute(x[:self.para[0]+1])*(np.sign(x.real[:self.para[0]+1])+(np.sign(x.real[:self.para[0]+1])==0)*np.sign(x.imag[:self.para[0]+1])).astype(np.int)
-            x.imag[:self.para[0]+1] = 0 ## x.imag[l,m==0] = 0
-
-        ## check finiteness
-        if(not np.all(np.isfinite(x))):
-            about.warnings.cprint("WARNING: infinite value(s).")
-
-        return x
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_random_values(self,**kwargs):
-        """
-            Generates random field values according to the specifications given
-            by the parameters, taking into account complex-valuedness and
-            hermitian symmetry.
-
-            Returns
-            -------
-            x : numpy.ndarray
-                Valid field values.
-
-            Other parameters
-            ----------------
-            random : string, *optional*
-                Specifies the probability distribution from which the random
-                numbers are to be drawn.
-                Supported distributions are:
-
-                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
-                - "gau" (normal distribution with zero-mean and a given standard
-                    deviation or variance)
-                - "syn" (synthesizes from a given power spectrum)
-                - "uni" (uniform distribution over [vmin,vmax[)
-
-                (default: None).
-            dev : float, *optional*
-                Standard deviation (default: 1).
-            var : float, *optional*
-                Variance, overriding `dev` if both are specified
-                (default: 1).
-            spec : {scalar, list, numpy.array, nifty.field, function}, *optional*
-                Power spectrum (default: 1).
-            vmin : float, *optional*
-                Lower limit for a uniform distribution (default: 0).
-            vmax : float, *optional*
-                Upper limit for a uniform distribution (default: 1).
-        """
-        arg = random.arguments(self,**kwargs)
-
-        if(arg is None):
-            return np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
-
-        elif(arg[0]=="pm1"):
-            x = random.pm1(datatype=self.datatype,shape=self.dim(split=True))
-
-        elif(arg[0]=="gau"):
-            x = random.gau(datatype=self.datatype,shape=self.dim(split=True),mean=None,dev=arg[2],var=arg[3])
-
-        elif(arg[0]=="syn"):
-            lmax = self.para[0] ## lmax
-            if(self.datatype==np.complex64):
-                x = gl.synalm_f(arg[1],lmax=lmax,mmax=lmax)
-            else:
-                #x = gl.synalm(arg[1],lmax=lmax,mmax=lmax)
-                x = hp.synalm(arg[1],lmax=lmax,mmax=lmax)
-            return x
-
-        elif(arg[0]=="uni"):
-            x = random.uni(datatype=self.datatype,shape=self.dim(split=True),vmin=arg[1],vmax=arg[2])
-
-        else:
-            raise KeyError(about._errors.cstring("ERROR: unsupported random key '"+str(arg[0])+"'."))
-
-        if(np.any(x.imag[:self.para[0]+1]!=0)):
-            x.real[:self.para[0]+1] = np.absolute(x[:self.para[0]+1])*(np.sign(x.real[:self.para[0]+1])+(np.sign(x.real[:self.para[0]+1])==0)*np.sign(x.imag[:self.para[0]+1])).astype(np.int)
-            x.imag[:self.para[0]+1] = 0 ## x.imag[l,m==0] = 0
-
-        return x
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def check_codomain(self,codomain):
-        """
-            Checks whether a given codomain is compatible to the
-            :py:class:`lm_space` or not.
-
-            Parameters
-            ----------
-            codomain : nifty.space
-                Space to be checked for compatibility.
-
-            Returns
-            -------
-            check : bool
-                Whether or not the given codomain is compatible to the space.
-
-            Notes
-            -----
-            Compatible codomains are instances of :py:class:`lm_space`,
-            :py:class:`gl_space`, and :py:class:`hp_space`.
-        """
-        if(not isinstance(codomain,space)):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
-
-        if(self==codomain):
-            return True
-
-        elif(isinstance(codomain,gl_space)):
-            ##         lmax==mmax                         nlat==lmax+1                         nlon==2*lmax+1
-            if(self.para[0]==self.para[1])and(codomain.para[0]==self.para[0]+1)and(codomain.para[1]==2*self.para[0]+1):
-                return True
-            else:
-                about.warnings.cprint("WARNING: unrecommended codomain.")
-
-        elif(isinstance(codomain,hp_space)):
-            ##         lmax==mmax                        3*nside-1==lmax
-            if(self.para[0]==self.para[1])and(3*codomain.para[0]-1==self.para[0]):
-                return True
-            else:
-                about.warnings.cprint("WARNING: unrecommended codomain.")
-
-        return False
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_codomain(self,coname=None,**kwargs):
-        """
-            Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  a pixelization of the two-sphere.
-
-            Parameters
-            ----------
-            coname : string, *optional*
-                String specifying a desired codomain (default: None).
-
-            Returns
-            -------
-            codomain : nifty.space
-                A compatible codomain.
-
-            Notes
-            -----
-            Possible arguments for `coname` are ``'gl'`` in which case a Gauss-
-            Legendre pixelization [#]_ of the sphere is generated, and ``'hp'``
-            in which case a HEALPix pixelization [#]_ is generated.
-
-            References
-            ----------
-            .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
-                   High-Resolution Discretization and Fast Analysis of Data
-                   Distributed on the Sphere", *ApJ* 622..759G.
-            .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
-                   harmonic transforms revisited";
-                   `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
-
-        """
-        if(coname=="gl")or(coname is None)and(about.lm2gl.status): ## order matters
-            if(self.datatype==np.complex64):
-                return gl_space(self.para[0]+1,nlon=2*self.para[0]+1,datatype=np.float32) ## nlat,nlon = lmax+1,2*lmax+1
-            else:
-                return gl_space(self.para[0]+1,nlon=2*self.para[0]+1,datatype=np.float64) ## nlat,nlon = lmax+1,2*lmax+1
-
-        elif(coname=="hp")or(coname is None)and(not about.lm2gl.status):
-            return hp_space((self.para[0]+1)//3) ## nside = (lmax+1)/3
-
-        else:
-            raise ValueError(about._errors.cstring("ERROR: unsupported or incompatible space '"+coname+"'."))
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_meta_volume(self,total=False):
-        """
-            Calculates the meta volumes.
-
-            The meta volumes are the volumes associated with each component of
-            a field, taking into account field components that are not
-            explicitly included in the array of field values but are determined
-            by symmetry conditions.
-
-            Parameters
-            ----------
-            total : bool, *optional*
-                Whether to return the total meta volume of the space or the
-                individual ones of each field component (default: False).
-
-            Returns
-            -------
-            mol : {numpy.ndarray, float}
-                Meta volume of the field components or the complete space.
-
-            Notes
-            -----
-            The spherical harmonics components with :math:`m=0` have meta
-            volume 1, the ones with :math:`m>0` have meta volume 2, sinnce they
-            each determine another component with negative :math:`m`.
-        """
-        if(total):
-            return self.dof()
-        else:
-            mol = np.ones(self.dim(split=True),dtype=self.vol.dtype,order='C')
-            mol[self.para[0]+1:] = 2 ## redundant in (l,m) and (l,-m)
-            return mol
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_dot(self,x,y):
-        """
-            Computes the discrete inner product of two given arrays of field
-            values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                First array
-            y : numpy.ndarray
-                Second array
-
-            Returns
-            -------
-            dot : scalar
-                Inner product of the two arrays.
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        y = self.enforce_shape(np.array(y,dtype=self.datatype))
-        ## inner product
-        if(self.datatype==np.complex64):
-            return gl.dotlm_f(x,y,lmax=self.para[0],mmax=self.para[1])
-        else:
-            return gl.dotlm(x,y,lmax=self.para[0],mmax=self.para[1])
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_transform(self,x,codomain=None,**kwargs):
-        """
-            Computes the transform of a given array of field values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array to be transformed.
-            codomain : nifty.space, *optional*
-                Target space to which the transformation shall map
-                (default: self).
-
-            Returns
-            -------
-            Tx : numpy.ndarray
-                Transformed array
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-
-        if(codomain is None):
-            return x ## T == id
-
-        ## check codomain
-        self.check_codomain(codomain) ## a bit pointless
-
-        if(self==codomain):
-            return x ## T == id
-
-        elif(isinstance(codomain,gl_space)):
-            ## transform
-            if(self.datatype==np.complex64):
-                Tx = gl.alm2map_f(x,nlat=codomain.para[0],nlon=codomain.para[1],lmax=self.para[0],mmax=self.para[1],cl=False)
-            else:
-                Tx = gl.alm2map(x,nlat=codomain.para[0],nlon=codomain.para[1],lmax=self.para[0],mmax=self.para[1],cl=False)
-            ## weight if discrete
-            if(codomain.discrete):
-                Tx = codomain.calc_weight(Tx,power=0.5)
-
-        elif(isinstance(codomain,hp_space)):
-            ## transform
-            Tx =  hp.alm2map(x.astype(np.complex128),codomain.para[0],lmax=self.para[0],mmax=self.para[1],pixwin=False,fwhm=0.0,sigma=None,invert=False,pol=True,inplace=False)
-            ## weight if discrete
-            if(codomain.discrete):
-                Tx = codomain.calc_weight(Tx,power=0.5)
-
-        else:
-            raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
-
-        return Tx.astype(codomain.datatype)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_smooth(self,x,sigma=0,**kwargs):
-        """
-            Smoothes an array of field values by convolution with a Gaussian
-            kernel in position space.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array of field values to be smoothed.
-            sigma : float, *optional*
-                Standard deviation of the Gaussian kernel, specified in units
-                of length in position space; for testing: a sigma of -1 will be
-                reset to a reasonable value (default: 0).
-
-            Returns
-            -------
-            Gx : numpy.ndarray
-                Smoothed array.
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        ## check sigma
-        if(sigma==0):
-            return x
-        elif(sigma==-1):
-            about.infos.cprint("INFO: invalid sigma reset.")
-            sigma = 4.5/(self.para[0]+1) ## sqrt(2)*pi/(lmax+1)
-        elif(sigma<0):
-            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        ## smooth
-        #return gl.smoothalm(x,lmax=self.para[0],mmax=self.para[1],fwhm=0.0,sigma=sigma,overwrite=False) ## no overwrite
-        return hp.smoothalm(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,mmax=self.para[1],verbose=False,inplace=False) ## no overwrite
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_power(self,x,**kwargs):
-        """
-            Computes the power of an array of field values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array containing the field values of which the power is to be
-                calculated.
-
-            Returns
-            -------
-            spec : numpy.ndarray
-                Power contained in the input array.
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        ## power spectrum
-        if(self.datatype==np.complex64):
-            return gl.anaalm_f(x,lmax=self.para[0],mmax=self.para[1])
-        else:
-            #return gl.anaalm(x,lmax=self.para[0],mmax=self.para[1])
-            return hp.alm2cl(x,alms2=None,lmax=self.para[0],mmax=self.para[1],lmax_out=self.para[0],nspec=None)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_plot(self,x,title="",vmin=None,vmax=None,power=True,norm=None,cmap=None,cbar=True,other=None,legend=False,mono=True,**kwargs):
-        """
-            Creates a plot of field values according to the specifications
-            given by the parameters.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array containing the field values.
-
-            Returns
-            -------
-            None
-
-            Other parameters
-            ----------------
-            title : string, *optional*
-                Title of the plot (default: "").
-            vmin : float, *optional*
-                Minimum value to be displayed (default: ``min(x)``).
-            vmax : float, *optional*
-                Maximum value to be displayed (default: ``max(x)``).
-            power : bool, *optional*
-                Whether to plot the power contained in the field or the field
-                values themselves (default: True).
-            unit : string, *optional*
-                Unit of the field values (default: "").
-            norm : string, *optional*
-                Scaling of the field values before plotting (default: None).
-            cmap : matplotlib.colors.LinearSegmentedColormap, *optional*
-                Color map to be used for two-dimensional plots (default: None).
-            cbar : bool, *optional*
-                Whether to show the color bar or not (default: True).
-            other : {single object, tuple of objects}, *optional*
-                Object or tuple of objects to be added, where objects can be
-                scalars, arrays, or fields (default: None).
-            legend : bool, *optional*
-                Whether to show the legend or not (default: False).
-            mono : bool, *optional*
-                Whether to plot the monopole or not (default: True).
-            save : string, *optional*
-                Valid file name where the figure is to be stored, by default
-                the figure is not saved (default: False).
-
-        """
-        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
-            about.warnings.cprint("WARNING: interactive mode off.")
-
-        if(power):
-            x = self.calc_power(x)
-
-            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
-            ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
-
-            xaxes = np.arange(self.para[0]+1,dtype=np.int)
-            if(vmin is None):
-                vmin = np.min(x[:mono].tolist()+(xaxes*(2*xaxes+1)*x)[1:].tolist(),axis=None,out=None)
-            if(vmax is None):
-                vmax = np.max(x[:mono].tolist()+(xaxes*(2*xaxes+1)*x)[1:].tolist(),axis=None,out=None)
-            ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*x)[1:],color=[0.0,0.5,0.0],label="graph 0",linestyle='-',linewidth=2.0,zorder=1)
-            if(mono):
-                ax0.scatter(0.5*(xaxes[1]+xaxes[2]),x[0],s=20,color=[0.0,0.5,0.0],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=1)
-
-            if(other is not None):
-                if(isinstance(other,tuple)):
-                    other = list(other)
-                    for ii in xrange(len(other)):
-                        if(isinstance(other[ii],field)):
-                            other[ii] = other[ii].power(**kwargs)
-                        else:
-                            other[ii] = self.enforce_power(other[ii])
-                elif(isinstance(other,field)):
-                    other = [other.power(**kwargs)]
-                else:
-                    other = [self.enforce_power(other)]
-                imax = max(1,len(other)-1)
-                for ii in xrange(len(other)):
-                    ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
-                    if(mono):
-                        ax0.scatter(0.5*(xaxes[1]+xaxes[2]),other[ii][0],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=-ii)
-                if(legend):
-                    ax0.legend()
-
-            ax0.set_xlim(xaxes[1],xaxes[-1])
-            ax0.set_xlabel(r"$\ell$")
-            ax0.set_ylim(vmin,vmax)
-            ax0.set_ylabel(r"$\ell(2\ell+1) C_\ell$")
-            ax0.set_title(title)
-
-        else:
-            x = self.enforce_shape(np.array(x))
-            if(np.iscomplexobj(x)):
-                if(title):
-                    title += " "
-                if(bool(kwargs.get("save",False))):
-                    save_ = os.path.splitext(os.path.basename(str(kwargs.get("save"))))
-                    kwargs.update(save=save_[0]+"_absolute"+save_[1])
-                self.get_plot(np.absolute(x),title=title+"(absolute)",vmin=vmin,vmax=vmax,power=False,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
-#                self.get_plot(np.real(x),title=title+"(real part)",vmin=vmin,vmax=vmax,power=False,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
-#                self.get_plot(np.imag(x),title=title+"(imaginary part)",vmin=vmin,vmax=vmax,power=False,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
-                if(cmap is None):
-                    cmap = pl.cm.hsv_r
-                if(bool(kwargs.get("save",False))):
-                    kwargs.update(save=save_[0]+"_phase"+save_[1])
-                self.get_plot(np.angle(x,deg=False),title=title+"(phase)",vmin=-3.1416,vmax=3.1416,power=False,norm=None,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs) ## values in [-pi,pi]
-                return None ## leave method
-            else:
-                if(vmin is None):
-                    vmin = np.min(x,axis=None,out=None)
-                if(vmax is None):
-                    vmax = np.max(x,axis=None,out=None)
-                if(norm=="log")and(vmin<=0):
-                    raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
-
-                xmesh = np.nan*np.empty(self.para[::-1]+1,dtype=np.float16,order='C') ## not a number
-                xmesh[4,1] = None
-                xmesh[1,4] = None
-                lm = 0
-                for mm in xrange(self.para[1]+1):
-                    xmesh[mm][mm:] = x[lm:lm+self.para[0]+1-mm]
-                    lm += self.para[0]+1-mm
-
-                s_ = np.array([1,self.para[1]/self.para[0]*(1.0+0.159*bool(cbar))])
-                fig = pl.figure(num=None,figsize=(6.4*s_[0],6.4*s_[1]),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
-                ax0 = fig.add_axes([0.06/s_[0],0.06/s_[1],1.0-0.12/s_[0],1.0-0.12/s_[1]])
-                ax0.set_axis_bgcolor([0.0,0.0,0.0,0.0])
-
-                xaxes = np.arange(self.para[0]+2,dtype=np.int)-0.5
-                yaxes = np.arange(self.para[1]+2,dtype=np.int)-0.5
-                if(norm=="log"):
-                    n_ = ln(vmin=vmin,vmax=vmax)
-                else:
-                    n_ = None
-                sub = ax0.pcolormesh(xaxes,yaxes,np.ma.masked_where(np.isnan(xmesh),xmesh),cmap=cmap,norm=n_,vmin=vmin,vmax=vmax,clim=(vmin,vmax))
-                ax0.set_xlim(xaxes[0],xaxes[-1])
-                ax0.set_xticks([0],minor=False)
-                ax0.set_xlabel(r"$\ell$")
-                ax0.set_ylim(yaxes[0],yaxes[-1])
-                ax0.set_yticks([0],minor=False)
-                ax0.set_ylabel(r"$m$")
-                ax0.set_aspect("equal")
-                if(cbar):
-                    if(norm=="log"):
-                        f_ = lf(10,labelOnlyBase=False)
-                        b_ = sub.norm.inverse(np.linspace(0,1,sub.cmap.N+1))
-                        v_ = np.linspace(sub.norm.vmin,sub.norm.vmax,sub.cmap.N)
-                    else:
-                        f_ = None
-                        b_ = None
-                        v_ = None
-                    fig.colorbar(sub,ax=ax0,orientation="horizontal",fraction=0.1,pad=0.05,shrink=0.75,aspect=20,ticks=[vmin,vmax],format=f_,drawedges=False,boundaries=b_,values=v_)
-                ax0.set_title(title)
-
-        if(bool(kwargs.get("save",False))):
-            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
-            pl.close(fig)
-        else:
-            fig.canvas.draw()
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def __repr__(self):
-        return "<nifty_core.lm_space>"
-
-    def __str__(self):
-        return "nifty_core.lm_space instance\n- lmax     = "+str(self.para[0])+"\n- mmax     = "+str(self.para[1])+"\n- datatype = numpy."+str(np.result_type(self.datatype))
-
-##-----------------------------------------------------------------------------
-
-
-
-##-----------------------------------------------------------------------------
-
-class gl_space(space):
-    """
-        ..                 __
-        ..               /  /
-        ..     ____ __  /  /
-        ..   /   _   / /  /
-        ..  /  /_/  / /  /_
-        ..  \___   /  \___/  space class
-        .. /______/
-
-        NIFTY subclass for Gauss-Legendre pixelizations [#]_ of the two-sphere.
-
-        Parameters
-        ----------
-        nlat : int
-            Number of latitudinal bins, or rings.
-        nlon : int, *optional*
-            Number of longitudinal bins (default: ``2*nlat - 1``).
-        datatype : numpy.dtype, *optional*
-            Data type of the field values (default: numpy.float64).
-
-        See Also
-        --------
-        hp_space : A class for the HEALPix discretization of the sphere [#]_.
-        lm_space : A class for spherical harmonic components.
-
-        Notes
-        -----
-        Only real-valued fields on the two-sphere are supported, i.e.
-        `datatype` has to be either numpy.float64 or numpy.float32.
-
-        References
-        ----------
-        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
-               harmonic transforms revisited";
-               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
-        .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
-               High-Resolution Discretization and Fast Analysis of Data
-               Distributed on the Sphere", *ApJ* 622..759G.
-
-        Attributes
-        ----------
-        para : numpy.ndarray
-            One-dimensional array containing the two numbers `nlat` and `nlon`.
-        datatype : numpy.dtype
-            Data type of the field values.
-        discrete : bool
-            Whether or not the underlying space is discrete, always ``False``
-            for spherical spaces.
-        vol : numpy.ndarray
-            An array containing the pixel sizes.
-    """
-    def __init__(self,nlat,nlon=None,datatype=None):
-        """
-            Sets the attributes for a gl_space class instance.
-
-            Parameters
-            ----------
-            nlat : int
-                Number of latitudinal bins, or rings.
-            nlon : int, *optional*
-                Number of longitudinal bins (default: ``2*nlat - 1``).
-            datatype : numpy.dtype, *optional*
-                Data type of the field values (default: numpy.float64).
-
-            Returns
-            -------
-            None
-        """
-        ## check parameters
-        if(nlat<1):
-            raise ValueError(about._errors.cstring("ERROR: nonpositive number."))
-        if(nlat%2!=0):
-            raise ValueError(about._errors.cstring("ERROR: invalid parameter ( nlat <> 2*n )."))
-        if(nlon is None):
-            nlon = 2*nlat-1
-        elif(nlon<1):
-            about.warnings.cprint("WARNING: parameter set to default.")
-            nlon = 2*nlat-1
-        if(nlon!=2*nlat-1):
-            about.warnings.cprint("WARNING: unrecommended parameter ( nlon <> 2*nlat-1 ).")
-        self.para = np.array([nlat,nlon],dtype=np.int)
-
-        ## check data type
-        if(datatype is None):
-            datatype = np.float64
-        elif(datatype not in [np.float32,np.float64]):
-            about.warnings.cprint("WARNING: data type set to default.")
-            datatype = np.float64
-        self.datatype = datatype
-
-        self.discrete = False
-        self.vol = gl.vol(self.para[0],nlon=self.para[1]).astype(self.datatype)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def nlat(self):
-        """
-            Returns the number of latitudinal bins.
-
-            Returns
-            -------
-            nlat : int
-                Number of latitudinal bins, or rings.
-        """
-        return self.para[0]
-
-    def nlon(self):
-        """
-            Returns the number of longitudinal bins.
-
-            Returns
-            -------
-            nlon : int
-                Number of longitudinal bins.
-        """
-        return self.para[1]
-
-    def dim(self,split=False):
-        """
-            Computes the dimension of the space, i.e.\  the number of pixels.
-
-            Parameters
-            ----------
-            split : bool, *optional*
-                Whether to return the dimension as an array with one component
-                or as a scalar (default: False).
-
-            Returns
-            -------
-            dim : {int, numpy.ndarray}
-                Dimension of the space.
-        """
-        ## dim = nlat*nlon
-        if(split):
-            return np.array([self.para[0]*self.para[1]],dtype=np.int)
-        else:
-            return self.para[0]*self.para[1]
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def dof(self):
-        """
-            Computes the number of degrees of freedom of the space.
-
-            Returns
-            -------
-            dof : int
-                Number of degrees of freedom of the space.
-
-            Notes
-            -----
-            Since the :py:class:`gl_space` class only supports real-valued
-            fields, the number of degrees of freedom is the number of pixels.
-        """
-        ## dof = dim
-        return self.para[0]*self.para[1]
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def enforce_power(self,spec,**kwargs):
-        """
-            Provides a valid power spectrum array from a given object.
-
-            Parameters
-            ----------
-            spec : {float, list, numpy.ndarray, nifty.field, function}
-                Fiducial power spectrum from which a valid power spectrum is to
-                be calculated. Scalars are interpreted as constant power
-                spectra.
-
-            Returns
-            -------
-            spec : numpy.ndarray
-                Valid power spectrum.
-        """
-        if(isinstance(spec,field)):
-            spec = spec.val.astype(self.datatype)
-        elif(callable(spec)):
-            try:
-                spec = np.array(spec(np.arange(self.para[0],dtype=np.int)),dtype=self.datatype)
-            except:
-                raise TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
-        elif(np.isscalar(spec)):
-            spec = np.array([spec],dtype=self.datatype)
-        else:
-            spec = np.array(spec,dtype=self.datatype)
-
-        ## check finiteness
-        if(not np.all(np.isfinite(spec))):
-            about.warnings.cprint("WARNING: infinite value(s).")
-        ## check positivity (excluding null)
-        if(np.any(spec<0)):
-            raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
-        elif(np.any(spec==0)):
-            about.warnings.cprint("WARNING: nonpositive value(s).")
-
-        size = self.para[0] ## nlat
-        ## extend
-        if(np.size(spec)==1):
-            spec = spec*np.ones(size,dtype=spec.dtype,order='C')
-        ## size check
-        elif(np.size(spec)<size):
-            raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(spec))+" < "+str(size)+" )."))
-        elif(np.size(spec)>size):
-            about.warnings.cprint("WARNING: power spectrum cut to size ( == "+str(size)+" ).")
-            spec = spec[:size]
-
-        return spec
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def set_power_indices(self,**kwargs):
-        """
-            Raises
-            ------
-            AttributeError
-                Always. -- The power spectrum for a field on the sphere
-            is defined by its spherical harmonics components and not its
-            position space representation.
-
-        """
-        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_random_values(self,**kwargs):
-        """
-            Generates random field values according to the specifications given
-            by the parameters.
-
-            Returns
-            -------
-            x : numpy.ndarray
-                Valid field values.
-
-            Other parameters
-            ----------------
-            random : string, *optional*
-                Specifies the probability distribution from which the random
-                numbers are to be drawn.
-                Supported distributions are:
-
-                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
-                - "gau" (normal distribution with zero-mean and a given standard
-                    deviation or variance)
-                - "syn" (synthesizes from a given power spectrum)
-                - "uni" (uniform distribution over [vmin,vmax[)
-
-                (default: None).
-            dev : float, *optional*
-                Standard deviation (default: 1).
-            var : float, *optional*
-                Variance, overriding `dev` if both are specified
-                (default: 1).
-            spec : {scalar, list, numpy.array, nifty.field, function}, *optional*
-                Power spectrum (default: 1).
-            codomain : nifty.lm_space, *optional*
-                A compatible codomain for power indexing (default: None).
-            vmin : float, *optional*
-                Lower limit for a uniform distribution (default: 0).
-            vmax : float, *optional*
-                Upper limit for a uniform distribution (default: 1).
-        """
-        arg = random.arguments(self,**kwargs)
-
-        if(arg is None):
-            x = np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
-
-        elif(arg[0]=="pm1"):
-            x = random.pm1(datatype=self.datatype,shape=self.dim(split=True))
-
-        elif(arg[0]=="gau"):
-            x = random.gau(datatype=self.datatype,shape=self.dim(split=True),mean=None,dev=arg[2],var=arg[3])
-
-        elif(arg[0]=="syn"):
-            lmax = self.para[0]-1 ## nlat-1
-            if(self.datatype==np.float32):
-                x = gl.synfast_f(arg[1],nlat=self.para[0],nlon=self.para[1],lmax=lmax,mmax=lmax,alm=False)
-            else:
-                x = gl.synfast(arg[1],nlat=self.para[0],nlon=self.para[1],lmax=lmax,mmax=lmax,alm=False)
-            ## weight if discrete
-            if(self.discrete):
-                x = self.calc_weight(x,power=0.5)
-
-        elif(arg[0]=="uni"):
-            x = random.uni(datatype=self.datatype,shape=self.dim(split=True),vmin=arg[1],vmax=arg[2])
-
-        else:
-            raise KeyError(about._errors.cstring("ERROR: unsupported random key '"+str(arg[0])+"'."))
-
-        return x
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def check_codomain(self,codomain):
-        """
-            Checks whether a given codomain is compatible to the space or not.
-
-            Parameters
-            ----------
-            codomain : nifty.space
-                Space to be checked for compatibility.
-
-            Returns
-            -------
-            check : bool
-                Whether or not the given codomain is compatible to the space.
-
-            Notes
-            -----
-            Compatible codomains are instances of :py:class:`gl_space` and
-            :py:class:`lm_space`.
-        """
-        if(not isinstance(codomain,space)):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
-
-        if(self==codomain):
-            return True
-
-        if(isinstance(codomain,lm_space)):
-            ##         nlon==2*lat-1                          lmax==nlat-1                         lmax==mmax
-            if(self.para[1]==2*self.para[0]-1)and(codomain.para[0]==self.para[0]-1)and(codomain.para[0]==codomain.para[1]):
-                return True
-            else:
-                about.warnings.cprint("WARNING: unrecommended codomain.")
-
-        return False
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_codomain(self,**kwargs):
-        """
-            Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
-
-            Returns
-            -------
-            codomain : nifty.lm_space
-                A compatible codomain.
-        """
-        if(self.datatype==np.float32):
-            return lm_space(self.para[0]-1,mmax=self.para[0]-1,datatype=np.complex64) ## lmax,mmax = nlat-1,nlat-1
-        else:
-            return lm_space(self.para[0]-1,mmax=self.para[0]-1,datatype=np.complex128) ## lmax,mmax = nlat-1,nlat-1
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_meta_volume(self,total=False):
-        """
-            Calculates the meta volumes.
-
-            The meta volumes are the volumes associated with each component of
-            a field, taking into account field components that are not
-            explicitly included in the array of field values but are determined
-            by symmetry conditions.
-
-            Parameters
-            ----------
-            total : bool, *optional*
-                Whether to return the total meta volume of the space or the
-                individual ones of each field component (default: False).
-
-            Returns
-            -------
-            mol : {numpy.ndarray, float}
-                Meta volume of the field components or the complete space.
-
-            Notes
-            -----
-            For Gauss-Legendre pixelizations, the meta volumes are the pixel
-            sizes.
-        """
-        if(total):
-            return self.datatype(4*pi)
-        else:
-            mol = np.ones(self.dim(split=True),dtype=self.datatype,order='C')
-            return self.calc_weight(mol,power=1)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_weight(self,x,power=1):
-        """
-            Weights a given array with the pixel volumes to a given power.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array to be weighted.
-            power : float, *optional*
-                Power of the pixel volumes to be used (default: 1).
-
-            Returns
-            -------
-            y : numpy.ndarray
-                Weighted array.
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        ## weight
-        if(self.datatype==np.float32):
-            return gl.weight_f(x,self.vol,p=np.float32(power),nlat=self.para[0],nlon=self.para[1],overwrite=False)
-        else:
-            return gl.weight(x,self.vol,p=np.float64(power),nlat=self.para[0],nlon=self.para[1],overwrite=False)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_transform(self,x,codomain=None,**kwargs):
-        """
-            Computes the transform of a given array of field values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array to be transformed.
-            codomain : nifty.space, *optional*
-                Target space to which the transformation shall map
-                (default: self).
-
-            Returns
-            -------
-            Tx : numpy.ndarray
-                Transformed array
-
-            Notes
-            -----
-            Only instances of the :py:class:`lm_space` or :py:class:`gl_space`
-            classes are allowed as `codomain`.
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-
-        if(codomain is None):
-            return x ## T == id
-
-        ## check codomain
-        self.check_codomain(codomain) ## a bit pointless
-
-        if(self==codomain):
-            return x ## T == id
-
-        if(isinstance(codomain,lm_space)):
-            ## weight if discrete
-            if(self.discrete):
-                x = self.calc_weight(x,power=-0.5)
-            ## transform
-            if(self.datatype==np.float32):
-                Tx = gl.map2alm_f(x,nlat=self.para[0],nlon=self.para[1],lmax=codomain.para[0],mmax=codomain.para[1])
-            else:
-                Tx = gl.map2alm(x,nlat=self.para[0],nlon=self.para[1],lmax=codomain.para[0],mmax=codomain.para[1])
-
-        else:
-            raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
-
-        return Tx.astype(codomain.datatype)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_smooth(self,x,sigma=0,**kwargs):
-        """
-            Smoothes an array of field values by convolution with a Gaussian
-            kernel.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array of field values to be smoothed.
-            sigma : float, *optional*
-                Standard deviation of the Gaussian kernel, specified in units
-                of length in position space; for testing: a sigma of -1 will be
-                reset to a reasonable value (default: 0).
-
-            Returns
-            -------
-            Gx : numpy.ndarray
-                Smoothed array.
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        ## check sigma
-        if(sigma==0):
-            return x
-        elif(sigma==-1):
-            about.infos.cprint("INFO: invalid sigma reset.")
-            sigma = 4.5/self.para[0] ## sqrt(2)*pi/(lmax+1)
-        elif(sigma<0):
-            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        ## smooth
-        return gl.smoothmap(x,nlat=self.para[0],nlon=self.para[1],lmax=self.para[0]-1,mmax=self.para[0]-1,fwhm=0.0,sigma=sigma)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_power(self,x,**kwargs):
-        """
-            Computes the power of an array of field values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array containing the field values of which the power is to be
-                calculated.
-
-            Returns
-            -------
-            spec : numpy.ndarray
-                Power contained in the input array.
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        ## weight if discrete
-        if(self.discrete):
-            x = self.calc_weight(x,power=-0.5)
-        ## power spectrum
-        if(self.datatype==np.float32):
-            return gl.anafast_f(x,nlat=self.para[0],nlon=self.para[1],lmax=self.para[0]-1,mmax=self.para[0]-1,alm=False)
-        else:
-            return gl.anafast(x,nlat=self.para[0],nlon=self.para[1],lmax=self.para[0]-1,mmax=self.para[0]-1,alm=False)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_plot(self,x,title="",vmin=None,vmax=None,power=False,unit="",norm=None,cmap=None,cbar=True,other=None,legend=False,mono=True,**kwargs):
-        """
-            Creates a plot of field values according to the specifications
-            given by the parameters.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array containing the field values.
-
-            Returns
-            -------
-            None
-
-            Other parameters
-            ----------------
-            title : string, *optional*
-                Title of the plot (default: "").
-            vmin : float, *optional*
-                Minimum value to be displayed (default: ``min(x)``).
-            vmax : float, *optional*
-                Maximum value to be displayed (default: ``max(x)``).
-            power : bool, *optional*
-                Whether to plot the power contained in the field or the field
-                values themselves (default: False).
-            unit : string, *optional*
-                Unit of the field values (default: "").
-            norm : string, *optional*
-                Scaling of the field values before plotting (default: None).
-            cmap : matplotlib.colors.LinearSegmentedColormap, *optional*
-                Color map to be used for two-dimensional plots (default: None).
-            cbar : bool, *optional*
-                Whether to show the color bar or not (default: True).
-            other : {single object, tuple of objects}, *optional*
-                Object or tuple of objects to be added, where objects can be
-                scalars, arrays, or fields (default: None).
-            legend : bool, *optional*
-                Whether to show the legend or not (default: False).
-            mono : bool, *optional*
-                Whether to plot the monopole or not (default: True).
-            save : string, *optional*
-                Valid file name where the figure is to be stored, by default
-                the figure is not saved (default: False).
-
-        """
-        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
-            about.warnings.cprint("WARNING: interactive mode off.")
-
-        if(power):
-            x = self.calc_power(x)
-
-            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
-            ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
-
-            xaxes = np.arange(self.para[0],dtype=np.int)
-            if(vmin is None):
-                vmin = np.min(x[:mono].tolist()+(xaxes*(2*xaxes+1)*x)[1:].tolist(),axis=None,out=None)
-            if(vmax is None):
-                vmax = np.max(x[:mono].tolist()+(xaxes*(2*xaxes+1)*x)[1:].tolist(),axis=None,out=None)
-            ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*x)[1:],color=[0.0,0.5,0.0],label="graph 0",linestyle='-',linewidth=2.0,zorder=1)
-            if(mono):
-                ax0.scatter(0.5*(xaxes[1]+xaxes[2]),x[0],s=20,color=[0.0,0.5,0.0],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=1)
-
-            if(other is not None):
-                if(isinstance(other,tuple)):
-                    other = list(other)
-                    for ii in xrange(len(other)):
-                        if(isinstance(other[ii],field)):
-                            other[ii] = other[ii].power(**kwargs)
-                        else:
-                            other[ii] = self.enforce_power(other[ii])
-                elif(isinstance(other,field)):
-                    other = [other.power(**kwargs)]
-                else:
-                    other = [self.enforce_power(other)]
-                imax = max(1,len(other)-1)
-                for ii in xrange(len(other)):
-                    ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
-                    if(mono):
-                        ax0.scatter(0.5*(xaxes[1]+xaxes[2]),other[ii][0],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=-ii)
-                if(legend):
-                    ax0.legend()
-
-            ax0.set_xlim(xaxes[1],xaxes[-1])
-            ax0.set_xlabel(r"$l$")
-            ax0.set_ylim(vmin,vmax)
-            ax0.set_ylabel(r"$l(2l+1) C_l$")
-            ax0.set_title(title)
-
-        else:
-            x = self.enforce_shape(np.array(x,dtype=self.datatype))
-            if(vmin is None):
-                vmin = np.min(x,axis=None,out=None)
-            if(vmax is None):
-                vmax = np.max(x,axis=None,out=None)
-            if(norm=="log")and(vmin<=0):
-                raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
-
-            fig = pl.figure(num=None,figsize=(8.5,5.4),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
-            ax0 = fig.add_axes([0.02,0.05,0.96,0.9])
-
-            lon,lat = gl.bounds(self.para[0],nlon=self.para[1])
-            lon = (lon-pi)*180/pi
-            lat = (lat-pi/2)*180/pi
-            if(norm=="log"):
-                n_ = ln(vmin=vmin,vmax=vmax)
-            else:
-                n_ = None
-            sub = ax0.pcolormesh(lon,lat,np.roll(x.reshape((self.para[0],self.para[1]),order='C'),self.para[1]//2,axis=1)[::-1,::-1],cmap=cmap,norm=n_,vmin=vmin,vmax=vmax)
-            ax0.set_xlim(-180,180)
-            ax0.set_ylim(-90,90)
-            ax0.set_aspect("equal")
-            ax0.axis("off")
-            if(cbar):
-                if(norm=="log"):
-                    f_ = lf(10,labelOnlyBase=False)
-                    b_ = sub.norm.inverse(np.linspace(0,1,sub.cmap.N+1))
-                    v_ = np.linspace(sub.norm.vmin,sub.norm.vmax,sub.cmap.N)
-                else:
-                    f_ = None
-                    b_ = None
-                    v_ = None
-                cb0 = fig.colorbar(sub,ax=ax0,orientation="horizontal",fraction=0.1,pad=0.05,shrink=0.5,aspect=25,ticks=[vmin,vmax],format=f_,drawedges=False,boundaries=b_,values=v_)
-                cb0.ax.text(0.5,-1.0,unit,fontdict=None,withdash=False,transform=cb0.ax.transAxes,horizontalalignment="center",verticalalignment="center")
-            ax0.set_title(title)
-
-        if(bool(kwargs.get("save",False))):
-            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
-            pl.close(fig)
-        else:
-            fig.canvas.draw()
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def __repr__(self):
-        return "<nifty_core.gl_space>"
-
-    def __str__(self):
-        return "nifty_core.gl_space instance\n- nlat     = "+str(self.para[0])+"\n- nlon     = "+str(self.para[1])+"\n- datatype = numpy."+str(np.result_type(self.datatype))
-
-##-----------------------------------------------------------------------------
-
-
-
-##-----------------------------------------------------------------------------
-
-class hp_space(space):
-    """
-        ..        __
-        ..      /  /
-        ..     /  /___    ______
-        ..    /   _   | /   _   |
-        ..   /  / /  / /  /_/  /
-        ..  /__/ /__/ /   ____/  space class
-        ..           /__/
-
-        NIFTY subclass for HEALPix discretizations of the two-sphere [#]_.
-
-        Parameters
-        ----------
-        nside : int
-            Resolution parameter for the HEALPix discretization, resulting in
-            ``12*nside**2`` pixels.
-
-        See Also
-        --------
-        gl_space : A class for the Gauss-Legendre discretization of the
-            sphere [#]_.
-        lm_space : A class for spherical harmonic components.
-
-        Notes
-        -----
-        Only powers of two are allowed for `nside`.
-
-        References
-        ----------
-        .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
-               High-Resolution Discretization and Fast Analysis of Data
-               Distributed on the Sphere", *ApJ* 622..759G.
-        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
-               harmonic transforms revisited";
-               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
-
-        Attributes
-        ----------
-        para : numpy.ndarray
-            Array containing the number `nside`.
-        datatype : numpy.dtype
-            Data type of the field values, which is always numpy.float64.
-        discrete : bool
-            Whether or not the underlying space is discrete, always ``False``
-            for spherical spaces.
-        vol : numpy.ndarray
-            An array with one element containing the pixel size.
-    """
-    niter = 0 ## default number of iterations used for transformations
-
-    def __init__(self,nside):
-        """
-            Sets the attributes for a hp_space class instance.
-
-            Parameters
-            ----------
-            nside : int
-                Resolution parameter for the HEALPix discretization, resulting
-                in ``12*nside**2`` pixels.
-
-            Returns
-            -------
-            None
-        """
-        ## check parameters
-        if(nside<1):
-            raise ValueError(about._errors.cstring("ERROR: nonpositive number."))
-        if(not hp.isnsideok(nside)):
-            raise ValueError(about._errors.cstring("ERROR: invalid parameter ( nside <> 2**n )."))
-        self.para = np.array([nside],dtype=np.int)
-
-        self.datatype = np.float64
-        self.discrete = False
-        self.vol = np.array([4*pi/(12*self.para[0]**2)],dtype=self.datatype)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def nside(self):
-        """
-            Returns the resolution parameter.
-
-            Returns
-            -------
-            nside : int
-                HEALPix resolution parameter.
-        """
-        return self.para[0]
-
-
-    def dim(self,split=False):
-        """
-            Computes the dimension of the space, i.e.\  the number of pixels.
-
-            Parameters
-            ----------
-            split : bool, *optional*
-                Whether to return the dimension as an array with one component
-                or as a scalar (default: False).
-
-            Returns
-            -------
-            dim : {int, numpy.ndarray}
-                Dimension of the space.
-        """
-        ## dim = 12*nside**2
-        if(split):
-            return np.array([12*self.para[0]**2],dtype=np.int)
-        else:
-            return 12*self.para[0]**2
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def dof(self):
-        """
-            Computes the number of degrees of freedom of the space.
-
-            Returns
-            -------
-            dof : int
-                Number of degrees of freedom of the space.
-
-            Notes
-            -----
-            Since the :py:class:`hp_space` class only supports real-valued
-            fields, the number of degrees of freedom is the number of pixels.
-        """
-        ## dof = dim
-        return 12*self.para[0]**2
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def enforce_power(self,spec,**kwargs):
-        """
-            Provides a valid power spectrum array from a given object.
-
-            Parameters
-            ----------
-            spec : {float, list, numpy.ndarray, nifty.field, function}
-                Fiducial power spectrum from which a valid power spectrum is to
-                be calculated. Scalars are interpreted as constant power
-                spectra.
-
-            Returns
-            -------
-            spec : numpy.ndarray
-                Valid power spectrum.
-        """
-        if(isinstance(spec,field)):
-            spec = spec.val.astype(self.datatype)
-        elif(callable(spec)):
-            try:
-                spec = np.array(spec(np.arange(3*self.para[0],dtype=np.int)),dtype=self.datatype)
-            except:
-                raise TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
-        elif(np.isscalar(spec)):
-            spec = np.array([spec],dtype=self.datatype)
-        else:
-            spec = np.array(spec,dtype=self.datatype)
-
-        ## check finiteness
-        if(not np.all(np.isfinite(spec))):
-            about.warnings.cprint("WARNING: infinite value(s).")
-        ## check positivity (excluding null)
-        if(np.any(spec<0)):
-            raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
-        elif(np.any(spec==0)):
-            about.warnings.cprint("WARNING: nonpositive value(s).")
-
-        size = 3*self.para[0] ## 3*nside
-        ## extend
-        if(np.size(spec)==1):
-            spec = spec*np.ones(size,dtype=spec.dtype,order='C')
-        ## size check
-        elif(np.size(spec)<size):
-            raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(spec))+" < "+str(size)+" )."))
-        elif(np.size(spec)>size):
-            about.warnings.cprint("WARNING: power spectrum cut to size ( == "+str(size)+" ).")
-            spec = spec[:size]
-
-        return spec
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def set_power_indices(self,**kwargs):
-        """
-            Raises
-            ------
-            AttributeError
-                Always. -- The power spectrum for a field on the sphere
-            is defined by its spherical harmonics components and not its
-            position space representation.
-
-        """
-        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_random_values(self,**kwargs):
-        """
-            Generates random field values according to the specifications given
-            by the parameters.
-
-            Returns
-            -------
-            x : numpy.ndarray
-                Valid field values.
-
-            Other parameters
-            ----------------
-            random : string, *optional*
-                Specifies the probability distribution from which the random
-                numbers are to be drawn.
-                Supported distributions are:
-
-                - "pm1" (uniform distribution over {+1,-1}
-                - "gau" (normal distribution with zero-mean and a given standard
-                    deviation or variance)
-                - "syn" (synthesizes from a given power spectrum)
-                - "uni" (uniform distribution over [vmin,vmax[)
-
-                (default: None).
-            dev : float, *optional*
-                Standard deviation (default: 1).
-            var : float, *optional*
-                Variance, overriding `dev` if both are specified
-                (default: 1).
-            spec : {scalar, list, numpy.array, nifty.field, function}, *optional*
-                Power spectrum (default: 1).
-            codomain : nifty.lm_space, *optional*
-                A compatible codomain for power indexing (default: None).
-            vmin : float, *optional*
-                Lower limit for a uniform distribution (default: 0).
-            vmax : float, *optional*
-                Upper limit for a uniform distribution (default: 1).
-        """
-        arg = random.arguments(self,**kwargs)
-
-        if(arg is None):
-            x = np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
-
-        elif(arg[0]=="pm1"):
-            x = random.pm1(datatype=self.datatype,shape=self.dim(split=True))
-
-        elif(arg[0]=="gau"):
-            x = random.gau(datatype=self.datatype,shape=self.dim(split=True),mean=None,dev=arg[2],var=arg[3])
-
-        elif(arg[0]=="syn"):
-            lmax = 3*self.para[0]-1 ## 3*nside-1
-            x = hp.synfast(arg[1],self.para[0],lmax=lmax,mmax=lmax,alm=False,pol=True,pixwin=False,fwhm=0.0,sigma=None)
-            ## weight if discrete
-            if(self.discrete):
-                x = self.calc_weight(x,power=0.5)
-
-        elif(arg[0]=="uni"):
-            x = random.uni(datatype=self.datatype,shape=self.dim(split=True),vmin=arg[1],vmax=arg[2])
-
-        else:
-            raise KeyError(about._errors.cstring("ERROR: unsupported random key '"+str(arg[0])+"'."))
-
-        return x
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def check_codomain(self,codomain):
-        """
-            Checks whether a given codomain is compatible to the space or not.
-
-            Parameters
-            ----------
-            codomain : nifty.space
-                Space to be checked for compatibility.
-
-            Returns
-            -------
-            check : bool
-                Whether or not the given codomain is compatible to the space.
-
-            Notes
-            -----
-            Compatible codomains are instances of :py:class:`hp_space` and
-            :py:class:`lm_space`.
-        """
-        if(not isinstance(codomain,space)):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
-
-        if(self==codomain):
-            return True
-
-        if(isinstance(codomain,lm_space)):
-            ##        3*nside-1==lmax                             lmax==mmax
-            if(3*self.para[0]-1==codomain.para[0])and(codomain.para[0]==codomain.para[1]):
-                return True
-            else:
-                about.warnings.cprint("WARNING: unrecommended codomain.")
-
-        return False
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_codomain(self,**kwargs):
-        """
-            Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
-
-            Returns
-            -------
-            codomain : nifty.lm_space
-                A compatible codomain.
-        """
-        return lm_space(3*self.para[0]-1,mmax=3*self.para[0]-1,datatype=np.complex128) ## lmax,mmax = 3*nside-1,3*nside-1
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_meta_volume(self,total=False):
-        """
-            Calculates the meta volumes.
-
-            The meta volumes are the volumes associated with each component of
-            a field, taking into account field components that are not
-            explicitly included in the array of field values but are determined
-            by symmetry conditions.
-
-            Parameters
-            ----------
-            total : bool, *optional*
-                Whether to return the total meta volume of the space or the
-                individual ones of each field component (default: False).
-
-            Returns
-            -------
-            mol : {numpy.ndarray, float}
-                Meta volume of the field components or the complete space.
-
-            Notes
-            -----
-            For HEALpix discretizations, the meta volumes are the pixel sizes.
-        """
-        if(total):
-            return self.datatype(4*pi)
-        else:
-            mol = np.ones(self.dim(split=True),dtype=self.datatype,order='C')
-            return self.calc_weight(mol,power=1)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_transform(self,x,codomain=None,**kwargs):
-        """
-            Computes the transform of a given array of field values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array to be transformed.
-            codomain : nifty.space, *optional*
-                Target space to which the transformation shall map
-                (default: self).
-
-            Returns
-            -------
-            Tx : numpy.ndarray
-                Transformed array
-
-            Other parameters
-            ----------------
-            iter : int, *optional*
-                Number of iterations performed in the HEALPix basis
-                transformation.
-
-            Notes
-            -----
-            Only instances of the :py:class:`lm_space` or :py:class:`hp_space`
-            classes are allowed as `codomain`.
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-
-        if(codomain is None):
-            return x ## T == id
-
-        ## check codomain
-        self.check_codomain(codomain) ## a bit pointless
-
-        if(self==codomain):
-            return x ## T == id
-
-        if(isinstance(codomain,lm_space)):
-            ## weight if discrete
-            if(self.discrete):
-                x = self.calc_weight(x,power=-0.5)
-            ## transform
-            Tx = hp.map2alm(x.astype(np.float64),lmax=codomain.para[0],mmax=codomain.para[1],iter=kwargs.get("iter",self.niter),pol=True,use_weights=False,datapath=None)
-
-        else:
-            raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
-
-        return Tx.astype(codomain.datatype)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_smooth(self,x,sigma=0,**kwargs):
-        """
-            Smoothes an array of field values by convolution with a Gaussian
-            kernel.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array of field values to be smoothed.
-            sigma : float, *optional*
-                Standard deviation of the Gaussian kernel, specified in units
-                of length in position space; for testing: a sigma of -1 will be
-                reset to a reasonable value (default: 0).
-
-            Returns
-            -------
-            Gx : numpy.ndarray
-                Smoothed array.
-
-            Other parameters
-            ----------------
-            iter : int, *optional*
-                Number of iterations performed in the HEALPix basis
-                transformation.
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        ## check sigma
-        if(sigma==0):
-            return x
-        elif(sigma==-1):
-            about.infos.cprint("INFO: invalid sigma reset.")
-            sigma = 1.5/self.para[0] ## sqrt(2)*pi/(lmax+1)
-        elif(sigma<0):
-            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        ## smooth
-        return hp.smoothing(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,iter=kwargs.get("iter",self.niter),lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,use_weights=False,datapath=None)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_power(self,x,**kwargs):
-        """
-            Computes the power of an array of field values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array containing the field values of which the power is to be
-                calculated.
-
-            Returns
-            -------
-            spec : numpy.ndarray
-                Power contained in the input array.
-
-            Other parameters
-            ----------------
-            iter : int, *optional*
-                Number of iterations performed in the HEALPix basis
-                transformation.
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        ## weight if discrete
-        if(self.discrete):
-            x = self.calc_weight(x,power=-0.5)
-        ## power spectrum
-        return hp.anafast(x,map2=None,nspec=None,lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,iter=kwargs.get("iter",self.niter),alm=False,pol=True,use_weights=False,datapath=None)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_plot(self,x,title="",vmin=None,vmax=None,power=False,unit="",norm=None,cmap=None,cbar=True,other=None,legend=False,mono=True,**kwargs):
-        """
-            Creates a plot of field values according to the specifications
-            given by the parameters.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array containing the field values.
-
-            Returns
-            -------
-            None
-
-            Other parameters
-            ----------------
-            title : string, *optional*
-                Title of the plot (default: "").
-            vmin : float, *optional*
-                Minimum value to be displayed (default: ``min(x)``).
-            vmax : float, *optional*
-                Maximum value to be displayed (default: ``max(x)``).
-            power : bool, *optional*
-                Whether to plot the power contained in the field or the field
-                values themselves (default: False).
-            unit : string, *optional*
-                Unit of the field values (default: "").
-            norm : string, *optional*
-                Scaling of the field values before plotting (default: None).
-            cmap : matplotlib.colors.LinearSegmentedColormap, *optional*
-                Color map to be used for two-dimensional plots (default: None).
-            cbar : bool, *optional*
-                Whether to show the color bar or not (default: True).
-            other : {single object, tuple of objects}, *optional*
-                Object or tuple of objects to be added, where objects can be
-                scalars, arrays, or fields (default: None).
-            legend : bool, *optional*
-                Whether to show the legend or not (default: False).
-            mono : bool, *optional*
-                Whether to plot the monopole or not (default: True).
-            save : string, *optional*
-                Valid file name where the figure is to be stored, by default
-                the figure is not saved (default: False).
-            iter : int, *optional*
-                Number of iterations performed in the HEALPix basis
-                transformation.
-        """
-        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
-            about.warnings.cprint("WARNING: interactive mode off.")
-
-        if(power):
-            x = self.calc_power(x,**kwargs)
-
-            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
-            ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
-
-            xaxes = np.arange(3*self.para[0],dtype=np.int)
-            if(vmin is None):
-                vmin = np.min(x[:mono].tolist()+(xaxes*(2*xaxes+1)*x)[1:].tolist(),axis=None,out=None)
-            if(vmax is None):
-                vmax = np.max(x[:mono].tolist()+(xaxes*(2*xaxes+1)*x)[1:].tolist(),axis=None,out=None)
-            ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*x)[1:],color=[0.0,0.5,0.0],label="graph 0",linestyle='-',linewidth=2.0,zorder=1)
-            if(mono):
-                ax0.scatter(0.5*(xaxes[1]+xaxes[2]),x[0],s=20,color=[0.0,0.5,0.0],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=1)
-
-            if(other is not None):
-                if(isinstance(other,tuple)):
-                    other = list(other)
-                    for ii in xrange(len(other)):
-                        if(isinstance(other[ii],field)):
-                            other[ii] = other[ii].power(**kwargs)
-                        else:
-                            other[ii] = self.enforce_power(other[ii])
-                elif(isinstance(other,field)):
-                    other = [other.power(**kwargs)]
-                else:
-                    other = [self.enforce_power(other)]
-                imax = max(1,len(other)-1)
-                for ii in xrange(len(other)):
-                    ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
-                    if(mono):
-                        ax0.scatter(0.5*(xaxes[1]+xaxes[2]),other[ii][0],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=-ii)
-                if(legend):
-                    ax0.legend()
-
-            ax0.set_xlim(xaxes[1],xaxes[-1])
-            ax0.set_xlabel(r"$\ell$")
-            ax0.set_ylim(vmin,vmax)
-            ax0.set_ylabel(r"$\ell(2\ell+1) C_\ell$")
-            ax0.set_title(title)
-
-        else:
-            x = self.enforce_shape(np.array(x,dtype=self.datatype))
-            if(norm=="log"):
-                if(vmin is not None):
-                    if(vmin<=0):
-                        raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
-                elif(np.min(x,axis=None,out=None)<=0):
-                    raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
-            if(cmap is None):
-                cmap = pl.cm.jet ## default
-            cmap.set_under(color='k',alpha=0.0) ## transparent box
-            hp.mollview(x,fig=None,rot=None,coord=None,unit=unit,xsize=800,title=title,nest=False,min=vmin,max=vmax,flip="astro",remove_dip=False,remove_mono=False,gal_cut=0,format="%g",format2="%g",cbar=cbar,cmap=cmap,notext=False,norm=norm,hold=False,margins=None,sub=None)
-            fig = pl.gcf()
-
-        if(bool(kwargs.get("save",False))):
-            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
-            pl.close(fig)
-        else:
-            fig.canvas.draw()
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def __repr__(self):
-        return "<nifty_core.hp_space>"
-
-    def __str__(self):
-        return "nifty_core.hp_space instance\n- nside = "+str(self.para[0])
-
-##-----------------------------------------------------------------------------
+###-----------------------------------------------------------------------------
+#
+#class lm_space(space):
+#    """
+#        ..       __
+#        ..     /  /
+#        ..    /  /    __ ____ ___
+#        ..   /  /   /   _    _   |
+#        ..  /  /_  /  / /  / /  /
+#        ..  \___/ /__/ /__/ /__/  space class
+#
+#        NIFTY subclass for spherical harmonics components, for representations
+#        of fields on the two-sphere.
+#
+#        Parameters
+#        ----------
+#        lmax : int
+#            Maximum :math:`\ell`-value up to which the spherical harmonics
+#            coefficients are to be used.
+#        mmax : int, *optional*
+#            Maximum :math:`m`-value up to which the spherical harmonics
+#            coefficients are to be used (default: `lmax`).
+#        datatype : numpy.dtype, *optional*
+#            Data type of the field values (default: numpy.complex128).
+#
+#        See Also
+#        --------
+#        hp_space : A class for the HEALPix discretization of the sphere [#]_.
+#        gl_space : A class for the Gauss-Legendre discretization of the
+#            sphere [#]_.
+#
+#        Notes
+#        -----
+#        Hermitian symmetry, i.e. :math:`a_{\ell -m} = \overline{a}_{\ell m}` is
+#        always assumed for the spherical harmonics components, i.e. only fields
+#        on the two-sphere with real-valued representations in position space
+#        can be handled.
+#
+#        References
+#        ----------
+#        .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
+#               High-Resolution Discretization and Fast Analysis of Data
+#               Distributed on the Sphere", *ApJ* 622..759G.
+#        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+#               harmonic transforms revisited";
+#               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
+#
+#        Attributes
+#        ----------
+#        para : numpy.ndarray
+#            One-dimensional array containing the two numbers `lmax` and
+#            `mmax`.
+#        datatype : numpy.dtype
+#            Data type of the field values.
+#        discrete : bool
+#            Parameter captioning the fact that an :py:class:`lm_space` is
+#            always discrete.
+#        vol : numpy.ndarray
+#            Pixel volume of the :py:class:`lm_space`, which is always 1.
+#    """
+#    def __init__(self,lmax,mmax=None,datatype=None):
+#        """
+#            Sets the attributes for an lm_space class instance.
+#
+#            Parameters
+#            ----------
+#            lmax : int
+#                Maximum :math:`\ell`-value up to which the spherical harmonics
+#                coefficients are to be used.
+#            mmax : int, *optional*
+#                Maximum :math:`m`-value up to which the spherical harmonics
+#                coefficients are to be used (default: `lmax`).
+#            datatype : numpy.dtype, *optional*
+#                Data type of the field values (default: numpy.complex128).
+#
+#            Returns
+#            -------
+#            None.
+#        """
+#        ## check parameters
+#        if(lmax<1):
+#            raise ValueError(about._errors.cstring("ERROR: nonpositive number."))
+#        if(lmax%2==0)and(lmax>2): ## exception lmax == 2 (nside == 1)
+#            about.warnings.cprint("WARNING: unrecommended parameter ( lmax <> 2*n+1 ).")
+#        if(mmax is None):
+#            mmax = lmax
+#        elif(mmax<1)or(mmax>lmax):
+#            about.warnings.cprint("WARNING: parameter set to default.")
+#            mmax = lmax
+#        if(mmax!=lmax):
+#            about.warnings.cprint("WARNING: unrecommended parameter ( mmax <> lmax ).")
+#        self.para = np.array([lmax,mmax],dtype=np.int)
+#
+#        ## check data type
+#        if(datatype is None):
+#            datatype = np.complex128
+#        elif(datatype not in [np.complex64,np.complex128]):
+#            about.warnings.cprint("WARNING: data type set to default.")
+#            datatype = np.complex128
+#        self.datatype = datatype
+#
+#        self.discrete = True
+#        self.vol = np.real(np.array([1],dtype=self.datatype))
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def lmax(self):
+#        """
+#            Returns the maximum quantum number :math:`\ell`.
+#
+#            Returns
+#            -------
+#            lmax : int
+#                Maximum quantum number :math:`\ell`.
+#        """
+#        return self.para[0]
+#
+#    def mmax(self):
+#        """
+#            Returns the maximum quantum number :math:`m`.
+#
+#            Returns
+#            -------
+#            mmax : int
+#                Maximum quantum number :math:`m`.
+#
+#        """
+#        return self.para[1]
+#
+#    def dim(self,split=False):
+#        """
+#            Computes the dimension of the space, i.e.\  the number of spherical
+#            harmonics components that are stored.
+#
+#            Parameters
+#            ----------
+#            split : bool, *optional*
+#                Whether to return the dimension as an array with one component
+#                or as a scalar (default: False).
+#
+#            Returns
+#            -------
+#            dim : {int, numpy.ndarray}
+#                Number of spherical harmonics components.
+#
+#            Notes
+#            -----
+#            Due to the symmetry assumption, only the components with
+#            non-negative :math:`m` are stored and only these components are
+#            counted here.
+#        """
+#        ## dim = (mmax+1)*(lmax-mmax/2+1)
+#        if(split):
+#            return np.array([(self.para[0]+1)*(self.para[1]+1)-(self.para[1]+1)*self.para[1]//2],dtype=np.int)
+#        else:
+#            return (self.para[0]+1)*(self.para[1]+1)-(self.para[1]+1)*self.para[1]//2
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def dof(self):
+#        """
+#            Computes the number of degrees of freedom of the space, taking into
+#            account symmetry constraints and complex-valuedness.
+#
+#            Returns
+#            -------
+#            dof : int
+#                Number of degrees of freedom of the space.
+#
+#            Notes
+#            -----
+#            The number of degrees of freedom is reduced due to the hermitian
+#            symmetry, which is assumed for the spherical harmonics components.
+#        """
+#        ## dof = 2*dim-(lmax+1) = (lmax+1)*(2*mmax+1)*(mmax+1)*mmax
+#        return (self.para[0]+1)*(2*self.para[1]+1)-(self.para[1]+1)*self.para[1]
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def enforce_power(self,spec,**kwargs):
+#        """
+#            Provides a valid power spectrum array from a given object.
+#
+#            Parameters
+#            ----------
+#            spec : {float, list, numpy.ndarray, nifty.field, function}
+#                Fiducial power spectrum from which a valid power spectrum is to
+#                be calculated. Scalars are interpreted as constant power
+#                spectra.
+#
+#            Returns
+#            -------
+#            spec : numpy.ndarray
+#                Valid power spectrum.
+#        """
+#        if(isinstance(spec,field)):
+#            spec = spec.val.astype(dtype=self.datatype)
+#        elif(callable(spec)):
+#            try:
+#                spec = np.array(spec(np.arange(self.para[0]+1,dtype=self.vol.dtype)),dtype=self.datatype) ## prevent integer division
+#            except:
+#                raise TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
+#        elif(np.isscalar(spec)):
+#            spec = np.array([spec],dtype=self.datatype)
+#        else:
+#            spec = np.array(spec,dtype=self.datatype)
+#
+#        ## drop imaginary part
+#        spec = np.real(spec)
+#        ## check finiteness
+#        if(not np.all(np.isfinite(spec))):
+#            about.warnings.cprint("WARNING: infinite value(s).")
+#        ## check positivity (excluding null)
+#        if(np.any(spec<0)):
+#            raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+#        elif(np.any(spec==0)):
+#            about.warnings.cprint("WARNING: nonpositive value(s).")
+#
+#        size = self.para[0]+1 ## lmax+1
+#        ## extend
+#        if(np.size(spec)==1):
+#            spec = spec*np.ones(size,dtype=spec.dtype,order='C')
+#        ## size check
+#        elif(np.size(spec)<size):
+#            raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(spec))+" < "+str(size)+" )."))
+#        elif(np.size(spec)>size):
+#            about.warnings.cprint("WARNING: power spectrum cut to size ( == "+str(size)+" ).")
+#            spec = spec[:size]
+#
+#        return spec
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def set_power_indices(self,**kwargs):
+#        """
+#            Sets the (un)indexing objects for spectral indexing internally.
+#
+#            Parameters
+#            ----------
+#            None
+#
+#            Returns
+#            -------
+#            None
+#
+#            See Also
+#            --------
+#            get_power_indices
+#
+#        """
+#        ## check storage
+#        if(not hasattr(self,"power_indices")):
+#            ## power indices
+##            about.infos.cflush("INFO: setting power indices ...")
+#            kindex = np.arange(self.para[0]+1,dtype=np.int)
+#            rho = 2*kindex+1
+#            pindex = hp.Alm.getlm(self.para[0],i=None)[0] ## l of (l,m)
+#            pundex = np.unique(pindex,return_index=True,return_inverse=False)[1]
+#            ## storage
+#            self.power_indices = {"kindex":kindex,"pindex":pindex,"pundex":pundex,"rho":rho} ## alphabetical
+##            about.infos.cprint(" done.")
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def enforce_values(self,x,extend=True):
+#        """
+#            Computes valid field values from a given object, taking into
+#            account data types, size, and hermitian symmetry.
+#
+#            Parameters
+#            ----------
+#            x : {float, numpy.ndarray, nifty.field}
+#                Object to be transformed into an array of valid field values.
+#
+#            Returns
+#            -------
+#            x : numpy.ndarray
+#                Array containing the valid field values.
+#
+#            Other parameters
+#            ----------------
+#            extend : bool, *optional*
+#                Whether a scalar is extented to a constant array or not
+#                (default: True).
+#        """
+#        if(isinstance(x,field)):
+#            if(self==x.domain):
+#                if(self.datatype is not x.domain.datatype):
+#                    raise TypeError(about._errors.cstring("ERROR: inequal data types ( '"+str(np.result_type(self.datatype))+"' <> '"+str(np.result_type(x.domain.datatype))+"' )."))
+#                else:
+#                    x = np.copy(x.val)
+#            else:
+#                raise ValueError(about._errors.cstring("ERROR: inequal domains."))
+#        else:
+#            if(np.size(x)==1):
+#                if(extend):
+#                    x = self.datatype(x)*np.ones(self.dim(split=True),dtype=self.datatype,order='C')
+#                else:
+#                    if(np.isscalar(x)):
+#                        x = np.array([x],dtype=self.datatype)
+#                    else:
+#                        x = np.array(x,dtype=self.datatype)
+#            else:
+#                x = self.enforce_shape(np.array(x,dtype=self.datatype))
+#
+#        if(np.size(x)!=1)and(np.any(x.imag[:self.para[0]+1]!=0)):
+#            about.warnings.cprint("WARNING: forbidden values reset.")
+#            x.real[:self.para[0]+1] = np.absolute(x[:self.para[0]+1])*(np.sign(x.real[:self.para[0]+1])+(np.sign(x.real[:self.para[0]+1])==0)*np.sign(x.imag[:self.para[0]+1])).astype(np.int)
+#            x.imag[:self.para[0]+1] = 0 ## x.imag[l,m==0] = 0
+#
+#        ## check finiteness
+#        if(not np.all(np.isfinite(x))):
+#            about.warnings.cprint("WARNING: infinite value(s).")
+#
+#        return x
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def get_random_values(self,**kwargs):
+#        """
+#            Generates random field values according to the specifications given
+#            by the parameters, taking into account complex-valuedness and
+#            hermitian symmetry.
+#
+#            Returns
+#            -------
+#            x : numpy.ndarray
+#                Valid field values.
+#
+#            Other parameters
+#            ----------------
+#            random : string, *optional*
+#                Specifies the probability distribution from which the random
+#                numbers are to be drawn.
+#                Supported distributions are:
+#
+#                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
+#                - "gau" (normal distribution with zero-mean and a given standard
+#                    deviation or variance)
+#                - "syn" (synthesizes from a given power spectrum)
+#                - "uni" (uniform distribution over [vmin,vmax[)
+#
+#                (default: None).
+#            dev : float, *optional*
+#                Standard deviation (default: 1).
+#            var : float, *optional*
+#                Variance, overriding `dev` if both are specified
+#                (default: 1).
+#            spec : {scalar, list, numpy.array, nifty.field, function}, *optional*
+#                Power spectrum (default: 1).
+#            vmin : float, *optional*
+#                Lower limit for a uniform distribution (default: 0).
+#            vmax : float, *optional*
+#                Upper limit for a uniform distribution (default: 1).
+#        """
+#        arg = random.arguments(self,**kwargs)
+#
+#        if(arg is None):
+#            return np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
+#
+#        elif(arg[0]=="pm1"):
+#            x = random.pm1(datatype=self.datatype,shape=self.dim(split=True))
+#
+#        elif(arg[0]=="gau"):
+#            x = random.gau(datatype=self.datatype,shape=self.dim(split=True),mean=None,dev=arg[2],var=arg[3])
+#
+#        elif(arg[0]=="syn"):
+#            lmax = self.para[0] ## lmax
+#            if(self.datatype==np.complex64):
+#                x = gl.synalm_f(arg[1],lmax=lmax,mmax=lmax)
+#            else:
+#                #x = gl.synalm(arg[1],lmax=lmax,mmax=lmax)
+#                x = hp.synalm(arg[1],lmax=lmax,mmax=lmax)
+#            return x
+#
+#        elif(arg[0]=="uni"):
+#            x = random.uni(datatype=self.datatype,shape=self.dim(split=True),vmin=arg[1],vmax=arg[2])
+#
+#        else:
+#            raise KeyError(about._errors.cstring("ERROR: unsupported random key '"+str(arg[0])+"'."))
+#
+#        if(np.any(x.imag[:self.para[0]+1]!=0)):
+#            x.real[:self.para[0]+1] = np.absolute(x[:self.para[0]+1])*(np.sign(x.real[:self.para[0]+1])+(np.sign(x.real[:self.para[0]+1])==0)*np.sign(x.imag[:self.para[0]+1])).astype(np.int)
+#            x.imag[:self.para[0]+1] = 0 ## x.imag[l,m==0] = 0
+#
+#        return x
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def check_codomain(self,codomain):
+#        """
+#            Checks whether a given codomain is compatible to the
+#            :py:class:`lm_space` or not.
+#
+#            Parameters
+#            ----------
+#            codomain : nifty.space
+#                Space to be checked for compatibility.
+#
+#            Returns
+#            -------
+#            check : bool
+#                Whether or not the given codomain is compatible to the space.
+#
+#            Notes
+#            -----
+#            Compatible codomains are instances of :py:class:`lm_space`,
+#            :py:class:`gl_space`, and :py:class:`hp_space`.
+#        """
+#        if(not isinstance(codomain,space)):
+#            raise TypeError(about._errors.cstring("ERROR: invalid input."))
+#
+#        if(self==codomain):
+#            return True
+#
+#        elif(isinstance(codomain,gl_space)):
+#            ##         lmax==mmax                         nlat==lmax+1                         nlon==2*lmax+1
+#            if(self.para[0]==self.para[1])and(codomain.para[0]==self.para[0]+1)and(codomain.para[1]==2*self.para[0]+1):
+#                return True
+#            else:
+#                about.warnings.cprint("WARNING: unrecommended codomain.")
+#
+#        elif(isinstance(codomain,hp_space)):
+#            ##         lmax==mmax                        3*nside-1==lmax
+#            if(self.para[0]==self.para[1])and(3*codomain.para[0]-1==self.para[0]):
+#                return True
+#            else:
+#                about.warnings.cprint("WARNING: unrecommended codomain.")
+#
+#        return False
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def get_codomain(self,coname=None,**kwargs):
+#        """
+#            Generates a compatible codomain to which transformations are
+#            reasonable, i.e.\  a pixelization of the two-sphere.
+#
+#            Parameters
+#            ----------
+#            coname : string, *optional*
+#                String specifying a desired codomain (default: None).
+#
+#            Returns
+#            -------
+#            codomain : nifty.space
+#                A compatible codomain.
+#
+#            Notes
+#            -----
+#            Possible arguments for `coname` are ``'gl'`` in which case a Gauss-
+#            Legendre pixelization [#]_ of the sphere is generated, and ``'hp'``
+#            in which case a HEALPix pixelization [#]_ is generated.
+#
+#            References
+#            ----------
+#            .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
+#                   High-Resolution Discretization and Fast Analysis of Data
+#                   Distributed on the Sphere", *ApJ* 622..759G.
+#            .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+#                   harmonic transforms revisited";
+#                   `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
+#
+#        """
+#        if(coname=="gl")or(coname is None)and(about.lm2gl.status): ## order matters
+#            if(self.datatype==np.complex64):
+#                return gl_space(self.para[0]+1,nlon=2*self.para[0]+1,datatype=np.float32) ## nlat,nlon = lmax+1,2*lmax+1
+#            else:
+#                return gl_space(self.para[0]+1,nlon=2*self.para[0]+1,datatype=np.float64) ## nlat,nlon = lmax+1,2*lmax+1
+#
+#        elif(coname=="hp")or(coname is None)and(not about.lm2gl.status):
+#            return hp_space((self.para[0]+1)//3) ## nside = (lmax+1)/3
+#
+#        else:
+#            raise ValueError(about._errors.cstring("ERROR: unsupported or incompatible space '"+coname+"'."))
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def get_meta_volume(self,total=False):
+#        """
+#            Calculates the meta volumes.
+#
+#            The meta volumes are the volumes associated with each component of
+#            a field, taking into account field components that are not
+#            explicitly included in the array of field values but are determined
+#            by symmetry conditions.
+#
+#            Parameters
+#            ----------
+#            total : bool, *optional*
+#                Whether to return the total meta volume of the space or the
+#                individual ones of each field component (default: False).
+#
+#            Returns
+#            -------
+#            mol : {numpy.ndarray, float}
+#                Meta volume of the field components or the complete space.
+#
+#            Notes
+#            -----
+#            The spherical harmonics components with :math:`m=0` have meta
+#            volume 1, the ones with :math:`m>0` have meta volume 2, sinnce they
+#            each determine another component with negative :math:`m`.
+#        """
+#        if(total):
+#            return self.dof()
+#        else:
+#            mol = np.ones(self.dim(split=True),dtype=self.vol.dtype,order='C')
+#            mol[self.para[0]+1:] = 2 ## redundant in (l,m) and (l,-m)
+#            return mol
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def calc_dot(self,x,y):
+#        """
+#            Computes the discrete inner product of two given arrays of field
+#            values.
+#
+#            Parameters
+#            ----------
+#            x : numpy.ndarray
+#                First array
+#            y : numpy.ndarray
+#                Second array
+#
+#            Returns
+#            -------
+#            dot : scalar
+#                Inner product of the two arrays.
+#        """
+#        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+#        y = self.enforce_shape(np.array(y,dtype=self.datatype))
+#        ## inner product
+#        if(self.datatype==np.complex64):
+#            return gl.dotlm_f(x,y,lmax=self.para[0],mmax=self.para[1])
+#        else:
+#            return gl.dotlm(x,y,lmax=self.para[0],mmax=self.para[1])
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def calc_transform(self,x,codomain=None,**kwargs):
+#        """
+#            Computes the transform of a given array of field values.
+#
+#            Parameters
+#            ----------
+#            x : numpy.ndarray
+#                Array to be transformed.
+#            codomain : nifty.space, *optional*
+#                Target space to which the transformation shall map
+#                (default: self).
+#
+#            Returns
+#            -------
+#            Tx : numpy.ndarray
+#                Transformed array
+#        """
+#        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+#
+#        if(codomain is None):
+#            return x ## T == id
+#
+#        ## check codomain
+#        self.check_codomain(codomain) ## a bit pointless
+#
+#        if(self==codomain):
+#            return x ## T == id
+#
+#        elif(isinstance(codomain,gl_space)):
+#            ## transform
+#            if(self.datatype==np.complex64):
+#                Tx = gl.alm2map_f(x,nlat=codomain.para[0],nlon=codomain.para[1],lmax=self.para[0],mmax=self.para[1],cl=False)
+#            else:
+#                Tx = gl.alm2map(x,nlat=codomain.para[0],nlon=codomain.para[1],lmax=self.para[0],mmax=self.para[1],cl=False)
+#            ## weight if discrete
+#            if(codomain.discrete):
+#                Tx = codomain.calc_weight(Tx,power=0.5)
+#
+#        elif(isinstance(codomain,hp_space)):
+#            ## transform
+#            Tx =  hp.alm2map(x.astype(np.complex128),codomain.para[0],lmax=self.para[0],mmax=self.para[1],pixwin=False,fwhm=0.0,sigma=None,invert=False,pol=True,inplace=False)
+#            ## weight if discrete
+#            if(codomain.discrete):
+#                Tx = codomain.calc_weight(Tx,power=0.5)
+#
+#        else:
+#            raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
+#
+#        return Tx.astype(codomain.datatype)
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def calc_smooth(self,x,sigma=0,**kwargs):
+#        """
+#            Smoothes an array of field values by convolution with a Gaussian
+#            kernel in position space.
+#
+#            Parameters
+#            ----------
+#            x : numpy.ndarray
+#                Array of field values to be smoothed.
+#            sigma : float, *optional*
+#                Standard deviation of the Gaussian kernel, specified in units
+#                of length in position space; for testing: a sigma of -1 will be
+#                reset to a reasonable value (default: 0).
+#
+#            Returns
+#            -------
+#            Gx : numpy.ndarray
+#                Smoothed array.
+#        """
+#        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+#        ## check sigma
+#        if(sigma==0):
+#            return x
+#        elif(sigma==-1):
+#            about.infos.cprint("INFO: invalid sigma reset.")
+#            sigma = 4.5/(self.para[0]+1) ## sqrt(2)*pi/(lmax+1)
+#        elif(sigma<0):
+#            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
+#        ## smooth
+#        #return gl.smoothalm(x,lmax=self.para[0],mmax=self.para[1],fwhm=0.0,sigma=sigma,overwrite=False) ## no overwrite
+#        return hp.smoothalm(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,mmax=self.para[1],verbose=False,inplace=False) ## no overwrite
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def calc_power(self,x,**kwargs):
+#        """
+#            Computes the power of an array of field values.
+#
+#            Parameters
+#            ----------
+#            x : numpy.ndarray
+#                Array containing the field values of which the power is to be
+#                calculated.
+#
+#            Returns
+#            -------
+#            spec : numpy.ndarray
+#                Power contained in the input array.
+#        """
+#        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+#        ## power spectrum
+#        if(self.datatype==np.complex64):
+#            return gl.anaalm_f(x,lmax=self.para[0],mmax=self.para[1])
+#        else:
+#            #return gl.anaalm(x,lmax=self.para[0],mmax=self.para[1])
+#            return hp.alm2cl(x,alms2=None,lmax=self.para[0],mmax=self.para[1],lmax_out=self.para[0],nspec=None)
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def get_plot(self,x,title="",vmin=None,vmax=None,power=True,norm=None,cmap=None,cbar=True,other=None,legend=False,mono=True,**kwargs):
+#        """
+#            Creates a plot of field values according to the specifications
+#            given by the parameters.
+#
+#            Parameters
+#            ----------
+#            x : numpy.ndarray
+#                Array containing the field values.
+#
+#            Returns
+#            -------
+#            None
+#
+#            Other parameters
+#            ----------------
+#            title : string, *optional*
+#                Title of the plot (default: "").
+#            vmin : float, *optional*
+#                Minimum value to be displayed (default: ``min(x)``).
+#            vmax : float, *optional*
+#                Maximum value to be displayed (default: ``max(x)``).
+#            power : bool, *optional*
+#                Whether to plot the power contained in the field or the field
+#                values themselves (default: True).
+#            unit : string, *optional*
+#                Unit of the field values (default: "").
+#            norm : string, *optional*
+#                Scaling of the field values before plotting (default: None).
+#            cmap : matplotlib.colors.LinearSegmentedColormap, *optional*
+#                Color map to be used for two-dimensional plots (default: None).
+#            cbar : bool, *optional*
+#                Whether to show the color bar or not (default: True).
+#            other : {single object, tuple of objects}, *optional*
+#                Object or tuple of objects to be added, where objects can be
+#                scalars, arrays, or fields (default: None).
+#            legend : bool, *optional*
+#                Whether to show the legend or not (default: False).
+#            mono : bool, *optional*
+#                Whether to plot the monopole or not (default: True).
+#            save : string, *optional*
+#                Valid file name where the figure is to be stored, by default
+#                the figure is not saved (default: False).
+#
+#        """
+#        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
+#            about.warnings.cprint("WARNING: interactive mode off.")
+#
+#        if(power):
+#            x = self.calc_power(x)
+#
+#            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
+#            ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
+#
+#            xaxes = np.arange(self.para[0]+1,dtype=np.int)
+#            if(vmin is None):
+#                vmin = np.min(x[:mono].tolist()+(xaxes*(2*xaxes+1)*x)[1:].tolist(),axis=None,out=None)
+#            if(vmax is None):
+#                vmax = np.max(x[:mono].tolist()+(xaxes*(2*xaxes+1)*x)[1:].tolist(),axis=None,out=None)
+#            ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*x)[1:],color=[0.0,0.5,0.0],label="graph 0",linestyle='-',linewidth=2.0,zorder=1)
+#            if(mono):
+#                ax0.scatter(0.5*(xaxes[1]+xaxes[2]),x[0],s=20,color=[0.0,0.5,0.0],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=1)
+#
+#            if(other is not None):
+#                if(isinstance(other,tuple)):
+#                    other = list(other)
+#                    for ii in xrange(len(other)):
+#                        if(isinstance(other[ii],field)):
+#                            other[ii] = other[ii].power(**kwargs)
+#                        else:
+#                            other[ii] = self.enforce_power(other[ii])
+#                elif(isinstance(other,field)):
+#                    other = [other.power(**kwargs)]
+#                else:
+#                    other = [self.enforce_power(other)]
+#                imax = max(1,len(other)-1)
+#                for ii in xrange(len(other)):
+#                    ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
+#                    if(mono):
+#                        ax0.scatter(0.5*(xaxes[1]+xaxes[2]),other[ii][0],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=-ii)
+#                if(legend):
+#                    ax0.legend()
+#
+#            ax0.set_xlim(xaxes[1],xaxes[-1])
+#            ax0.set_xlabel(r"$\ell$")
+#            ax0.set_ylim(vmin,vmax)
+#            ax0.set_ylabel(r"$\ell(2\ell+1) C_\ell$")
+#            ax0.set_title(title)
+#
+#        else:
+#            x = self.enforce_shape(np.array(x))
+#            if(np.iscomplexobj(x)):
+#                if(title):
+#                    title += " "
+#                if(bool(kwargs.get("save",False))):
+#                    save_ = os.path.splitext(os.path.basename(str(kwargs.get("save"))))
+#                    kwargs.update(save=save_[0]+"_absolute"+save_[1])
+#                self.get_plot(np.absolute(x),title=title+"(absolute)",vmin=vmin,vmax=vmax,power=False,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
+##                self.get_plot(np.real(x),title=title+"(real part)",vmin=vmin,vmax=vmax,power=False,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
+##                self.get_plot(np.imag(x),title=title+"(imaginary part)",vmin=vmin,vmax=vmax,power=False,norm=norm,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs)
+#                if(cmap is None):
+#                    cmap = pl.cm.hsv_r
+#                if(bool(kwargs.get("save",False))):
+#                    kwargs.update(save=save_[0]+"_phase"+save_[1])
+#                self.get_plot(np.angle(x,deg=False),title=title+"(phase)",vmin=-3.1416,vmax=3.1416,power=False,norm=None,cmap=cmap,cbar=cbar,other=None,legend=False,**kwargs) ## values in [-pi,pi]
+#                return None ## leave method
+#            else:
+#                if(vmin is None):
+#                    vmin = np.min(x,axis=None,out=None)
+#                if(vmax is None):
+#                    vmax = np.max(x,axis=None,out=None)
+#                if(norm=="log")and(vmin<=0):
+#                    raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+#
+#                xmesh = np.nan*np.empty(self.para[::-1]+1,dtype=np.float16,order='C') ## not a number
+#                xmesh[4,1] = None
+#                xmesh[1,4] = None
+#                lm = 0
+#                for mm in xrange(self.para[1]+1):
+#                    xmesh[mm][mm:] = x[lm:lm+self.para[0]+1-mm]
+#                    lm += self.para[0]+1-mm
+#
+#                s_ = np.array([1,self.para[1]/self.para[0]*(1.0+0.159*bool(cbar))])
+#                fig = pl.figure(num=None,figsize=(6.4*s_[0],6.4*s_[1]),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
+#                ax0 = fig.add_axes([0.06/s_[0],0.06/s_[1],1.0-0.12/s_[0],1.0-0.12/s_[1]])
+#                ax0.set_axis_bgcolor([0.0,0.0,0.0,0.0])
+#
+#                xaxes = np.arange(self.para[0]+2,dtype=np.int)-0.5
+#                yaxes = np.arange(self.para[1]+2,dtype=np.int)-0.5
+#                if(norm=="log"):
+#                    n_ = ln(vmin=vmin,vmax=vmax)
+#                else:
+#                    n_ = None
+#                sub = ax0.pcolormesh(xaxes,yaxes,np.ma.masked_where(np.isnan(xmesh),xmesh),cmap=cmap,norm=n_,vmin=vmin,vmax=vmax,clim=(vmin,vmax))
+#                ax0.set_xlim(xaxes[0],xaxes[-1])
+#                ax0.set_xticks([0],minor=False)
+#                ax0.set_xlabel(r"$\ell$")
+#                ax0.set_ylim(yaxes[0],yaxes[-1])
+#                ax0.set_yticks([0],minor=False)
+#                ax0.set_ylabel(r"$m$")
+#                ax0.set_aspect("equal")
+#                if(cbar):
+#                    if(norm=="log"):
+#                        f_ = lf(10,labelOnlyBase=False)
+#                        b_ = sub.norm.inverse(np.linspace(0,1,sub.cmap.N+1))
+#                        v_ = np.linspace(sub.norm.vmin,sub.norm.vmax,sub.cmap.N)
+#                    else:
+#                        f_ = None
+#                        b_ = None
+#                        v_ = None
+#                    fig.colorbar(sub,ax=ax0,orientation="horizontal",fraction=0.1,pad=0.05,shrink=0.75,aspect=20,ticks=[vmin,vmax],format=f_,drawedges=False,boundaries=b_,values=v_)
+#                ax0.set_title(title)
+#
+#        if(bool(kwargs.get("save",False))):
+#            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+#            pl.close(fig)
+#        else:
+#            fig.canvas.draw()
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def __repr__(self):
+#        return "<nifty_core.lm_space>"
+#
+#    def __str__(self):
+#        return "nifty_core.lm_space instance\n- lmax     = "+str(self.para[0])+"\n- mmax     = "+str(self.para[1])+"\n- datatype = numpy."+str(np.result_type(self.datatype))
+#
+###-----------------------------------------------------------------------------
+
+
+
+###-----------------------------------------------------------------------------
+#
+#class gl_space(space):
+#    """
+#        ..                 __
+#        ..               /  /
+#        ..     ____ __  /  /
+#        ..   /   _   / /  /
+#        ..  /  /_/  / /  /_
+#        ..  \___   /  \___/  space class
+#        .. /______/
+#
+#        NIFTY subclass for Gauss-Legendre pixelizations [#]_ of the two-sphere.
+#
+#        Parameters
+#        ----------
+#        nlat : int
+#            Number of latitudinal bins, or rings.
+#        nlon : int, *optional*
+#            Number of longitudinal bins (default: ``2*nlat - 1``).
+#        datatype : numpy.dtype, *optional*
+#            Data type of the field values (default: numpy.float64).
+#
+#        See Also
+#        --------
+#        hp_space : A class for the HEALPix discretization of the sphere [#]_.
+#        lm_space : A class for spherical harmonic components.
+#
+#        Notes
+#        -----
+#        Only real-valued fields on the two-sphere are supported, i.e.
+#        `datatype` has to be either numpy.float64 or numpy.float32.
+#
+#        References
+#        ----------
+#        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+#               harmonic transforms revisited";
+#               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
+#        .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
+#               High-Resolution Discretization and Fast Analysis of Data
+#               Distributed on the Sphere", *ApJ* 622..759G.
+#
+#        Attributes
+#        ----------
+#        para : numpy.ndarray
+#            One-dimensional array containing the two numbers `nlat` and `nlon`.
+#        datatype : numpy.dtype
+#            Data type of the field values.
+#        discrete : bool
+#            Whether or not the underlying space is discrete, always ``False``
+#            for spherical spaces.
+#        vol : numpy.ndarray
+#            An array containing the pixel sizes.
+#    """
+#    def __init__(self,nlat,nlon=None,datatype=None):
+#        """
+#            Sets the attributes for a gl_space class instance.
+#
+#            Parameters
+#            ----------
+#            nlat : int
+#                Number of latitudinal bins, or rings.
+#            nlon : int, *optional*
+#                Number of longitudinal bins (default: ``2*nlat - 1``).
+#            datatype : numpy.dtype, *optional*
+#                Data type of the field values (default: numpy.float64).
+#
+#            Returns
+#            -------
+#            None
+#        """
+#        ## check parameters
+#        if(nlat<1):
+#            raise ValueError(about._errors.cstring("ERROR: nonpositive number."))
+#        if(nlat%2!=0):
+#            raise ValueError(about._errors.cstring("ERROR: invalid parameter ( nlat <> 2*n )."))
+#        if(nlon is None):
+#            nlon = 2*nlat-1
+#        elif(nlon<1):
+#            about.warnings.cprint("WARNING: parameter set to default.")
+#            nlon = 2*nlat-1
+#        if(nlon!=2*nlat-1):
+#            about.warnings.cprint("WARNING: unrecommended parameter ( nlon <> 2*nlat-1 ).")
+#        self.para = np.array([nlat,nlon],dtype=np.int)
+#
+#        ## check data type
+#        if(datatype is None):
+#            datatype = np.float64
+#        elif(datatype not in [np.float32,np.float64]):
+#            about.warnings.cprint("WARNING: data type set to default.")
+#            datatype = np.float64
+#        self.datatype = datatype
+#
+#        self.discrete = False
+#        self.vol = gl.vol(self.para[0],nlon=self.para[1]).astype(self.datatype)
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def nlat(self):
+#        """
+#            Returns the number of latitudinal bins.
+#
+#            Returns
+#            -------
+#            nlat : int
+#                Number of latitudinal bins, or rings.
+#        """
+#        return self.para[0]
+#
+#    def nlon(self):
+#        """
+#            Returns the number of longitudinal bins.
+#
+#            Returns
+#            -------
+#            nlon : int
+#                Number of longitudinal bins.
+#        """
+#        return self.para[1]
+#
+#    def dim(self,split=False):
+#        """
+#            Computes the dimension of the space, i.e.\  the number of pixels.
+#
+#            Parameters
+#            ----------
+#            split : bool, *optional*
+#                Whether to return the dimension as an array with one component
+#                or as a scalar (default: False).
+#
+#            Returns
+#            -------
+#            dim : {int, numpy.ndarray}
+#                Dimension of the space.
+#        """
+#        ## dim = nlat*nlon
+#        if(split):
+#            return np.array([self.para[0]*self.para[1]],dtype=np.int)
+#        else:
+#            return self.para[0]*self.para[1]
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def dof(self):
+#        """
+#            Computes the number of degrees of freedom of the space.
+#
+#            Returns
+#            -------
+#            dof : int
+#                Number of degrees of freedom of the space.
+#
+#            Notes
+#            -----
+#            Since the :py:class:`gl_space` class only supports real-valued
+#            fields, the number of degrees of freedom is the number of pixels.
+#        """
+#        ## dof = dim
+#        return self.para[0]*self.para[1]
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def enforce_power(self,spec,**kwargs):
+#        """
+#            Provides a valid power spectrum array from a given object.
+#
+#            Parameters
+#            ----------
+#            spec : {float, list, numpy.ndarray, nifty.field, function}
+#                Fiducial power spectrum from which a valid power spectrum is to
+#                be calculated. Scalars are interpreted as constant power
+#                spectra.
+#
+#            Returns
+#            -------
+#            spec : numpy.ndarray
+#                Valid power spectrum.
+#        """
+#        if(isinstance(spec,field)):
+#            spec = spec.val.astype(self.datatype)
+#        elif(callable(spec)):
+#            try:
+#                spec = np.array(spec(np.arange(self.para[0],dtype=np.int)),dtype=self.datatype)
+#            except:
+#                raise TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
+#        elif(np.isscalar(spec)):
+#            spec = np.array([spec],dtype=self.datatype)
+#        else:
+#            spec = np.array(spec,dtype=self.datatype)
+#
+#        ## check finiteness
+#        if(not np.all(np.isfinite(spec))):
+#            about.warnings.cprint("WARNING: infinite value(s).")
+#        ## check positivity (excluding null)
+#        if(np.any(spec<0)):
+#            raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+#        elif(np.any(spec==0)):
+#            about.warnings.cprint("WARNING: nonpositive value(s).")
+#
+#        size = self.para[0] ## nlat
+#        ## extend
+#        if(np.size(spec)==1):
+#            spec = spec*np.ones(size,dtype=spec.dtype,order='C')
+#        ## size check
+#        elif(np.size(spec)<size):
+#            raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(spec))+" < "+str(size)+" )."))
+#        elif(np.size(spec)>size):
+#            about.warnings.cprint("WARNING: power spectrum cut to size ( == "+str(size)+" ).")
+#            spec = spec[:size]
+#
+#        return spec
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def set_power_indices(self,**kwargs):
+#        """
+#            Raises
+#            ------
+#            AttributeError
+#                Always. -- The power spectrum for a field on the sphere
+#            is defined by its spherical harmonics components and not its
+#            position space representation.
+#
+#        """
+#        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def get_random_values(self,**kwargs):
+#        """
+#            Generates random field values according to the specifications given
+#            by the parameters.
+#
+#            Returns
+#            -------
+#            x : numpy.ndarray
+#                Valid field values.
+#
+#            Other parameters
+#            ----------------
+#            random : string, *optional*
+#                Specifies the probability distribution from which the random
+#                numbers are to be drawn.
+#                Supported distributions are:
+#
+#                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
+#                - "gau" (normal distribution with zero-mean and a given standard
+#                    deviation or variance)
+#                - "syn" (synthesizes from a given power spectrum)
+#                - "uni" (uniform distribution over [vmin,vmax[)
+#
+#                (default: None).
+#            dev : float, *optional*
+#                Standard deviation (default: 1).
+#            var : float, *optional*
+#                Variance, overriding `dev` if both are specified
+#                (default: 1).
+#            spec : {scalar, list, numpy.array, nifty.field, function}, *optional*
+#                Power spectrum (default: 1).
+#            codomain : nifty.lm_space, *optional*
+#                A compatible codomain for power indexing (default: None).
+#            vmin : float, *optional*
+#                Lower limit for a uniform distribution (default: 0).
+#            vmax : float, *optional*
+#                Upper limit for a uniform distribution (default: 1).
+#        """
+#        arg = random.arguments(self,**kwargs)
+#
+#        if(arg is None):
+#            x = np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
+#
+#        elif(arg[0]=="pm1"):
+#            x = random.pm1(datatype=self.datatype,shape=self.dim(split=True))
+#
+#        elif(arg[0]=="gau"):
+#            x = random.gau(datatype=self.datatype,shape=self.dim(split=True),mean=None,dev=arg[2],var=arg[3])
+#
+#        elif(arg[0]=="syn"):
+#            lmax = self.para[0]-1 ## nlat-1
+#            if(self.datatype==np.float32):
+#                x = gl.synfast_f(arg[1],nlat=self.para[0],nlon=self.para[1],lmax=lmax,mmax=lmax,alm=False)
+#            else:
+#                x = gl.synfast(arg[1],nlat=self.para[0],nlon=self.para[1],lmax=lmax,mmax=lmax,alm=False)
+#            ## weight if discrete
+#            if(self.discrete):
+#                x = self.calc_weight(x,power=0.5)
+#
+#        elif(arg[0]=="uni"):
+#            x = random.uni(datatype=self.datatype,shape=self.dim(split=True),vmin=arg[1],vmax=arg[2])
+#
+#        else:
+#            raise KeyError(about._errors.cstring("ERROR: unsupported random key '"+str(arg[0])+"'."))
+#
+#        return x
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def check_codomain(self,codomain):
+#        """
+#            Checks whether a given codomain is compatible to the space or not.
+#
+#            Parameters
+#            ----------
+#            codomain : nifty.space
+#                Space to be checked for compatibility.
+#
+#            Returns
+#            -------
+#            check : bool
+#                Whether or not the given codomain is compatible to the space.
+#
+#            Notes
+#            -----
+#            Compatible codomains are instances of :py:class:`gl_space` and
+#            :py:class:`lm_space`.
+#        """
+#        if(not isinstance(codomain,space)):
+#            raise TypeError(about._errors.cstring("ERROR: invalid input."))
+#
+#        if(self==codomain):
+#            return True
+#
+#        if(isinstance(codomain,lm_space)):
+#            ##         nlon==2*lat-1                          lmax==nlat-1                         lmax==mmax
+#            if(self.para[1]==2*self.para[0]-1)and(codomain.para[0]==self.para[0]-1)and(codomain.para[0]==codomain.para[1]):
+#                return True
+#            else:
+#                about.warnings.cprint("WARNING: unrecommended codomain.")
+#
+#        return False
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def get_codomain(self,**kwargs):
+#        """
+#            Generates a compatible codomain to which transformations are
+#            reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
+#
+#            Returns
+#            -------
+#            codomain : nifty.lm_space
+#                A compatible codomain.
+#        """
+#        if(self.datatype==np.float32):
+#            return lm_space(self.para[0]-1,mmax=self.para[0]-1,datatype=np.complex64) ## lmax,mmax = nlat-1,nlat-1
+#        else:
+#            return lm_space(self.para[0]-1,mmax=self.para[0]-1,datatype=np.complex128) ## lmax,mmax = nlat-1,nlat-1
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def get_meta_volume(self,total=False):
+#        """
+#            Calculates the meta volumes.
+#
+#            The meta volumes are the volumes associated with each component of
+#            a field, taking into account field components that are not
+#            explicitly included in the array of field values but are determined
+#            by symmetry conditions.
+#
+#            Parameters
+#            ----------
+#            total : bool, *optional*
+#                Whether to return the total meta volume of the space or the
+#                individual ones of each field component (default: False).
+#
+#            Returns
+#            -------
+#            mol : {numpy.ndarray, float}
+#                Meta volume of the field components or the complete space.
+#
+#            Notes
+#            -----
+#            For Gauss-Legendre pixelizations, the meta volumes are the pixel
+#            sizes.
+#        """
+#        if(total):
+#            return self.datatype(4*pi)
+#        else:
+#            mol = np.ones(self.dim(split=True),dtype=self.datatype,order='C')
+#            return self.calc_weight(mol,power=1)
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def calc_weight(self,x,power=1):
+#        """
+#            Weights a given array with the pixel volumes to a given power.
+#
+#            Parameters
+#            ----------
+#            x : numpy.ndarray
+#                Array to be weighted.
+#            power : float, *optional*
+#                Power of the pixel volumes to be used (default: 1).
+#
+#            Returns
+#            -------
+#            y : numpy.ndarray
+#                Weighted array.
+#        """
+#        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+#        ## weight
+#        if(self.datatype==np.float32):
+#            return gl.weight_f(x,self.vol,p=np.float32(power),nlat=self.para[0],nlon=self.para[1],overwrite=False)
+#        else:
+#            return gl.weight(x,self.vol,p=np.float64(power),nlat=self.para[0],nlon=self.para[1],overwrite=False)
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def calc_transform(self,x,codomain=None,**kwargs):
+#        """
+#            Computes the transform of a given array of field values.
+#
+#            Parameters
+#            ----------
+#            x : numpy.ndarray
+#                Array to be transformed.
+#            codomain : nifty.space, *optional*
+#                Target space to which the transformation shall map
+#                (default: self).
+#
+#            Returns
+#            -------
+#            Tx : numpy.ndarray
+#                Transformed array
+#
+#            Notes
+#            -----
+#            Only instances of the :py:class:`lm_space` or :py:class:`gl_space`
+#            classes are allowed as `codomain`.
+#        """
+#        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+#
+#        if(codomain is None):
+#            return x ## T == id
+#
+#        ## check codomain
+#        self.check_codomain(codomain) ## a bit pointless
+#
+#        if(self==codomain):
+#            return x ## T == id
+#
+#        if(isinstance(codomain,lm_space)):
+#            ## weight if discrete
+#            if(self.discrete):
+#                x = self.calc_weight(x,power=-0.5)
+#            ## transform
+#            if(self.datatype==np.float32):
+#                Tx = gl.map2alm_f(x,nlat=self.para[0],nlon=self.para[1],lmax=codomain.para[0],mmax=codomain.para[1])
+#            else:
+#                Tx = gl.map2alm(x,nlat=self.para[0],nlon=self.para[1],lmax=codomain.para[0],mmax=codomain.para[1])
+#
+#        else:
+#            raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
+#
+#        return Tx.astype(codomain.datatype)
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def calc_smooth(self,x,sigma=0,**kwargs):
+#        """
+#            Smoothes an array of field values by convolution with a Gaussian
+#            kernel.
+#
+#            Parameters
+#            ----------
+#            x : numpy.ndarray
+#                Array of field values to be smoothed.
+#            sigma : float, *optional*
+#                Standard deviation of the Gaussian kernel, specified in units
+#                of length in position space; for testing: a sigma of -1 will be
+#                reset to a reasonable value (default: 0).
+#
+#            Returns
+#            -------
+#            Gx : numpy.ndarray
+#                Smoothed array.
+#        """
+#        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+#        ## check sigma
+#        if(sigma==0):
+#            return x
+#        elif(sigma==-1):
+#            about.infos.cprint("INFO: invalid sigma reset.")
+#            sigma = 4.5/self.para[0] ## sqrt(2)*pi/(lmax+1)
+#        elif(sigma<0):
+#            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
+#        ## smooth
+#        return gl.smoothmap(x,nlat=self.para[0],nlon=self.para[1],lmax=self.para[0]-1,mmax=self.para[0]-1,fwhm=0.0,sigma=sigma)
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def calc_power(self,x,**kwargs):
+#        """
+#            Computes the power of an array of field values.
+#
+#            Parameters
+#            ----------
+#            x : numpy.ndarray
+#                Array containing the field values of which the power is to be
+#                calculated.
+#
+#            Returns
+#            -------
+#            spec : numpy.ndarray
+#                Power contained in the input array.
+#        """
+#        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+#        ## weight if discrete
+#        if(self.discrete):
+#            x = self.calc_weight(x,power=-0.5)
+#        ## power spectrum
+#        if(self.datatype==np.float32):
+#            return gl.anafast_f(x,nlat=self.para[0],nlon=self.para[1],lmax=self.para[0]-1,mmax=self.para[0]-1,alm=False)
+#        else:
+#            return gl.anafast(x,nlat=self.para[0],nlon=self.para[1],lmax=self.para[0]-1,mmax=self.para[0]-1,alm=False)
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def get_plot(self,x,title="",vmin=None,vmax=None,power=False,unit="",norm=None,cmap=None,cbar=True,other=None,legend=False,mono=True,**kwargs):
+#        """
+#            Creates a plot of field values according to the specifications
+#            given by the parameters.
+#
+#            Parameters
+#            ----------
+#            x : numpy.ndarray
+#                Array containing the field values.
+#
+#            Returns
+#            -------
+#            None
+#
+#            Other parameters
+#            ----------------
+#            title : string, *optional*
+#                Title of the plot (default: "").
+#            vmin : float, *optional*
+#                Minimum value to be displayed (default: ``min(x)``).
+#            vmax : float, *optional*
+#                Maximum value to be displayed (default: ``max(x)``).
+#            power : bool, *optional*
+#                Whether to plot the power contained in the field or the field
+#                values themselves (default: False).
+#            unit : string, *optional*
+#                Unit of the field values (default: "").
+#            norm : string, *optional*
+#                Scaling of the field values before plotting (default: None).
+#            cmap : matplotlib.colors.LinearSegmentedColormap, *optional*
+#                Color map to be used for two-dimensional plots (default: None).
+#            cbar : bool, *optional*
+#                Whether to show the color bar or not (default: True).
+#            other : {single object, tuple of objects}, *optional*
+#                Object or tuple of objects to be added, where objects can be
+#                scalars, arrays, or fields (default: None).
+#            legend : bool, *optional*
+#                Whether to show the legend or not (default: False).
+#            mono : bool, *optional*
+#                Whether to plot the monopole or not (default: True).
+#            save : string, *optional*
+#                Valid file name where the figure is to be stored, by default
+#                the figure is not saved (default: False).
+#
+#        """
+#        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
+#            about.warnings.cprint("WARNING: interactive mode off.")
+#
+#        if(power):
+#            x = self.calc_power(x)
+#
+#            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
+#            ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
+#
+#            xaxes = np.arange(self.para[0],dtype=np.int)
+#            if(vmin is None):
+#                vmin = np.min(x[:mono].tolist()+(xaxes*(2*xaxes+1)*x)[1:].tolist(),axis=None,out=None)
+#            if(vmax is None):
+#                vmax = np.max(x[:mono].tolist()+(xaxes*(2*xaxes+1)*x)[1:].tolist(),axis=None,out=None)
+#            ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*x)[1:],color=[0.0,0.5,0.0],label="graph 0",linestyle='-',linewidth=2.0,zorder=1)
+#            if(mono):
+#                ax0.scatter(0.5*(xaxes[1]+xaxes[2]),x[0],s=20,color=[0.0,0.5,0.0],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=1)
+#
+#            if(other is not None):
+#                if(isinstance(other,tuple)):
+#                    other = list(other)
+#                    for ii in xrange(len(other)):
+#                        if(isinstance(other[ii],field)):
+#                            other[ii] = other[ii].power(**kwargs)
+#                        else:
+#                            other[ii] = self.enforce_power(other[ii])
+#                elif(isinstance(other,field)):
+#                    other = [other.power(**kwargs)]
+#                else:
+#                    other = [self.enforce_power(other)]
+#                imax = max(1,len(other)-1)
+#                for ii in xrange(len(other)):
+#                    ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
+#                    if(mono):
+#                        ax0.scatter(0.5*(xaxes[1]+xaxes[2]),other[ii][0],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=-ii)
+#                if(legend):
+#                    ax0.legend()
+#
+#            ax0.set_xlim(xaxes[1],xaxes[-1])
+#            ax0.set_xlabel(r"$l$")
+#            ax0.set_ylim(vmin,vmax)
+#            ax0.set_ylabel(r"$l(2l+1) C_l$")
+#            ax0.set_title(title)
+#
+#        else:
+#            x = self.enforce_shape(np.array(x,dtype=self.datatype))
+#            if(vmin is None):
+#                vmin = np.min(x,axis=None,out=None)
+#            if(vmax is None):
+#                vmax = np.max(x,axis=None,out=None)
+#            if(norm=="log")and(vmin<=0):
+#                raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+#
+#            fig = pl.figure(num=None,figsize=(8.5,5.4),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
+#            ax0 = fig.add_axes([0.02,0.05,0.96,0.9])
+#
+#            lon,lat = gl.bounds(self.para[0],nlon=self.para[1])
+#            lon = (lon-pi)*180/pi
+#            lat = (lat-pi/2)*180/pi
+#            if(norm=="log"):
+#                n_ = ln(vmin=vmin,vmax=vmax)
+#            else:
+#                n_ = None
+#            sub = ax0.pcolormesh(lon,lat,np.roll(x.reshape((self.para[0],self.para[1]),order='C'),self.para[1]//2,axis=1)[::-1,::-1],cmap=cmap,norm=n_,vmin=vmin,vmax=vmax)
+#            ax0.set_xlim(-180,180)
+#            ax0.set_ylim(-90,90)
+#            ax0.set_aspect("equal")
+#            ax0.axis("off")
+#            if(cbar):
+#                if(norm=="log"):
+#                    f_ = lf(10,labelOnlyBase=False)
+#                    b_ = sub.norm.inverse(np.linspace(0,1,sub.cmap.N+1))
+#                    v_ = np.linspace(sub.norm.vmin,sub.norm.vmax,sub.cmap.N)
+#                else:
+#                    f_ = None
+#                    b_ = None
+#                    v_ = None
+#                cb0 = fig.colorbar(sub,ax=ax0,orientation="horizontal",fraction=0.1,pad=0.05,shrink=0.5,aspect=25,ticks=[vmin,vmax],format=f_,drawedges=False,boundaries=b_,values=v_)
+#                cb0.ax.text(0.5,-1.0,unit,fontdict=None,withdash=False,transform=cb0.ax.transAxes,horizontalalignment="center",verticalalignment="center")
+#            ax0.set_title(title)
+#
+#        if(bool(kwargs.get("save",False))):
+#            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+#            pl.close(fig)
+#        else:
+#            fig.canvas.draw()
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def __repr__(self):
+#        return "<nifty_core.gl_space>"
+#
+#    def __str__(self):
+#        return "nifty_core.gl_space instance\n- nlat     = "+str(self.para[0])+"\n- nlon     = "+str(self.para[1])+"\n- datatype = numpy."+str(np.result_type(self.datatype))
+#
+###-----------------------------------------------------------------------------
+
+
+
+###-----------------------------------------------------------------------------
+#
+#class hp_space(space):
+#    """
+#        ..        __
+#        ..      /  /
+#        ..     /  /___    ______
+#        ..    /   _   | /   _   |
+#        ..   /  / /  / /  /_/  /
+#        ..  /__/ /__/ /   ____/  space class
+#        ..           /__/
+#
+#        NIFTY subclass for HEALPix discretizations of the two-sphere [#]_.
+#
+#        Parameters
+#        ----------
+#        nside : int
+#            Resolution parameter for the HEALPix discretization, resulting in
+#            ``12*nside**2`` pixels.
+#
+#        See Also
+#        --------
+#        gl_space : A class for the Gauss-Legendre discretization of the
+#            sphere [#]_.
+#        lm_space : A class for spherical harmonic components.
+#
+#        Notes
+#        -----
+#        Only powers of two are allowed for `nside`.
+#
+#        References
+#        ----------
+#        .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
+#               High-Resolution Discretization and Fast Analysis of Data
+#               Distributed on the Sphere", *ApJ* 622..759G.
+#        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+#               harmonic transforms revisited";
+#               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
+#
+#        Attributes
+#        ----------
+#        para : numpy.ndarray
+#            Array containing the number `nside`.
+#        datatype : numpy.dtype
+#            Data type of the field values, which is always numpy.float64.
+#        discrete : bool
+#            Whether or not the underlying space is discrete, always ``False``
+#            for spherical spaces.
+#        vol : numpy.ndarray
+#            An array with one element containing the pixel size.
+#    """
+#    niter = 0 ## default number of iterations used for transformations
+#
+#    def __init__(self,nside):
+#        """
+#            Sets the attributes for a hp_space class instance.
+#
+#            Parameters
+#            ----------
+#            nside : int
+#                Resolution parameter for the HEALPix discretization, resulting
+#                in ``12*nside**2`` pixels.
+#
+#            Returns
+#            -------
+#            None
+#        """
+#        ## check parameters
+#        if(nside<1):
+#            raise ValueError(about._errors.cstring("ERROR: nonpositive number."))
+#        if(not hp.isnsideok(nside)):
+#            raise ValueError(about._errors.cstring("ERROR: invalid parameter ( nside <> 2**n )."))
+#        self.para = np.array([nside],dtype=np.int)
+#
+#        self.datatype = np.float64
+#        self.discrete = False
+#        self.vol = np.array([4*pi/(12*self.para[0]**2)],dtype=self.datatype)
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def nside(self):
+#        """
+#            Returns the resolution parameter.
+#
+#            Returns
+#            -------
+#            nside : int
+#                HEALPix resolution parameter.
+#        """
+#        return self.para[0]
+#
+#
+#    def dim(self,split=False):
+#        """
+#            Computes the dimension of the space, i.e.\  the number of pixels.
+#
+#            Parameters
+#            ----------
+#            split : bool, *optional*
+#                Whether to return the dimension as an array with one component
+#                or as a scalar (default: False).
+#
+#            Returns
+#            -------
+#            dim : {int, numpy.ndarray}
+#                Dimension of the space.
+#        """
+#        ## dim = 12*nside**2
+#        if(split):
+#            return np.array([12*self.para[0]**2],dtype=np.int)
+#        else:
+#            return 12*self.para[0]**2
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def dof(self):
+#        """
+#            Computes the number of degrees of freedom of the space.
+#
+#            Returns
+#            -------
+#            dof : int
+#                Number of degrees of freedom of the space.
+#
+#            Notes
+#            -----
+#            Since the :py:class:`hp_space` class only supports real-valued
+#            fields, the number of degrees of freedom is the number of pixels.
+#        """
+#        ## dof = dim
+#        return 12*self.para[0]**2
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def enforce_power(self,spec,**kwargs):
+#        """
+#            Provides a valid power spectrum array from a given object.
+#
+#            Parameters
+#            ----------
+#            spec : {float, list, numpy.ndarray, nifty.field, function}
+#                Fiducial power spectrum from which a valid power spectrum is to
+#                be calculated. Scalars are interpreted as constant power
+#                spectra.
+#
+#            Returns
+#            -------
+#            spec : numpy.ndarray
+#                Valid power spectrum.
+#        """
+#        if(isinstance(spec,field)):
+#            spec = spec.val.astype(self.datatype)
+#        elif(callable(spec)):
+#            try:
+#                spec = np.array(spec(np.arange(3*self.para[0],dtype=np.int)),dtype=self.datatype)
+#            except:
+#                raise TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
+#        elif(np.isscalar(spec)):
+#            spec = np.array([spec],dtype=self.datatype)
+#        else:
+#            spec = np.array(spec,dtype=self.datatype)
+#
+#        ## check finiteness
+#        if(not np.all(np.isfinite(spec))):
+#            about.warnings.cprint("WARNING: infinite value(s).")
+#        ## check positivity (excluding null)
+#        if(np.any(spec<0)):
+#            raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+#        elif(np.any(spec==0)):
+#            about.warnings.cprint("WARNING: nonpositive value(s).")
+#
+#        size = 3*self.para[0] ## 3*nside
+#        ## extend
+#        if(np.size(spec)==1):
+#            spec = spec*np.ones(size,dtype=spec.dtype,order='C')
+#        ## size check
+#        elif(np.size(spec)<size):
+#            raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(spec))+" < "+str(size)+" )."))
+#        elif(np.size(spec)>size):
+#            about.warnings.cprint("WARNING: power spectrum cut to size ( == "+str(size)+" ).")
+#            spec = spec[:size]
+#
+#        return spec
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def set_power_indices(self,**kwargs):
+#        """
+#            Raises
+#            ------
+#            AttributeError
+#                Always. -- The power spectrum for a field on the sphere
+#            is defined by its spherical harmonics components and not its
+#            position space representation.
+#
+#        """
+#        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def get_random_values(self,**kwargs):
+#        """
+#            Generates random field values according to the specifications given
+#            by the parameters.
+#
+#            Returns
+#            -------
+#            x : numpy.ndarray
+#                Valid field values.
+#
+#            Other parameters
+#            ----------------
+#            random : string, *optional*
+#                Specifies the probability distribution from which the random
+#                numbers are to be drawn.
+#                Supported distributions are:
+#
+#                - "pm1" (uniform distribution over {+1,-1}
+#                - "gau" (normal distribution with zero-mean and a given standard
+#                    deviation or variance)
+#                - "syn" (synthesizes from a given power spectrum)
+#                - "uni" (uniform distribution over [vmin,vmax[)
+#
+#                (default: None).
+#            dev : float, *optional*
+#                Standard deviation (default: 1).
+#            var : float, *optional*
+#                Variance, overriding `dev` if both are specified
+#                (default: 1).
+#            spec : {scalar, list, numpy.array, nifty.field, function}, *optional*
+#                Power spectrum (default: 1).
+#            codomain : nifty.lm_space, *optional*
+#                A compatible codomain for power indexing (default: None).
+#            vmin : float, *optional*
+#                Lower limit for a uniform distribution (default: 0).
+#            vmax : float, *optional*
+#                Upper limit for a uniform distribution (default: 1).
+#        """
+#        arg = random.arguments(self,**kwargs)
+#
+#        if(arg is None):
+#            x = np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
+#
+#        elif(arg[0]=="pm1"):
+#            x = random.pm1(datatype=self.datatype,shape=self.dim(split=True))
+#
+#        elif(arg[0]=="gau"):
+#            x = random.gau(datatype=self.datatype,shape=self.dim(split=True),mean=None,dev=arg[2],var=arg[3])
+#
+#        elif(arg[0]=="syn"):
+#            lmax = 3*self.para[0]-1 ## 3*nside-1
+#            x = hp.synfast(arg[1],self.para[0],lmax=lmax,mmax=lmax,alm=False,pol=True,pixwin=False,fwhm=0.0,sigma=None)
+#            ## weight if discrete
+#            if(self.discrete):
+#                x = self.calc_weight(x,power=0.5)
+#
+#        elif(arg[0]=="uni"):
+#            x = random.uni(datatype=self.datatype,shape=self.dim(split=True),vmin=arg[1],vmax=arg[2])
+#
+#        else:
+#            raise KeyError(about._errors.cstring("ERROR: unsupported random key '"+str(arg[0])+"'."))
+#
+#        return x
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def check_codomain(self,codomain):
+#        """
+#            Checks whether a given codomain is compatible to the space or not.
+#
+#            Parameters
+#            ----------
+#            codomain : nifty.space
+#                Space to be checked for compatibility.
+#
+#            Returns
+#            -------
+#            check : bool
+#                Whether or not the given codomain is compatible to the space.
+#
+#            Notes
+#            -----
+#            Compatible codomains are instances of :py:class:`hp_space` and
+#            :py:class:`lm_space`.
+#        """
+#        if(not isinstance(codomain,space)):
+#            raise TypeError(about._errors.cstring("ERROR: invalid input."))
+#
+#        if(self==codomain):
+#            return True
+#
+#        if(isinstance(codomain,lm_space)):
+#            ##        3*nside-1==lmax                             lmax==mmax
+#            if(3*self.para[0]-1==codomain.para[0])and(codomain.para[0]==codomain.para[1]):
+#                return True
+#            else:
+#                about.warnings.cprint("WARNING: unrecommended codomain.")
+#
+#        return False
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def get_codomain(self,**kwargs):
+#        """
+#            Generates a compatible codomain to which transformations are
+#            reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
+#
+#            Returns
+#            -------
+#            codomain : nifty.lm_space
+#                A compatible codomain.
+#        """
+#        return lm_space(3*self.para[0]-1,mmax=3*self.para[0]-1,datatype=np.complex128) ## lmax,mmax = 3*nside-1,3*nside-1
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def get_meta_volume(self,total=False):
+#        """
+#            Calculates the meta volumes.
+#
+#            The meta volumes are the volumes associated with each component of
+#            a field, taking into account field components that are not
+#            explicitly included in the array of field values but are determined
+#            by symmetry conditions.
+#
+#            Parameters
+#            ----------
+#            total : bool, *optional*
+#                Whether to return the total meta volume of the space or the
+#                individual ones of each field component (default: False).
+#
+#            Returns
+#            -------
+#            mol : {numpy.ndarray, float}
+#                Meta volume of the field components or the complete space.
+#
+#            Notes
+#            -----
+#            For HEALpix discretizations, the meta volumes are the pixel sizes.
+#        """
+#        if(total):
+#            return self.datatype(4*pi)
+#        else:
+#            mol = np.ones(self.dim(split=True),dtype=self.datatype,order='C')
+#            return self.calc_weight(mol,power=1)
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def calc_transform(self,x,codomain=None,**kwargs):
+#        """
+#            Computes the transform of a given array of field values.
+#
+#            Parameters
+#            ----------
+#            x : numpy.ndarray
+#                Array to be transformed.
+#            codomain : nifty.space, *optional*
+#                Target space to which the transformation shall map
+#                (default: self).
+#
+#            Returns
+#            -------
+#            Tx : numpy.ndarray
+#                Transformed array
+#
+#            Other parameters
+#            ----------------
+#            iter : int, *optional*
+#                Number of iterations performed in the HEALPix basis
+#                transformation.
+#
+#            Notes
+#            -----
+#            Only instances of the :py:class:`lm_space` or :py:class:`hp_space`
+#            classes are allowed as `codomain`.
+#        """
+#        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+#
+#        if(codomain is None):
+#            return x ## T == id
+#
+#        ## check codomain
+#        self.check_codomain(codomain) ## a bit pointless
+#
+#        if(self==codomain):
+#            return x ## T == id
+#
+#        if(isinstance(codomain,lm_space)):
+#            ## weight if discrete
+#            if(self.discrete):
+#                x = self.calc_weight(x,power=-0.5)
+#            ## transform
+#            Tx = hp.map2alm(x.astype(np.float64),lmax=codomain.para[0],mmax=codomain.para[1],iter=kwargs.get("iter",self.niter),pol=True,use_weights=False,datapath=None)
+#
+#        else:
+#            raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
+#
+#        return Tx.astype(codomain.datatype)
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def calc_smooth(self,x,sigma=0,**kwargs):
+#        """
+#            Smoothes an array of field values by convolution with a Gaussian
+#            kernel.
+#
+#            Parameters
+#            ----------
+#            x : numpy.ndarray
+#                Array of field values to be smoothed.
+#            sigma : float, *optional*
+#                Standard deviation of the Gaussian kernel, specified in units
+#                of length in position space; for testing: a sigma of -1 will be
+#                reset to a reasonable value (default: 0).
+#
+#            Returns
+#            -------
+#            Gx : numpy.ndarray
+#                Smoothed array.
+#
+#            Other parameters
+#            ----------------
+#            iter : int, *optional*
+#                Number of iterations performed in the HEALPix basis
+#                transformation.
+#        """
+#        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+#        ## check sigma
+#        if(sigma==0):
+#            return x
+#        elif(sigma==-1):
+#            about.infos.cprint("INFO: invalid sigma reset.")
+#            sigma = 1.5/self.para[0] ## sqrt(2)*pi/(lmax+1)
+#        elif(sigma<0):
+#            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
+#        ## smooth
+#        return hp.smoothing(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,iter=kwargs.get("iter",self.niter),lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,use_weights=False,datapath=None)
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def calc_power(self,x,**kwargs):
+#        """
+#            Computes the power of an array of field values.
+#
+#            Parameters
+#            ----------
+#            x : numpy.ndarray
+#                Array containing the field values of which the power is to be
+#                calculated.
+#
+#            Returns
+#            -------
+#            spec : numpy.ndarray
+#                Power contained in the input array.
+#
+#            Other parameters
+#            ----------------
+#            iter : int, *optional*
+#                Number of iterations performed in the HEALPix basis
+#                transformation.
+#        """
+#        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+#        ## weight if discrete
+#        if(self.discrete):
+#            x = self.calc_weight(x,power=-0.5)
+#        ## power spectrum
+#        return hp.anafast(x,map2=None,nspec=None,lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,iter=kwargs.get("iter",self.niter),alm=False,pol=True,use_weights=False,datapath=None)
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def get_plot(self,x,title="",vmin=None,vmax=None,power=False,unit="",norm=None,cmap=None,cbar=True,other=None,legend=False,mono=True,**kwargs):
+#        """
+#            Creates a plot of field values according to the specifications
+#            given by the parameters.
+#
+#            Parameters
+#            ----------
+#            x : numpy.ndarray
+#                Array containing the field values.
+#
+#            Returns
+#            -------
+#            None
+#
+#            Other parameters
+#            ----------------
+#            title : string, *optional*
+#                Title of the plot (default: "").
+#            vmin : float, *optional*
+#                Minimum value to be displayed (default: ``min(x)``).
+#            vmax : float, *optional*
+#                Maximum value to be displayed (default: ``max(x)``).
+#            power : bool, *optional*
+#                Whether to plot the power contained in the field or the field
+#                values themselves (default: False).
+#            unit : string, *optional*
+#                Unit of the field values (default: "").
+#            norm : string, *optional*
+#                Scaling of the field values before plotting (default: None).
+#            cmap : matplotlib.colors.LinearSegmentedColormap, *optional*
+#                Color map to be used for two-dimensional plots (default: None).
+#            cbar : bool, *optional*
+#                Whether to show the color bar or not (default: True).
+#            other : {single object, tuple of objects}, *optional*
+#                Object or tuple of objects to be added, where objects can be
+#                scalars, arrays, or fields (default: None).
+#            legend : bool, *optional*
+#                Whether to show the legend or not (default: False).
+#            mono : bool, *optional*
+#                Whether to plot the monopole or not (default: True).
+#            save : string, *optional*
+#                Valid file name where the figure is to be stored, by default
+#                the figure is not saved (default: False).
+#            iter : int, *optional*
+#                Number of iterations performed in the HEALPix basis
+#                transformation.
+#        """
+#        if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
+#            about.warnings.cprint("WARNING: interactive mode off.")
+#
+#        if(power):
+#            x = self.calc_power(x,**kwargs)
+#
+#            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
+#            ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
+#
+#            xaxes = np.arange(3*self.para[0],dtype=np.int)
+#            if(vmin is None):
+#                vmin = np.min(x[:mono].tolist()+(xaxes*(2*xaxes+1)*x)[1:].tolist(),axis=None,out=None)
+#            if(vmax is None):
+#                vmax = np.max(x[:mono].tolist()+(xaxes*(2*xaxes+1)*x)[1:].tolist(),axis=None,out=None)
+#            ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*x)[1:],color=[0.0,0.5,0.0],label="graph 0",linestyle='-',linewidth=2.0,zorder=1)
+#            if(mono):
+#                ax0.scatter(0.5*(xaxes[1]+xaxes[2]),x[0],s=20,color=[0.0,0.5,0.0],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=1)
+#
+#            if(other is not None):
+#                if(isinstance(other,tuple)):
+#                    other = list(other)
+#                    for ii in xrange(len(other)):
+#                        if(isinstance(other[ii],field)):
+#                            other[ii] = other[ii].power(**kwargs)
+#                        else:
+#                            other[ii] = self.enforce_power(other[ii])
+#                elif(isinstance(other,field)):
+#                    other = [other.power(**kwargs)]
+#                else:
+#                    other = [self.enforce_power(other)]
+#                imax = max(1,len(other)-1)
+#                for ii in xrange(len(other)):
+#                    ax0.loglog(xaxes[1:],(xaxes*(2*xaxes+1)*other[ii])[1:],color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],label="graph "+str(ii+1),linestyle='-',linewidth=1.0,zorder=-ii)
+#                    if(mono):
+#                        ax0.scatter(0.5*(xaxes[1]+xaxes[2]),other[ii][0],s=20,color=[max(0.0,1.0-(2*ii/imax)**2),0.5*((2*ii-imax)/imax)**2,max(0.0,1.0-(2*(ii-imax)/imax)**2)],marker='o',cmap=None,norm=None,vmin=None,vmax=None,alpha=None,linewidths=None,verts=None,zorder=-ii)
+#                if(legend):
+#                    ax0.legend()
+#
+#            ax0.set_xlim(xaxes[1],xaxes[-1])
+#            ax0.set_xlabel(r"$\ell$")
+#            ax0.set_ylim(vmin,vmax)
+#            ax0.set_ylabel(r"$\ell(2\ell+1) C_\ell$")
+#            ax0.set_title(title)
+#
+#        else:
+#            x = self.enforce_shape(np.array(x,dtype=self.datatype))
+#            if(norm=="log"):
+#                if(vmin is not None):
+#                    if(vmin<=0):
+#                        raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+#                elif(np.min(x,axis=None,out=None)<=0):
+#                    raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
+#            if(cmap is None):
+#                cmap = pl.cm.jet ## default
+#            cmap.set_under(color='k',alpha=0.0) ## transparent box
+#            hp.mollview(x,fig=None,rot=None,coord=None,unit=unit,xsize=800,title=title,nest=False,min=vmin,max=vmax,flip="astro",remove_dip=False,remove_mono=False,gal_cut=0,format="%g",format2="%g",cbar=cbar,cmap=cmap,notext=False,norm=norm,hold=False,margins=None,sub=None)
+#            fig = pl.gcf()
+#
+#        if(bool(kwargs.get("save",False))):
+#            fig.savefig(str(kwargs.get("save")),dpi=None,facecolor="none",edgecolor="none",orientation="portrait",papertype=None,format=None,transparent=False,bbox_inches=None,pad_inches=0.1)
+#            pl.close(fig)
+#        else:
+#            fig.canvas.draw()
+#
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#
+#    def __repr__(self):
+#        return "<nifty_core.hp_space>"
+#
+#    def __str__(self):
+#        return "nifty_core.hp_space instance\n- nside = "+str(self.para[0])
+#
+###-----------------------------------------------------------------------------
 
 
 
@@ -5513,7 +4338,7 @@ class nested_space(space):
                 if(self.datatype is not x.domain.datatype):
                     raise TypeError(about._errors.cstring("ERROR: inequal data types ( '"+str(np.result_type(self.datatype))+"' <> '"+str(np.result_type(x.domain.datatype))+"' )."))
                 else:
-                    x = x.val
+                    x = np.copy(x.val)
             elif(self.nest[-1]==x.domain):
                 if(self.datatype is not x.domain.datatype):
                     raise TypeError(about._errors.cstring("ERROR: inequal data types ( '"+str(np.result_type(self.datatype))+"' <> '"+str(np.result_type(x.domain.datatype))+"' )."))
@@ -9174,7 +7999,7 @@ class diagonal_operator(operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_random_field(self,domain=None,target=None,**kwargs):
+    def get_random_field(self,domain=None,target=None):
         """
             Generates a Gaussian random field with variance equal to the
             diagonal.
@@ -9194,8 +8019,6 @@ class diagonal_operator(operator):
                 Random field.
 
         """
-        if(len(kwargs)):  ## TODO: remove **kwargs in future version
-            about.warnings.cprint("WARNING: deprecated keyword(s).")
         ## weight if ...
         if(not self.domain.discrete):
             diag = self.domain.calc_weight(self.val,power=-1)
@@ -10402,36 +9225,47 @@ class response_operator(operator):
         self.sigma = sigma
 
         ## check assignment(s)
-        if(np.size(self.domain.dim(split=True))==1):
-            if(assign is None):
-                assign = np.arange(self.domain.dim(split=False),dtype=np.int)
-            elif(np.isscalar(assign)):
-                assign = np.array([assign],dtype=np.int)
+        if(assign is None):
+            ## 1:1 assignment
+            assignments = self.domain.dim(split=False)
+            self.assign = None
+        elif(np.size(self.domain.dim(split=True))==1):
+            if(np.isscalar(assign)):
+                ## X:1 assignment
+                assignments = 1
                 if(assign[0]>=self.domain.dim(split=False))or(assign[0]<-self.domain.dim(split=False)):
                     raise IndexError(about._errors.cstring("ERROR: invalid bounds."))
+                self.assign = [int(assign)]
             else:
                 assign = np.array(assign,dtype=np.int)
+                assignments = len(assign)
                 if(np.ndim(assign)!=1):
                     raise ValueError(about._errors.cstring("ERROR: invalid input."))
                 elif(np.any(assign>=self.domain.dim(split=False)))or(np.any(assign<-self.domain.dim(split=False))):
                     raise IndexError(about._errors.cstring("ERROR: invalid bounds."))
+                if(assignments==len(np.unique(assign,return_index=False,return_inverse=False))):
+                    self.assign = assign.tolist()
+                else:
+                    self.assign = assign
         else:
-            if(assign is None):
-                assign = np.array([ii for ii in np.ndindex(tuple(self.domain.dim(split=True)))],dtype=np.int)
-            elif(np.isscalar(assign)):
+            if(np.isscalar(assign)):
                 raise ValueError(about._errors.cstring("ERROR: invalid input."))
             else:
                 assign = np.array(assign,dtype=np.int)
+                assignments = np.size(assign,axis=0)
                 if(np.ndim(assign)!=2)or(np.size(assign,axis=1)!=np.size(self.domain.dim(split=True))):
                     raise ValueError(about._errors.cstring("ERROR: invalid input."))
                 for ii in xrange(np.size(assign,axis=1)):
                     if(np.any(assign[:,ii]>=self.domain.dim(split=True)[ii]))or(np.any(assign[:,ii]<-self.domain.dim(split=True)[ii])):
                         raise IndexError(about._errors.cstring("ERROR: invalid bounds."))
-        self.assign = assign.T ## transpose
+                if(assignments==len(np.unique(np.ravel_multi_index(assign.T,self.domain.dim(split=True),mode="raise",order='C'),return_index=False,return_inverse=False))):
+                    self.assign = assign.T.tolist()
+                else:
+                    self.assign = assign
 
         if(target is None):
             ## set target
-            target = point_space(np.size(assign,axis=0),datatype=self.domain.datatype)
+            target = point_space(assignments,datatype=self.domain.datatype)
         else:
             ## check target
             if(not isinstance(target,space)):
@@ -10440,8 +9274,8 @@ class response_operator(operator):
                 raise ValueError(about._errors.cstring("ERROR: continuous codomain.")) ## discrete(!)
             elif(np.size(target.dim(split=True))!=1):
                 raise ValueError(about._errors.cstring("ERROR: structured codomain.")) ## unstructured(!)
-            elif(np.size(assign,axis=0)!=target.dim(split=False)):
-                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(assign,axis=0))+" <> "+str(target.dim(split=False))+" )."))
+            elif(assignments!=target.dim(split=False)):
+                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(assignments)+" <> "+str(target.dim(split=False))+" )."))
         self.target = target
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -10490,14 +9324,24 @@ class response_operator(operator):
         x_ = self.domain.calc_smooth(x.val,sigma=self.sigma)
         ## mask
         x_ *= self.mask
-        ## assign
-        #return x_[self.assign.tolist()]
-        return field(self.target,val=x_[self.assign.tolist()],target=kwargs.get("target",None))
+        ## assign and return
+        if(self.assign is None):
+            return field(self.target,val=x_,target=kwargs.get("target",None))
+        elif(isinstance(self.assign,list)):
+            return field(self.target,val=x_[self.assign],target=kwargs.get("target",None))
+        else:
+            return field(self.target,val=x_[self.assign.T.tolist()],target=kwargs.get("target",None))
 
     def _adjoint_multiply(self,x,**kwargs): ## > applies the adjoint operator to a given field
         x_ = np.zeros(self.domain.dim(split=True),dtype=self.domain.datatype,order='C')
         ## assign (transposed)
-        x_[self.assign.tolist()] += x.val.flatten(order='C')
+        if(self.assign is None):
+            x_ = np.copy(x.val.flatten(order='C'))
+        elif(isinstance(self.assign,list)):
+            x_[self.assign] += x.val.flatten(order='C')
+        else:
+            for ii in xrange(np.size(self.assign,axis=0)):
+                x_[np.array([self.assign[ii]]).T.tolist()] += x[ii]
         ## mask
         x_ *= self.mask
         ## smooth
@@ -10617,8 +9461,8 @@ class probing(object):
         ncpu : int, *optional*
             the number of cpus to be used from parallel probing. (default: 2)
         nrun : int, *optional*
-            the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
-            set to `ncpu**2`. (default: 8)
+            the number of probes to be evaluated. If `nrun<ncpu`, it will be
+            set to `ncpu`. (default: 8)
         nper : int, *optional*
             this number specifies how many probes will be evaluated by one
             worker. Afterwards a new worker will be created to evaluate a chunk
@@ -10697,8 +9541,8 @@ class probing(object):
         ncpu : int, *optional*
             the number of cpus to be used from parallel probing. (default: 2)
         nrun : int, *optional*
-            the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
-            set to `ncpu**2`. (default: 8)
+            the number of probes to be evaluated. If `nrun<ncpu`, it will be
+            set to `ncpu`. (default: 8)
         nper : int, *optional*
             this number specifies how many probes will be evaluated by one
             worker. Afterwards a new worker will be created to evaluate a chunk
@@ -10767,7 +9611,7 @@ class probing(object):
         self.random = random
 
         self.ncpu = int(max(1,ncpu))
-        self.nrun = int(max(self.ncpu**2,nrun))
+        self.nrun = int(max(self.ncpu,nrun))
         if(nper is None):
             self.nper = None
         else:
@@ -10790,8 +9634,8 @@ class probing(object):
             ncpu : int, *optional*
                 the number of cpus to be used for parallel probing. (default: 2)
             nrun : int, *optional*
-                the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
-                set to `ncpu**2`. (default: 8)
+                the number of probes to be evaluated. If `nrun<ncpu`, it will be
+                set to `ncpu`. (default: 8)
             nper : int, *optional*
                 number of probes, that will be evaluated by one worker (default: 1)
             var : bool, *optional*
@@ -10806,7 +9650,7 @@ class probing(object):
         if("ncpu" in kwargs):
             self.ncpu = int(max(1,kwargs.get("ncpu")))
         if("nrun" in kwargs):
-            self.nrun = int(max(self.ncpu**2,kwargs.get("nrun")))
+            self.nrun = int(max(self.ncpu,kwargs.get("nrun")))
         if("nper" in kwargs):
             if(kwargs.get("nper") is None):
                 self.nper = None
@@ -11101,8 +9945,8 @@ class trace_probing(probing):
         ncpu : int, *optional*
             the number of cpus to be used from parallel probing. (default: 2)
         nrun : int, *optional*
-            the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
-            set to `ncpu**2`. (default: 8)
+            the number of probes to be evaluated. If `nrun<ncpu`, it will be
+            set to `ncpu`. (default: 8)
         nper : int, *optional*
             this number specifies how many probes will be evaluated by one
             worker. Afterwards a new worker will be created to evaluate a chunk
@@ -11183,8 +10027,8 @@ class trace_probing(probing):
         ncpu : int, *optional*
             the number of cpus to be used from parallel probing. (default: 2)
         nrun : int, *optional*
-            the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
-            set to `ncpu**2`. (default: 8)
+            the number of probes to be evaluated. If `nrun<ncpu`, it will be
+            set to `ncpu`. (default: 8)
         nper : int, *optional*
             this number specifies how many probes will be evaluated by one
             worker. Afterwards a new worker will be created to evaluate a chunk
@@ -11253,7 +10097,7 @@ class trace_probing(probing):
         self.random = random
 
         self.ncpu = int(max(1,ncpu))
-        self.nrun = int(max(self.ncpu**2,nrun))
+        self.nrun = int(max(self.ncpu,nrun))
         if(nper is None):
             self.nper = None
         else:
@@ -11465,8 +10309,8 @@ class diagonal_probing(probing):
         ncpu : int, *optional*
             the number of cpus to be used for parallel probing. (default: 2)
         nrun : int, *optional*
-            the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
-            set to `ncpu**2`. (default: 8)
+            the number of probes to be evaluated. If `nrun<ncpu`, it will be
+            set to `ncpu`. (default: 8)
         nper : int, *optional*
             this number specifies how many probes will be evaluated by one
             worker. Afterwards a new worker will be created to evaluate a chunk
@@ -11564,8 +10408,8 @@ class diagonal_probing(probing):
         ncpu : int, *optional*
             the number of cpus to be used for parallel probing. (default: 2)
         nrun : int, *optional*
-            the number of probes to be evaluated. If `nrun<ncpu**2`, it will be
-            set to `ncpu**2`. (default: 8)
+            the number of probes to be evaluated. If `nrun<ncpu`, it will be
+            set to `ncpu`. (default: 8)
         nper : int, *optional*
             this number specifies how many probes will be evaluated by one
             worker. Afterwards a new worker will be created to evaluate a chunk
@@ -11647,7 +10491,7 @@ class diagonal_probing(probing):
         self.random = random
 
         self.ncpu = int(max(1,ncpu))
-        self.nrun = int(max(self.ncpu**2,nrun))
+        self.nrun = int(max(self.ncpu,nrun))
         if(nper is None):
             self.nper = None
         else:
@@ -11680,8 +10524,8 @@ class diagonal_probing(probing):
                 the number of cpus to be used for parallel probing
                 (default: 2)
             nrun : int, *optional*
-                the number of probes to be evaluated. If `nrun<ncpu**2`, it will
-                be set to `ncpu**2`. (default: 8)
+                the number of probes to be evaluated. If `nrun<ncpu`, it will
+                be set to `ncpu`. (default: 8)
             nper : int, *optional*
                 number of probes, that will be evaluated by one worker
                 (default: 1)
@@ -11705,7 +10549,7 @@ class diagonal_probing(probing):
         if("ncpu" in kwargs):
             self.ncpu = int(max(1,kwargs.get("ncpu")))
         if("nrun" in kwargs):
-            self.nrun = int(max(self.ncpu**2,kwargs.get("nrun")))
+            self.nrun = int(max(self.ncpu,kwargs.get("nrun")))
         if("nper" in kwargs):
             if(kwargs.get("nper") is None):
                 self.nper = None

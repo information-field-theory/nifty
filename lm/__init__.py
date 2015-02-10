@@ -1,7 +1,7 @@
 ## NIFTY (Numerical Information Field Theory) has been developed at the
 ## Max-Planck-Institute for Astrophysics.
 ##
-## Copyright (C) 2013 Max-Planck-Society
+## Copyright (C) 2015 Max-Planck-Society
 ##
 ## Author: Marco Selig
 ## Project homepage: <http://www.mpa-garching.mpg.de/ift/nifty/>
@@ -20,24 +20,25 @@
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division
-from nifty_core import * ## imports `about`
-from nifty_cmaps import *
-from nifty_power import *
-from nifty_tools import *
-from nifty_explicit import *
-
-## optional submodule `rg`
+from nifty import about
+#from nifty_lm import *
 try:
-    from rg import *
+    import libsharp_wrapper_gl as gl
 except(ImportError):
-    pass
-
-## optional submodule `lm`
-try:
-    from lm import *
-except(ImportError):
-    pass
-
-from demos import *
-from pickling import *
+    try:
+        import healpy as hp
+    except(ImportError):
+        about.infos.cprint("INFO: neither libsharp_wrapper_gl nor healpy available.")
+        pass ## import nothing
+    else:
+        from nifty_lm import lm_space,hp_space ## import lm & hp
+        ## TODO: change about
+else:
+    try:
+        import healpy as hp
+    except(ImportError):
+        from nifty_lm import lm_space,gl_space ## import lm & gl
+    else:
+        from nifty_lm import lm_space,gl_space,hp_space ## import all 3
+from nifty_power_conversion_lm import *
 
