@@ -106,7 +106,6 @@ at `<https://github.com/information-field-theory/nifty/tags>`_. The current
 version can be obtained by cloning the repository::
 
     git clone git://github.com/information-field-theory/nifty.git
-    cd nifty
 
 Installation
 ............
@@ -124,6 +123,7 @@ Installation
 *   NIFTY can be installed using **Distutils** by running the following
     command::
 
+        cd nifty
         python setup.py install
 
     Alternatively, a private or user specific installation can be done by::
