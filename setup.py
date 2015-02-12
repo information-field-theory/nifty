@@ -23,7 +23,7 @@ from distutils.core import setup
 import os
 
 setup(name="ift_nifty",
-      version="1.0.6",
+      version="1.0.7",
       author="Marco Selig",
       author_email="mselig@mpa-garching.mpg.de",
       maintainer="Theo Steininger",
@@ -32,6 +32,6 @@ setup(name="ift_nifty",
       url="http://www.mpa-garching.mpg.de/ift/nifty/",
       packages=["nifty", "nifty.demos", "nifty.rg", "nifty.lm"],
       package_dir={"nifty": ""},
-      data_files=[(os.path.expanduser('~') + "/.nifty", ["nifty_config"])],
+      data_files=[(os.path.join(os.path.expanduser('~'),".nifty"), ["nifty_config"])],
       license="GPLv3")
 
