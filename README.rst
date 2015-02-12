@@ -102,10 +102,10 @@ Download
 ........
 
 The latest release is tagged **v1.0.6** and is available as a source package
-at `<https://github.com/mselig/nifty/tags>`_. The current version can be
-obtained by cloning the repository::
+at `<https://github.com/information-field-theory/nifty/tags>`_. The current
+version can be obtained by cloning the repository::
 
-    git clone git://github.com/mselig/nifty.git
+    git clone git://github.com/information-field-theory/nifty.git
     cd nifty
 
 Installation
@@ -136,7 +136,7 @@ First Steps
 
 For a quickstart, you can browse through the
 `informal introduction <http://www.mpa-garching.mpg.de/ift/nifty/start.html>`_
-or dive in to NIFTY by running one of the demos, e.g.::
+or dive into NIFTY by running one of the demonstrations, e.g.::
 
         >>> run -m nifty.demos.demo_wf1
 
