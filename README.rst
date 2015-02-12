@@ -114,11 +114,11 @@ Installation
 *   NIFTY can be installed using `PyPI <https://pypi.python.org/pypi>`_ and
     **pip** by running the following command::
 
-        pip install nifty
+        pip install ift_nifty
 
     Alternatively, a private or user specific installation can be done by::
 
-        pip install --user nifty
+        pip install --user ift_nifty
 
 
 *   NIFTY can be installed using **Distutils** by running the following
@@ -130,6 +130,15 @@ Installation
 
         python setup.py install --user
         python setup.py install --install-lib=/SOMEWHERE
+
+First Steps
+...........
+
+For a quickstart, you can browse through the
+`informal introduction <http://www.mpa-garching.mpg.de/ift/nifty/start.html>`_
+or dive in to NIFTY by running one of the demos, e.g.::
+
+        >>> run -m nifty.demos.demo_wf1
 
 Acknowledgement
 ---------------
