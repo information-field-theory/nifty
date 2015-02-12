@@ -136,7 +136,7 @@ First Steps
 
 For a quickstart, you can browse through the
 `informal introduction <http://www.mpa-garching.mpg.de/ift/nifty/start.html>`_
-or dive in to NIFTY by running one of the demos, e.g.::
+or dive into NIFTY by running one of the demonstrations, e.g.::
 
         >>> run -m nifty.demos.demo_wf1
 
