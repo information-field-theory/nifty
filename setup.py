@@ -23,7 +23,7 @@ from distutils.core import setup
 import os
 
 setup(name="ift_nifty",
-      version="1.0.6",
+      version="1.0.7",
       author="Marco Selig",
       author_email="mselig@mpa-garching.mpg.de",
       maintainer="Theo Steininger",

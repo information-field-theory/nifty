@@ -89,10 +89,10 @@ Requirements
 *   `GFFT <https://github.com/mrbell/gfft>`_ (v0.1.0) - Generalized Fast
     Fourier Transformations for Python - **optional**
 
-*   `HEALPy <https://github.com/healpy/healpy>`_ (v1.4 without openmp) - A
+*   `HEALPy <https://github.com/healpy/healpy>`_ (v1.8.1 without openmp) - A
     Python wrapper for `HEALPix <http://sourceforge.net/projects/healpix/>`_ -
     **optional**
-
+ 
 *   `libsharp-wrapper <https://github.com/mselig/libsharp-wrapper>`_ (v0.1.2
     without openmp) - A Python wrapper for the
     `libsharp <http://sourceforge.net/projects/libsharp/>`_ library -
