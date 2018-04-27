@@ -1,6 +1,9 @@
 NIFTY - Numerical Information Field Theory
 ==========================================
 
+This Github repository has been superseded by the Gitlab one at
+`<https://gitlab.mpcdf.mpg.de/ift/NIFTy>`_.
+
 **NIFTY** project homepage: `<http://www.mpa-garching.mpg.de/ift/nifty/>`_
 
 Summary
